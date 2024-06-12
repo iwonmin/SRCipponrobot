@@ -5,3 +5,5 @@ projectfiles
 mbed-os
 BUILD
 
+GP2A
+MPU9250

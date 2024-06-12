@@ -2,7 +2,7 @@
 #include <string>
 #include <stdlib.h>
 #include "Thread.h"
-#define MAXSPEED 0.9
+#define MAXSPEED 0.5
 #define ESCAPESPEED -0.5
 class Controller
 {
@@ -22,7 +22,7 @@ class Controller
     };
     //객체 생성시 실행되는 생성자 함수
     Controller();
-
+//-------------------Get & Set methods----------------------//
     //현재 로봇의 상태 반환
     RoboState GetState();
 
@@ -33,7 +33,7 @@ class Controller
     bool GetEnemyState();
 
     //적 감지 여부 변환
-    void SetEnemyState();
+    void SetEnemyState(bool enemyState);
 
     //좌측 바퀴 속도 반환
     float GetSpeedL();
@@ -47,6 +47,12 @@ class Controller
     //양쪽 바퀴 다른 속도 설정
     void SetSpeed(float sL, float sR);
     
+    //적과의 수평거리 반환 함수
+    int GetHD();
+
+    //적과의 수평거리 변환환
+    void SetHD(int HD);
+//--------------------State Machine methods----------------------//
     //초기상태 시 실행 함수
     void Start();
 
@@ -65,15 +71,20 @@ class Controller
     //주행 함수
     void Move(float sL, float sR);
 
+    void EnemyDetect();
+//--------------------Private variables--------------------------//
     private:
     //로봇 상태
     RoboState robo_state;
 
     //적 감지 여부
-    bool enemy;
+    bool enemy = false;
+
+    //적과 벌어진 거리
+    int enemy_horizontal_distance;
 
     //위험 지역 여부
-    bool isSafe;
+    bool isSafe = true;
 
     //좌측 바퀴 속력
     float speedL;
