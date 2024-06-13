@@ -5,7 +5,8 @@
 #define PSD_INTERVAL_us 0.1 // @@ dummy value, should be defined !!@@
 #define PSD_THRESHOLD 5 // encounter distance(cm) diff, must be defined with experiment - threshold / inverval = speed
 #define IR_THRESHOLD 30000 // 30000 넘으면 대충 검정임, 실험 필요!!
-#define CIRCLE_DISTANCE 0 //cm
+#define CIRCLE_DISTANCE 70 //cm
+#define WALL_DISTANCE 70 //cm
 #pragma region externs
 extern DigitalIn irfl;
 extern DigitalIn irfr;
@@ -68,7 +69,15 @@ class irs {
         void enumfucker(int);
         void SetPosition();
 };
-
+class EnemyFind {
+    public:
+        EnemyFind(irs::Position pos);
+        void LeftWallTrack();
+        void RightWallTrack();
+        void CenterSpin();
+        void FrontWall();
+        void BehindWall();
+};
 /*
 while(true):
     read_sensor_distances()

@@ -1,4 +1,5 @@
 #include "sensor.h"
+#include <cstdint>
 #pragma region variables
 //just psd
 GP2A psdf(PA_0,7,80,0.246,-0.297); //그냥 거리감지
@@ -135,4 +136,30 @@ void irs::SetPosition() { //@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함. 
                 irs::CurrentPos = Position::WallBehind;
             } else irs::CurrentPos = Position::FartoCenter; // 색영역도 아닌데 안보임
         }
+}
+
+EnemyFind::EnemyFind(irs::Position pos) { //생성자에 위치 넣고 클래스 바로 삭제하기 -> 무한반복
+    if(pos==irs::Position::ClosetoLeftWall) {
+        LeftWallTrack();
+    } else if(pos==irs::Position::ClosetoRightWall) {
+        RightWallTrack();
+    } else if(pos==irs::Position::CriticalLeftWall) {
+        //살짝 빠져나오는거 필요
+        LeftWallTrack();
+    } else if(pos==irs::Position::CriticalRightWall) {
+        //살짝 빠져나오는거 필요
+        RightWallTrack();
+    } else if(pos==irs::Position::ClosetoCenter || pos==irs::Position::FartoCenter) {
+        //현재 거리값 대충 저장 후 빙글빙글 돌다가 갑자기 튀는 값 찾기
+    } else if(pos==irs::Position::WallFront) {
+        FrontWall();
+    } else if(pos==irs::Position::WallBehind) {
+        BehindWall();
+    }
+}
+
+void EnemyFind::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
+    uint16_t avg_distance = (psdlf.distance() + psdlc.distance() + psdlb.distance())/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
+    if(avg_distance > WALL_DISTANCE+10 || avg_distance < WALL_DISTANCE-10)      
+    
 }
