@@ -2,6 +2,7 @@
 #include "rtos.h"
 #include "GP2A.h"
 #include "PinNames.h"
+#include "controller.h"
 #define PSD_INTERVAL_us 0.1 // @@ dummy value, should be defined !!@@
 #define PSD_THRESHOLD 5 // encounter distance(cm) diff, must be defined with experiment - threshold / inverval = speed
 #define IR_THRESHOLD 30000 // 30000 넘으면 대충 검정임, 실험 필요!!
@@ -15,7 +16,6 @@ extern DigitalIn irbl;
 extern DigitalIn irbr;
 extern GP2A psdf; //그냥 거리감지
 extern GP2A psdb;
-extern enum class CurrentPos;
 #pragma endregion externs
 
 class psd_side {
@@ -24,8 +24,9 @@ class psd_side {
     uint16_t now_distance;
     float filtered_distance;
     float alpha;
-    bool detection;
+
     public:
+        bool detection;
         psd_side(PinName, uint16_t, uint16_t, float, float);
         bool refresh();
         float distance();
@@ -64,12 +65,15 @@ class irs {
         };
         ColorOrient Orient;
         Position CurrentPos;
+        Position GetPosition();
         void refresh();
         void ColorOrient();
         void enumfucker(int);
         void SetPosition();
 };
-class EnemyFind {
+class EnemyFind:Controller {
+    irs::Position pos;
+    Controller controller;
     public:
         EnemyFind(irs::Position pos);
         void LeftWallTrack();

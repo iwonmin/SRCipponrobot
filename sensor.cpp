@@ -1,4 +1,5 @@
 #include "sensor.h"
+
 #include <cstdint>
 #pragma region variables
 //just psd
@@ -86,6 +87,7 @@ void irs::ColorOrient() {
         } else {}
     } else irs::Orient = ColorOrient::SAFE;
 }
+/*
 void irs::enumfucker(int orient) {
     if(orient == 0) {
         pc.printf("FRONT\r\n");
@@ -104,6 +106,10 @@ void irs::enumfucker(int orient) {
     } else if(orient == 7) {
         pc.printf("BACK_RIGHT\r\n");
     }
+}
+*/
+irs::Position irs::GetPosition() {
+    return CurrentPos;
 }
 void irs::SetPosition() { //@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함. getDistance() 타이밍에 로봇 있을 때 거를 방안 찾아야함. //거리 함수 말고 전역 변수로 불러와야할 듯(controller)
     //irs Colororient=>정확성 높음, 벽거리만 추가고려해서 바로 사용
@@ -138,7 +144,7 @@ void irs::SetPosition() { //@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함. 
         }
 }
 
-EnemyFind::EnemyFind(irs::Position pos) { //생성자에 위치 넣고 클래스 바로 삭제하기 -> 무한반복
+EnemyFind::EnemyFind(irs::Position pos):controller() { //생성자에 위치 넣고 클래스 바로 삭제하기 -> 무한반복
     if(pos==irs::Position::ClosetoLeftWall) {
         LeftWallTrack();
     } else if(pos==irs::Position::ClosetoRightWall) {
@@ -160,6 +166,70 @@ EnemyFind::EnemyFind(irs::Position pos) { //생성자에 위치 넣고 클래스
 
 void EnemyFind::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
     uint16_t avg_distance = (psdlf.distance() + psdlc.distance() + psdlb.distance())/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
-    if(avg_distance > WALL_DISTANCE+10 || avg_distance < WALL_DISTANCE-10)      
+    SetSpeed(0.5,0.5);
+    if(avg_distance > WALL_DISTANCE+10) {
+        SetSpeed(0.1,0.5);
+        ThisThread::sleep_for(50);
+    } else if(avg_distance < WALL_DISTANCE-10) {
+        SetSpeed(0.5,0.1);
+        ThisThread::sleep_for(50);
+    }
+    if(psdrb.detection == 1 || psdrc.detection == 1 || psdrf.detection == 1) {
+        SetSpeed(1.0,-1.0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    }
+}
+void EnemyFind::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
+    uint16_t avg_distance = (psdrf.distance() + psdrc.distance() + psdrb.distance())/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
+    SetSpeed(0.5,0.5);
+    if(avg_distance > WALL_DISTANCE+10) {
+        SetSpeed(0.5,0.1);
+        ThisThread::sleep_for(50);
+    } else if(avg_distance < WALL_DISTANCE-10) {
+        SetSpeed(0.1,0.5);
+        ThisThread::sleep_for(50);
+    }
+    if(psdlb.detection == 1 || psdlc.detection == 1 || psdlf.detection == 1) {
+        SetSpeed(-1.0,1.0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    }
     
+}
+
+void EnemyFind::CenterSpin() {
+    SetSpeed(0.5,-0.5); //빙글빙글
+    if(psdlb.detection == 1 || psdlc.detection == 1 || psdlf.detection == 1 || psdrb.detection == 1 || psdrc.detection == 1 || psdrf.detection == 1) {
+        SetSpeed(0,0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    }
+}
+
+void EnemyFind::FrontWall() {
+    if(psdlb.detection == 1 || psdlc.detection == 1 || psdlf.detection == 1) {
+        SetSpeed(-1.0,1.0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    } else if(psdrb.detection == 1 || psdrc.detection == 1 || psdrf.detection == 1) {
+        SetSpeed(1.0, -1.0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    } else {
+        SetSpeed(0.5,-0.5); // 180도 회전
+    }
+}
+
+void EnemyFind::BehindWall() {
+    if(psdlb.detection == 1 || psdlc.detection == 1 || psdlf.detection == 1) {
+        SetSpeed(-1.0,1.0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    }
+    if(psdrb.detection == 1 || psdrc.detection == 1 || psdrf.detection == 1) {
+        SetSpeed(1.0, -1.0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    }
 }
