@@ -183,7 +183,7 @@ void Controller::Move(float sL, float sR){
     PwmR = abs(sR);
 };
 
-void Controller:: EnemyDetect()
+void Controller::EnemyDetect()
 {  
     if (device.readable()) {
         char receivedChar = device.getc();
