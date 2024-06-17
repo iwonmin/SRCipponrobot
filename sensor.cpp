@@ -143,6 +143,27 @@ void irs::SetPosition() { //@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함. 
             } else irs::CurrentPos = Position::FartoCenter; // 색영역도 아닌데 안보임
         }
 }
+void irs::IR_Escape(enum ColorOrient orient) {
+    if(orient==ColorOrient::SAFE) {
+        return;
+    } else if(orient==ColorOrient::FRONT) {
+        
+    } else if(orient==ColorOrient::TAN_LEFT) {
+        
+    } else if(orient==ColorOrient::TAN_RIGHT) {
+
+    } else if(orient==ColorOrient::BACK) {
+
+    } else if(orient==ColorOrient::FRONT_LEFT) {
+
+    } else if(orient==ColorOrient::FRONT_RIGHT) {
+
+    } else if(orient==ColorOrient::BACK_LEFT) {
+        
+    } else if(orient==ColorOrient::BACK_LEFT) {
+
+    } else return;
+}
 
 EnemyFind::EnemyFind(irs::Position pos):controller() { //생성자에 위치 넣고 클래스 바로 삭제하기 -> 무한반복
     if(pos==irs::Position::ClosetoLeftWall) {

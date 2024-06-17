@@ -1,8 +1,6 @@
 #include "mbed.h"
-#include "controller.h"
+#include "sensor.h"
 
-
-// main() runs in its own thread in the OS
 int main()
 {
 Controller controller;

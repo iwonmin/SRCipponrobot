@@ -67,6 +67,7 @@ class irs {
         Position CurrentPos;
         Position GetPosition();
         void refresh();
+        void IR_Escape(ColorOrient orient);
         void ColorOrient();
         void enumfucker(int);
         void SetPosition();
