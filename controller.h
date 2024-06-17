@@ -130,6 +130,7 @@ class psd_side {
         psd_side(PinName, uint16_t, uint16_t, float, float);
         bool refresh();
         float distance();
+        void WallDetection();
 };
 
 class irs:Controller {

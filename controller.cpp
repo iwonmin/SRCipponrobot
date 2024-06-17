@@ -234,7 +234,10 @@ float psd_side::distance() {
     psd_side::prev_distance = psd_side::now_distance;
     return psd_side::filtered_distance;
 }
-
+void psd_side::WallDetection() {
+    //지속적으로 쓰는것보다는 어떤 상태의 끝자락에서 쓰면 좋을듯??
+    
+}
 irs::irs():ir_val{}{
     
 }
