@@ -124,11 +124,15 @@ class psd_side {
     uint16_t now_distance;
     float filtered_distance;
     float alpha;
-
     public:
         bool detection;
+        bool FrontCollision;
+        bool BackCollision;
+        bool LeftCollision;
+        bool RightCollision;
         psd_side(PinName, uint16_t, uint16_t, float, float);
-        bool refresh();
+        void refresh();
+        bool FilterandDetection();
         float distance();
         void WallDetection();
 };

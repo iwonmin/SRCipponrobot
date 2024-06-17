@@ -207,9 +207,9 @@ void Controller::EnemyDetect()
    }
 }
 
-uint16_t ir_val[5] = {}; //순서: irfl, irfr, irc, irbl, irbr
 
-bool psd_side::refresh() {
+uint8_t psd_val[8] = {}; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
+bool psd_side::FilterandDetection() {
         psd_side::now_distance = psd_side::GP2A_.getDistance();
         uint16_t difference = fabs(psd_side::now_distance - psd_side::prev_distance);
         if(difference > PSD_THRESHOLD) {
@@ -228,6 +228,16 @@ psd_side::psd_side(PinName pin_, uint16_t mincm, uint16_t maxcm, float slope, fl
     psd_side::filtered_distance = 0.f;
     psd_side::alpha = 0.9;
 }
+void psd_side::refresh() {
+    psd_val[0] = psdlf.distance();
+    psd_val[1] = psdrf.distance();
+    psd_val[2] = psdlc.distance();
+    psd_val[3] = psdrc.distance();
+    psd_val[4] = psdlb.distance();
+    psd_val[5] = psdrb.distance();
+    psd_val[6] = psdf.getDistance();
+    psd_val[7] = psdb.getDistance();
+}
 float psd_side::distance() {
     psd_side::now_distance = GP2A_.getDistance();
     psd_side::filtered_distance = psd_side::now_distance * psd_side::alpha + (1-psd_side::alpha) * psd_side::prev_distance;
@@ -236,8 +246,13 @@ float psd_side::distance() {
 }
 void psd_side::WallDetection() {
     //지속적으로 쓰는것보다는 어떤 상태의 끝자락에서 쓰면 좋을듯??
-    
+    //확실한 collision : 7cm짜리 front or behind 쓰기
+    if(psd_val[6] == 7 || psd_val[0] + psd_val[1] < 80) psd_side::FrontCollision = 1;
+    if(psd_val[7] == 7 || psd_val) psd_side::BackCollision = 1;
+    if(psd_val[0] + psd_val[2] + psd_val[4] < 120) psd_side::LeftCollision = 1;
+    if(psd_val[1] + psd_val[3] + psd_val[5] < 120) psd_side::RightCollision = 1;
 }
+bool ir_val[5] = {}; //순서: irfl, irfr, irc, irbl, irbr
 irs::irs():ir_val{}{
     
 }
