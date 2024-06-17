@@ -10,8 +10,7 @@
 #define IR_THRESHOLD 30000 // 30000 넘으면 대충 검정임, 실험 필요!!
 #define CIRCLE_DISTANCE 70 //cm
 #define WALL_DISTANCE 70 //cm
-<<<<<<< Updated upstream
-#pragma region external
+#pragma region externs
 extern DigitalOut DirL;
 extern DigitalOut DirR;
 extern PwmOut PwmL;
@@ -20,9 +19,6 @@ extern GP2A psdf; //그냥 거리감지
 extern GP2A psdb;
 extern class Controller;
 extern class psd_side;
-=======
-#pragma region externs
->>>>>>> Stashed changes
 extern DigitalIn irfl;
 extern DigitalIn irfr;
 extern DigitalIn irc;
@@ -100,55 +96,7 @@ class Controller
     void Move(float sL, float sR);
 
     void EnemyDetect();
-<<<<<<< Updated upstream
 
-    class psd_side {
-    GP2A GP2A_;
-    uint16_t prev_distance;
-    uint16_t now_distance;
-    float filtered_distance;
-    float alpha;
-
-    public:
-        bool detection;
-        psd_side(PinName, uint16_t, uint16_t, float, float);
-        bool refresh();
-        float distance();
-    };
-    class irs {
-    uint16_t ir_val[5]; //irfl, irfr, irc, irbl, irbr //미리 선언되어야 함.
-    uint32_t ir_total; //
-    public:
-        enum class ColorOrient {
-        FRONT, TAN_LEFT, TAN_RIGHT, BACK, FRONT_LEFT, FRONT_RIGHT, BACK_LEFT, BACK_RIGHT, SAFE    
-        };
-        enum class Position {
-        ClosetoLeftWall, CriticalLeftWall, ClosetoRightWall, CriticalRightWall,
-        WallFront, WallBehind, ClosetoCenter, FartoCenter
-        };
-        ColorOrient Orient;
-        Position CurrentPos;
-        Position GetPosition();
-        void refresh();
-        void IR_Escape(ColorOrient orient);
-        void ColorOrient();
-        void enumfucker(int);
-        void SetPosition();
-    };
-    class EnemyFind {
-    irs::Position pos;
-    static void SetSpeed(float, float);
-    static void SetState(RoboState);
-    public:
-        EnemyFind(irs::Position pos);
-        void LeftWallTrack();
-        void RightWallTrack();
-        void CenterSpin();
-        void FrontWall();
-        void BehindWall();
-    };
-=======
->>>>>>> Stashed changes
 //--------------------Private variables--------------------------//
     private:
     //로봇 상태
