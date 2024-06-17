@@ -132,7 +132,7 @@ class psd_side {
         float distance();
 };
 
-class irs {
+class irs:Controller {
     uint16_t ir_val[5]; //irfl, irfr, irc, irbl, irbr //미리 선언되어야 함.
     uint32_t ir_total;
     public:
@@ -174,7 +174,6 @@ class irs {
 };
 class EnemyFind:Controller {
     irs::Position pos;
-    Controller controller;
     public:
         EnemyFind(irs::Position pos);
         void LeftWallTrack();

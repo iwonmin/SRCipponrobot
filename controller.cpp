@@ -332,25 +332,65 @@ void irs::IR_Escape(enum ColorOrient orient) {
     if(orient==ColorOrient::SAFE) {
         return;
     } else if(orient==ColorOrient::FRONT) {
-        
+        //180 turn, recheck, and move
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IR_Escape(orient);
     } else if(orient==ColorOrient::TAN_LEFT) {
-        
+        //right turn
+        SetSpeed(0.5, -0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IR_Escape(orient);
     } else if(orient==ColorOrient::TAN_RIGHT) {
-
+        //left turn
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IR_Escape(orient);
     } else if(orient==ColorOrient::BACK) {
-
+        //180, turn, recheck, and move
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IR_Escape(orient);
     } else if(orient==ColorOrient::FRONT_LEFT) {
-
+        //back, and turn
+        SetSpeed(-0.5,0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IR_Escape(orient);
     } else if(orient==ColorOrient::FRONT_RIGHT) {
-
+        //back, and turn
+        SetSpeed(-0.5,0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IR_Escape(orient);
     } else if(orient==ColorOrient::BACK_LEFT) {
-        
+        //back, and turn
+        SetSpeed(-0.5,0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IR_Escape(orient);    
     } else if(orient==ColorOrient::BACK_LEFT) {
-
+        //back, and turn
+        SetSpeed(-0.5,0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IR_Escape(orient);
     } else return;
 }
 
-EnemyFind::EnemyFind(irs::Position pos):controller() { //생성자에 위치 넣고 클래스 바로 삭제하기 -> 무한반복
+EnemyFind::EnemyFind(irs::Position pos) { //생성자에 위치 넣고 클래스 바로 삭제하기 -> 무한반복
     if(pos==irs::Position::ClosetoLeftWall) {
         LeftWallTrack();
     } else if(pos==irs::Position::ClosetoRightWall) {
