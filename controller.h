@@ -1,8 +1,8 @@
 #include "mbed.h"
+#include "GP2A.h"
 #include <string>
 #include <stdlib.h>
 #include "Thread.h"
-#include "GP2A.h"
 #define MAXSPEED 0.5
 #define ESCAPESPEED -0.5
 #define PSD_INTERVAL_us 0.1 // @@ dummy value, should be defined !!@@
@@ -10,6 +10,7 @@
 #define IR_THRESHOLD 30000 // 30000 넘으면 대충 검정임, 실험 필요!!
 #define CIRCLE_DISTANCE 70 //cm
 #define WALL_DISTANCE 70 //cm
+<<<<<<< Updated upstream
 #pragma region external
 extern DigitalOut DirL;
 extern DigitalOut DirR;
@@ -19,12 +20,18 @@ extern GP2A psdf; //그냥 거리감지
 extern GP2A psdb;
 extern class Controller;
 extern class psd_side;
+=======
+#pragma region externs
+>>>>>>> Stashed changes
 extern DigitalIn irfl;
 extern DigitalIn irfr;
 extern DigitalIn irc;
 extern DigitalIn irbl;
 extern DigitalIn irbr;
-#pragma endregion external
+extern GP2A psdf; //그냥 거리감지
+extern GP2A psdb;
+#pragma endregion externs
+
 class Controller
 {
      public:   
@@ -93,6 +100,7 @@ class Controller
     void Move(float sL, float sR);
 
     void EnemyDetect();
+<<<<<<< Updated upstream
 
     class psd_side {
     GP2A GP2A_;
@@ -139,6 +147,8 @@ class Controller
         void FrontWall();
         void BehindWall();
     };
+=======
+>>>>>>> Stashed changes
 //--------------------Private variables--------------------------//
     private:
     //로봇 상태
@@ -150,7 +160,7 @@ class Controller
     //적과 벌어진 거리
     int enemy_horizontal_distance;
 
-    //위험 지역 여부 
+    //위험 지역 여부
     bool isSafe = true;
 
     //좌측 바퀴 속력
@@ -160,3 +170,68 @@ class Controller
     float speedR;
 };
 
+class psd_side {
+    GP2A GP2A_;
+    uint16_t prev_distance;
+    uint16_t now_distance;
+    float filtered_distance;
+    float alpha;
+
+    public:
+        bool detection;
+        psd_side(PinName, uint16_t, uint16_t, float, float);
+        bool refresh();
+        float distance();
+};
+
+class irs {
+    uint16_t ir_val[5]; //irfl, irfr, irc, irbl, irbr //미리 선언되어야 함.
+    uint32_t ir_total;
+    public:
+        irs();
+        enum class ColorOrient {
+        //정면에 색영역
+        FRONT,
+        //색영역에 대해 왼쪽접선방향
+        TAN_LEFT,
+        //색영역에 대해 오른쪽접선방향
+        TAN_RIGHT,
+        //후면에 색영역
+        BACK,
+        //4개 인식됐을 떄
+        FRONT_LEFT,
+        FRONT_RIGHT,
+        BACK_LEFT,
+        BACK_RIGHT,  
+        SAFE //저장되서 탈출해도 유지되는거 막는 값       
+        };
+        enum class Position {
+        ClosetoLeftWall,
+        CriticalLeftWall,
+        ClosetoRightWall,
+        CriticalRightWall,
+        WallFront,
+        WallBehind,
+        ClosetoCenter,
+        FartoCenter
+        };
+        ColorOrient Orient;
+        Position CurrentPos;
+        Position GetPosition();
+        void refresh();
+        void IR_Escape(ColorOrient orient);
+        void ColorOrient();
+        void enumfucker(int);
+        void SetPosition();
+};
+class EnemyFind:Controller {
+    irs::Position pos;
+    Controller controller;
+    public:
+        EnemyFind(irs::Position pos);
+        void LeftWallTrack();
+        void RightWallTrack();
+        void CenterSpin();
+        void FrontWall();
+        void BehindWall();
+};

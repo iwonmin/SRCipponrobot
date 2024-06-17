@@ -23,7 +23,6 @@ Serial pc(USBTX, USBRX, 115200);
 
 uint16_t ir_val[5] = {}; //순서: irfl, irfr, irc, irbl, irbr
 
-
 bool psd_side::refresh() {
         psd_side::now_distance = psd_side::GP2A_.getDistance();
         uint16_t difference = fabs(psd_side::now_distance - psd_side::prev_distance);
