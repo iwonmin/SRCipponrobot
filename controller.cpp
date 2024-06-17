@@ -8,12 +8,12 @@ PwmOut PwmR(PB_5);
 GP2A psdf(PA_0,7,80,0.246,-0.297); //그냥 거리감지
 GP2A psdb(PA_0,7,80,0.246,-0.297);
 //detector psd
-Controller::psd_side psdlf(PA_0,30,150,60,0); //PA_0 -> 핀 바꿔야함 !!!!
-Controller::psd_side psdlc(PA_0,30,150,60,0);
-Controller::psd_side psdlb(PA_0,30,150,60,0);
-Controller::psd_side psdrf(PA_0,30,150,60,0);
-Controller::psd_side psdrc(PA_0,30,150,60,0);
-Controller::psd_side psdrb(PA_0,30,150,60,0);
+GP2A psdlf(PA_0,30,150,60,0); //PA_0 -> 핀 바꿔야함 !!!!
+GP2A psdlc(PA_0,30,150,60,0);
+GP2A psdlb(PA_0,30,150,60,0);
+GP2A psdrf(PA_0,30,150,60,0);
+GP2A psdrc(PA_0,30,150,60,0);
+GP2A psdrb(PA_0,30,150,60,0);
 //ir pin
 DigitalIn irfl(PA_0);
 DigitalIn irfr(PA_0);
@@ -42,6 +42,7 @@ DigitalOut led1(LED1);
 Controller::Controller()
 {
     SetState(RoboState::START);
+    Controller::alpha = 0.9;
 };
 
 Controller::RoboState Controller::GetState()
@@ -207,101 +208,101 @@ void Controller::EnemyDetect()
    }
 }
 
-bool Controller::psd_side::refresh() {
-        psd_side::now_distance = psd_side::GP2A_.getDistance();
-        uint16_t difference = fabs(psd_side::now_distance - psd_side::prev_distance);
+void Controller::PsdRefresh(GP2A GP2A_, uint8_t i) {
+        Controller::now_distance[i] = GP2A_.getDistance();
+        uint16_t difference = fabs(Controller::now_distance - Controller::prev_distance);
         if(difference > PSD_THRESHOLD) {
-            psd_side::detection = 1;
+            Controller::detection[i] = 1;
         } else {
-            psd_side::detection = 0;
+            Controller::detection[i] = 0;
             }
-        psd_side::prev_distance = psd_side::now_distance;
-        return psd_side::detection;
+        Controller::prev_distance[i] = Controller::now_distance[i];
     }
-Controller::psd_side::psd_side(PinName pin_, uint16_t mincm, uint16_t maxcm, float slope, float base):GP2A_(pin_, mincm, maxcm, slope, base) {
-    psd_side::prev_distance = 0;
-    psd_side::now_distance = 0;
-    psd_side::detection = 0;
-    psd_side::filtered_distance = 0.f;
-    psd_side::alpha = 0.9;
-}
-float Controller::psd_side::distance() {
-    psd_side::now_distance = GP2A_.getDistance();
-    psd_side::filtered_distance = psd_side::now_distance * psd_side::alpha + (1-psd_side::alpha) * psd_side::prev_distance;
-    psd_side::prev_distance = psd_side::now_distance;
-    return psd_side::filtered_distance;
-}
 
-void Controller::irs::refresh() {
+float Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
+    Controller::now_distance[i] = GP2A_.getDistance();
+    Controller::filtered_distance[i] = Controller::now_distance[i] * Controller::alpha + (1-Controller::alpha) * Controller::prev_distance[i];
+    Controller::prev_distance[i] = Controller::now_distance[i];
+    return Controller::filtered_distance[i];
+}
+//0 psdlf
+//1 psdrf
+//2 psdlc
+//3 psdrc
+//4 psdlb
+//5 psdrb
+//6 psdf
+//7 psdb
+void Controller::IrRefresh() {
     ir_val[0] = irfl.read();
     ir_val[1] = irfr.read();
     ir_val[2] = irc.read();
     ir_val[3] = irbl.read();
     ir_val[4] = irbr.read();
     ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4];
-    if(ir_total < 3) irs::ColorOrient();
+    if(ir_total < 3) Controller::ColorOrient();
 }
-void Controller::irs::ColorOrient() {
+void Controller::ColorOrient() {
     //5개 인식되었을떄
     if (ir_total == 0) { //뭐하지??
     } else if (ir_total == 1) {
         if(ir_val[0] == 1) {
-            irs::Orient = ColorOrient::BACK_RIGHT;
+            Controller::Orient = ColorOrient::BACK_RIGHT;
         } else if (ir_val[1] == 1) {
-            irs::Orient = ColorOrient::BACK_LEFT;
+            Controller::Orient = ColorOrient::BACK_LEFT;
         } else if (ir_val[3] == 1) {
-            irs::Orient = ColorOrient::FRONT_RIGHT;
+            Controller::Orient = ColorOrient::FRONT_RIGHT;
         } else if (ir_val[4] == 1) {
-            irs::Orient = ColorOrient::FRONT_LEFT;
+            Controller::Orient = ColorOrient::FRONT_LEFT;
         } else {}
     } else if (ir_total == 2) {
         if(ir_val[0] + ir_val[1] + ir_val[2] == 0) {
-            irs::Orient = ColorOrient::FRONT;
+            Controller::Orient = ColorOrient::FRONT;
         } else if(ir_val[0] + ir_val[2] + ir_val[3] == 0) {
-            irs::Orient = ColorOrient::TAN_LEFT;
+            Controller::Orient = ColorOrient::TAN_LEFT;
         } else if(ir_val[2] + ir_val[3] + ir_val[4] == 0) {
-            irs::Orient = ColorOrient::BACK;
+            Controller::Orient = ColorOrient::BACK;
         } else if(ir_val[1] + ir_val[2] + ir_val[4] == 0) {
-            irs::Orient = ColorOrient::TAN_RIGHT;
+            Controller::Orient = ColorOrient::TAN_RIGHT;
         } else {}
-    } else irs::Orient = ColorOrient::SAFE;
+    } else Controller::Orient = ColorOrient::SAFE;
 }
-Controller::irs::Position Controller::irs::GetPosition() {
+Controller::Position Controller::GetPosition() {
     return CurrentPos;
 }
-void Controller::irs::SetPosition() { //@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함. getDistance() 타이밍에 로봇 있을 때 거를 방안 찾아야함. //거리 함수 말고 전역 변수로 불러와야할 듯(controller)
+void Controller::SetPosition() { //@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함. getDistance() 타이밍에 로봇 있을 때 거를 방안 찾아야함. //거리 함수 말고 전역 변수로 불러와야할 듯(controller)
     //irs Colororient=>정확성 높음, 벽거리만 추가고려해서 바로 사용
-    if(irs::Orient == irs::ColorOrient::TAN_LEFT && psdlc.distance() < CIRCLE_DISTANCE) {
-        irs::CurrentPos = Position::ClosetoLeftWall;
+    if(Controller::Orient == Controller::ColorOrient::TAN_LEFT && Controller::filtered_distance[2] < CIRCLE_DISTANCE) {
+        Controller::CurrentPos = Position::ClosetoLeftWall;
         return;
-        } else if(irs::Orient == irs::ColorOrient::TAN_RIGHT && psdrc.distance() < CIRCLE_DISTANCE) {
-        irs::CurrentPos = Position::ClosetoRightWall;
+        } else if(Controller::Orient == Controller::ColorOrient::TAN_RIGHT && Controller::filtered_distance[3] < CIRCLE_DISTANCE) {
+        Controller::CurrentPos = Position::ClosetoRightWall;
         return;
-        } else if(irs::Orient == irs::ColorOrient::FRONT_LEFT && psdlc.distance() < CIRCLE_DISTANCE) {
-        irs::CurrentPos = Position::CriticalLeftWall;
+        } else if(Controller::Orient == Controller::ColorOrient::FRONT_LEFT && Controller::filtered_distance[2] < CIRCLE_DISTANCE) {
+        Controller::CurrentPos = Position::CriticalLeftWall;
         //뒤로, 오른쪽으로 이동하는 것 필요
-        } else if(irs::Orient == irs::ColorOrient::BACK_LEFT && psdlc.distance() < CIRCLE_DISTANCE) {
-        irs::CurrentPos = Position::CriticalLeftWall;
+        } else if(Controller::Orient == Controller::ColorOrient::BACK_LEFT && Controller::filtered_distance[2] < CIRCLE_DISTANCE) {
+        Controller::CurrentPos = Position::CriticalLeftWall;
         //앞으로, 오른쪽으로 이동하는 것 필요
-        } else if(irs::Orient == irs::ColorOrient::FRONT_RIGHT && psdrc.distance() < CIRCLE_DISTANCE) {
-        irs::CurrentPos = Position::CriticalLeftWall;
+        } else if(Controller::Orient == Controller::ColorOrient::FRONT_RIGHT && Controller::filtered_distance[3] < CIRCLE_DISTANCE) {
+        Controller::CurrentPos = Position::CriticalLeftWall;
         //뒤로, 왼쪽으로 이동하는 것 필요
-        } else if(irs::Orient == irs::ColorOrient::BACK_RIGHT && psdrc.distance() < CIRCLE_DISTANCE) {
-        irs::CurrentPos = Position::CriticalLeftWall;
+        } else if(Controller::Orient == Controller::ColorOrient::BACK_RIGHT && Controller::filtered_distance[3] < CIRCLE_DISTANCE) {
+        Controller::CurrentPos = Position::CriticalLeftWall;
         //앞으로, 왼쪽으로 이동하는 것 필요
-        } else if(irs::Orient != irs::ColorOrient::SAFE && psdlc.distance() > 120 && psdlc.distance() < 150 && psdrc.distance() > 120 && psdrc.distance() < 150) {
+        } else if(Controller::Orient != Controller::ColorOrient::SAFE && Controller::filtered_distance[2] > 220 && Controller::filtered_distance[2] < 250 && Controller::filtered_distance[3] > 120 && Controller::filtered_distance[3] < 150) {
         //일단 ir에 색은 감지되었지만 벽과의 거리가 생각보다 멀때 -> 중앙임
-        irs::CurrentPos = Position::ClosetoCenter;
+        Controller::CurrentPos = Position::ClosetoCenter;
         } else {
             //ir 영역 아닐떄, psd만 사용(부정확)
             if(psdf.getDistance() < 30) {
-                irs::CurrentPos = Position::WallFront;
+                Controller::CurrentPos = Position::WallFront;
             } else if (psdb.getDistance() < 30) {
-                irs::CurrentPos = Position::WallBehind;
-            } else irs::CurrentPos = Position::FartoCenter; // 색영역도 아닌데 안보임
+                Controller::CurrentPos = Position::WallBehind;
+            } else Controller::CurrentPos = Position::FartoCenter; // 색영역도 아닌데 안보임
         }
 }
-void Controller::irs::IR_Escape(enum ColorOrient orient) {
+void Controller::IrEscape(enum ColorOrient orient) {
     if(orient==ColorOrient::SAFE) {
         return;
     } else if(orient==ColorOrient::FRONT) {
@@ -323,28 +324,28 @@ void Controller::irs::IR_Escape(enum ColorOrient orient) {
     } else return;
 }
 
-Controller::EnemyFind::EnemyFind(irs::Position pos) { //생성자에 위치 넣고 클래스 바로 삭제하기 -> 무한반복
-    if(pos==irs::Position::ClosetoLeftWall) {
+void Controller::EnemyFind(Controller::Position pos) { 
+    if(pos==Position::ClosetoLeftWall) {
         LeftWallTrack();
-    } else if(pos==irs::Position::ClosetoRightWall) {
+    } else if(pos==Position::ClosetoRightWall) {
         RightWallTrack();
-    } else if(pos==irs::Position::CriticalLeftWall) {
+    } else if(pos==Position::CriticalLeftWall) {
         //살짝 빠져나오는거 필요
         LeftWallTrack();
-    } else if(pos==irs::Position::CriticalRightWall) {
+    } else if(pos==Position::CriticalRightWall) {
         //살짝 빠져나오는거 필요
         RightWallTrack();
-    } else if(pos==irs::Position::ClosetoCenter || pos==irs::Position::FartoCenter) {
+    } else if(pos==Position::ClosetoCenter || pos==Position::FartoCenter) {
         //현재 거리값 대충 저장 후 빙글빙글 돌다가 갑자기 튀는 값 찾기
-    } else if(pos==irs::Position::WallFront) {
+    } else if(pos==Position::WallFront) {
         FrontWall();
-    } else if(pos==irs::Position::WallBehind) {
+    } else if(pos==Position::WallBehind) {
         BehindWall();
     }
 }
 
-void Controller::EnemyFind::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
-    uint16_t avg_distance = (psdlf.distance() + psdlc.distance() + psdlb.distance())/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
+void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
+    uint16_t avg_distance = (Controller::filtered_distance[0] + Controller::filtered_distance[2] + Controller::filtered_distance[4])/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
     SetSpeed(0.5,0.5);
     if(avg_distance > WALL_DISTANCE+10) {
         SetSpeed(0.1,0.5);
@@ -353,14 +354,14 @@ void Controller::EnemyFind::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, ps
         SetSpeed(0.5,0.1);
         ThisThread::sleep_for(50);
     }
-    if(psdrb.detection == 1 || psdrc.detection == 1 || psdrf.detection == 1) {
+    if(Controller::detection[5] == 1 || Controller::detection[3] == 1 || Controller::detection[1] == 1) {
         SetSpeed(1.0,-1.0);
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
     }
 }
-void Controller::EnemyFind::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
-    uint16_t avg_distance = (psdrf.distance() + psdrc.distance() + psdrb.distance())/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
+void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
+    uint16_t avg_distance = (Controller::filtered_distance[1] + Controller::filtered_distance[3] + Controller::filtered_distance[5])/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
     SetSpeed(0.5,0.5);
     if(avg_distance > WALL_DISTANCE+10) {
         SetSpeed(0.5,0.1);
@@ -369,7 +370,7 @@ void Controller::EnemyFind::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, p
         SetSpeed(0.1,0.5);
         ThisThread::sleep_for(50);
     }
-    if(psdlb.detection == 1 || psdlc.detection == 1 || psdlf.detection == 1) {
+    if(Controller::detection[0] == 1 || Controller::detection[2] || Controller::detection[4] == 1) {
         SetSpeed(-1.0,1.0);
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
@@ -377,21 +378,21 @@ void Controller::EnemyFind::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, p
     
 }
 
-void Controller::EnemyFind::CenterSpin() {
+void Controller::CenterSpin() {
     SetSpeed(0.5,-0.5); //빙글빙글
-    if(psdlb.detection == 1 || psdlc.detection == 1 || psdlf.detection == 1 || psdrb.detection == 1 || psdrc.detection == 1 || psdrf.detection == 1) {
+    if(Controller::detection[0] == 1 || Controller::detection[2] == 1 || Controller::detection[4] == 1 || Controller::detection[1] == 1 || Controller::detection[3] == 1 || Controller::detection[5] == 1) {
         SetSpeed(0,0);
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
     }
 }
 
-void Controller::EnemyFind::FrontWall() {
-    if(psdlb.detection == 1 || psdlc.detection == 1 || psdlf.detection == 1) {
+void Controller::FrontWall() {
+    if(Controller::detection[0] == 1 || Controller::detection[2] || Controller::detection[4] == 1) {
         SetSpeed(-1.0,1.0);
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
-    } else if(psdrb.detection == 1 || psdrc.detection == 1 || psdrf.detection == 1) {
+    } else if(Controller::detection[5] == 1 || Controller::detection[3] == 1 || Controller::detection[1] == 1) {
         SetSpeed(1.0, -1.0);
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
@@ -400,13 +401,13 @@ void Controller::EnemyFind::FrontWall() {
     }
 }
 
-void Controller::EnemyFind::BehindWall() {
-    if(psdlb.detection == 1 || psdlc.detection == 1 || psdlf.detection == 1) {
+void Controller::BehindWall() {
+    if(Controller::detection[0] == 1 || Controller::detection[2] || Controller::detection[4] == 1) {
         SetSpeed(-1.0,1.0);
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
     }
-    if(psdrb.detection == 1 || psdrc.detection == 1 || psdrf.detection == 1) {
+    if(Controller::detection[5] == 1 || Controller::detection[3] == 1 || Controller::detection[1] == 1) {
         SetSpeed(1.0, -1.0);
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
