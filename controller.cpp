@@ -20,6 +20,8 @@ DigitalIn irfr(PA_0);
 DigitalIn irc(PA_0);
 DigitalIn irbl(PA_0);
 DigitalIn irbr(PA_0);
+uint8_t psd_val[8] = {}; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
+bool ir_val[5] = {}; //순서: irfl, irfr, irc, irbl, irbr
 #pragma endregion variables
 
 #pragma region Serial Variables
@@ -206,9 +208,46 @@ void Controller::EnemyDetect()
         }
    }
 }
+void Controller::WallDetect() {
+    //지속적으로 쓰는것보다는 어떤 상태의 끝자락에서 쓰면 좋을듯??
+    //확실한 collision : 7cm짜리 front or behind 쓰기
+    if(psd_val[6] < 30 || psd_val[0] + psd_val[1] < 80) Controller::FrontCollision = 1;
+    else Controller::FrontCollision = 0;
+    if(psd_val[7]  < 30 || psd_val[4] + psd_val[5] < 80) Controller::BackCollision = 1;
+    else Controller::BackCollision = 0;
+    if(psd_val[0] + psd_val[2] + psd_val[4] < 120) Controller::LeftCollision = 1;
+    else Controller::LeftCollision = 0;
+    if(psd_val[1] + psd_val[3] + psd_val[5] < 120) Controller::RightCollision = 1;
+    else Controller::RightCollision = 0;
+}
 
+void Controller::Psd_Escape() {
+    if(Controller::FrontCollision == 1) {
+        //전방에 벽 있으면 후진 후 돌기
+        SetSpeed(-0.5, -0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+    }
+    if(Controller::BackCollision == 1) {
+        //후방에 벽 있으면 전진 후 돌기
+        SetSpeed(0.5, 0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+    }
+    if(Controller::LeftCollision == 1) {
+        //왼쪽에 벽 있으면 90도 우회전
+        SetSpeed(0.5, -0.5);
+        ThisThread::sleep_for(50);
+    }
+    if(Controller::RightCollision == 1) {
+        //오른쪽에 벽 있으면 90도 좌회전
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+    }
+}
 
-uint8_t psd_val[8] = {}; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
 bool psd_side::FilterandDetection() {
         psd_side::now_distance = psd_side::GP2A_.getDistance();
         uint16_t difference = fabs(psd_side::now_distance - psd_side::prev_distance);
@@ -244,18 +283,7 @@ float psd_side::distance() {
     psd_side::prev_distance = psd_side::now_distance;
     return psd_side::filtered_distance;
 }
-void psd_side::WallDetection() {
-    //지속적으로 쓰는것보다는 어떤 상태의 끝자락에서 쓰면 좋을듯??
-    //확실한 collision : 7cm짜리 front or behind 쓰기
-    if(psd_val[6] == 7 || psd_val[0] + psd_val[1] < 80) psd_side::FrontCollision = 1;
-    if(psd_val[7] == 7 || psd_val) psd_side::BackCollision = 1;
-    if(psd_val[0] + psd_val[2] + psd_val[4] < 120) psd_side::LeftCollision = 1;
-    if(psd_val[1] + psd_val[3] + psd_val[5] < 120) psd_side::RightCollision = 1;
-}
-bool ir_val[5] = {}; //순서: irfl, irfr, irc, irbl, irbr
-irs::irs():ir_val{}{
-    
-}
+
 void irs::refresh() {
     ir_val[0] = irfl.read();
     ir_val[1] = irfr.read();
@@ -290,62 +318,44 @@ void irs::ColorOrient() {
         } else {}
     } else irs::Orient = ColorOrient::SAFE;
 }
-/*
-void irs::enumfucker(int orient) {
-    if(orient == 0) {
-        pc.printf("FRONT\r\n");
-    } else if(orient == 1) {
-        pc.printf("TAN_LEFT\r\n");
-    } else if(orient == 2) {
-        pc.printf("TAN_RIGHT\r\n");
-    } else if(orient == 3) {
-        pc.printf("BACK\r\n");
-    } else if(orient == 4) {
-        pc.printf("FRONT_LEFT\r\n");
-    } else if(orient == 5) {
-        pc.printf("FRONT_RIGHT\r\n");
-    } else if(orient == 6) {
-        pc.printf("BACK_LEFT\r\n");
-    } else if(orient == 7) {
-        pc.printf("BACK_RIGHT\r\n");
-    }
-}
-*/
+
 irs::Position irs::GetPosition() {
     return CurrentPos;
 }
+
 void irs::SetPosition() { //@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함. getDistance() 타이밍에 로봇 있을 때 거를 방안 찾아야함. //거리 함수 말고 전역 변수로 불러와야할 듯(controller)
     //irs Colororient=>정확성 높음, 벽거리만 추가고려해서 바로 사용
-    if(irs::Orient == irs::ColorOrient::TAN_LEFT && psdlc.distance() < CIRCLE_DISTANCE) {
+    if(irs::Orient == irs::ColorOrient::TAN_LEFT && psd_val[2] < CIRCLE_DISTANCE) {
         irs::CurrentPos = Position::ClosetoLeftWall;
         return;
-        } else if(irs::Orient == irs::ColorOrient::TAN_RIGHT && psdrc.distance() < CIRCLE_DISTANCE) {
+        } else if(irs::Orient == irs::ColorOrient::TAN_RIGHT && psd_val[3] < CIRCLE_DISTANCE) {
         irs::CurrentPos = Position::ClosetoRightWall;
         return;
-        } else if(irs::Orient == irs::ColorOrient::FRONT_LEFT && psdlc.distance() < CIRCLE_DISTANCE) {
+        } else if(irs::Orient == irs::ColorOrient::FRONT_LEFT && psd_val[2] < CIRCLE_DISTANCE) {
         irs::CurrentPos = Position::CriticalLeftWall;
         //뒤로, 오른쪽으로 이동하는 것 필요
-        } else if(irs::Orient == irs::ColorOrient::BACK_LEFT && psdlc.distance() < CIRCLE_DISTANCE) {
+        } else if(irs::Orient == irs::ColorOrient::BACK_LEFT && psd_val[2] < CIRCLE_DISTANCE) {
         irs::CurrentPos = Position::CriticalLeftWall;
         //앞으로, 오른쪽으로 이동하는 것 필요
-        } else if(irs::Orient == irs::ColorOrient::FRONT_RIGHT && psdrc.distance() < CIRCLE_DISTANCE) {
+        } else if(irs::Orient == irs::ColorOrient::FRONT_RIGHT && psd_val[3] < CIRCLE_DISTANCE) {
         irs::CurrentPos = Position::CriticalLeftWall;
         //뒤로, 왼쪽으로 이동하는 것 필요
-        } else if(irs::Orient == irs::ColorOrient::BACK_RIGHT && psdrc.distance() < CIRCLE_DISTANCE) {
+        } else if(irs::Orient == irs::ColorOrient::BACK_RIGHT && psd_val[3] < CIRCLE_DISTANCE) {
         irs::CurrentPos = Position::CriticalLeftWall;
         //앞으로, 왼쪽으로 이동하는 것 필요
-        } else if(irs::Orient != irs::ColorOrient::SAFE && psdlc.distance() > 120 && psdlc.distance() < 150 && psdrc.distance() > 120 && psdrc.distance() < 150) {
+        } else if(irs::Orient != irs::ColorOrient::SAFE && psd_val[2] > 120 && psd_val[2] < 150 && psd_val[3] > 120 && psd_val[3] < 150) {
         //일단 ir에 색은 감지되었지만 벽과의 거리가 생각보다 멀때 -> 중앙임
         irs::CurrentPos = Position::ClosetoCenter;
         } else {
             //ir 영역 아닐떄, psd만 사용(부정확)
-            if(psdf.getDistance() < 30) {
+            if(psd_val[6] < 30) {
                 irs::CurrentPos = Position::WallFront;
-            } else if (psdb.getDistance() < 30) {
+            } else if (psd_val[7] < 30) {
                 irs::CurrentPos = Position::WallBehind;
             } else irs::CurrentPos = Position::FartoCenter; // 색영역도 아닌데 안보임
         }
 }
+
 void irs::IR_Escape(enum ColorOrient orient) {
     if(orient==ColorOrient::SAFE) {
         return;
@@ -429,7 +439,7 @@ EnemyFind::EnemyFind(irs::Position pos) { //생성자에 위치 넣고 클래스
 }
 
 void EnemyFind::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
-    uint16_t avg_distance = (psdlf.distance() + psdlc.distance() + psdlb.distance())/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
+    uint16_t avg_distance = (psd_val[0] + psd_val[2] + psd_val[4])/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
     SetSpeed(0.5,0.5);
     if(avg_distance > WALL_DISTANCE+10) {
         SetSpeed(0.1,0.5);
@@ -444,8 +454,9 @@ void EnemyFind::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거�
         SetState(RoboState::ATTACK);
     }
 }
+
 void EnemyFind::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
-    uint16_t avg_distance = (psdrf.distance() + psdrc.distance() + psdrb.distance())/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
+    uint16_t avg_distance = (psd_val[1] + psd_val[3] + psd_val[5])/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
     SetSpeed(0.5,0.5);
     if(avg_distance > WALL_DISTANCE+10) {
         SetSpeed(0.5,0.1);
@@ -459,7 +470,6 @@ void EnemyFind::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
     }
-    
 }
 
 void EnemyFind::CenterSpin() {
@@ -497,6 +507,28 @@ void EnemyFind::BehindWall() {
         SetState(RoboState::ATTACK);
     }
 }
+
+/*
+void irs::enumfucker(int orient) {
+    if(orient == 0) {
+        pc.printf("FRONT\r\n");
+    } else if(orient == 1) {
+        pc.printf("TAN_LEFT\r\n");
+    } else if(orient == 2) {
+        pc.printf("TAN_RIGHT\r\n");
+    } else if(orient == 3) {
+        pc.printf("BACK\r\n");
+    } else if(orient == 4) {
+        pc.printf("FRONT_LEFT\r\n");
+    } else if(orient == 5) {
+        pc.printf("FRONT_RIGHT\r\n");
+    } else if(orient == 6) {
+        pc.printf("BACK_LEFT\r\n");
+    } else if(orient == 7) {
+        pc.printf("BACK_RIGHT\r\n");
+    }
+}
+*/
         // if (ch == '-') {
         //     isNegative = true; 
         //     if (isNegative) {

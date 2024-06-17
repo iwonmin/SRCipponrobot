@@ -17,15 +17,18 @@ extern PwmOut PwmL;
 extern PwmOut PwmR;
 extern GP2A psdf; //그냥 거리감지
 extern GP2A psdb;
-extern class Controller;
-extern class psd_side;
+extern class psd_side psdfl;
+extern class psd_side psdfr;
+extern class psd_side psdlc;
+extern class psd_side psdrc;
+extern class psd_side psdlb;
+extern class psd_side psdrb;
 extern DigitalIn irfl;
 extern DigitalIn irfr;
 extern DigitalIn irc;
 extern DigitalIn irbl;
 extern DigitalIn irbr;
-extern GP2A psdf; //그냥 거리감지
-extern GP2A psdb;
+extern class Controller controller;
 #pragma endregion externs
 
 class Controller
@@ -97,6 +100,10 @@ class Controller
 
     void EnemyDetect();
 
+    void WallDetect();
+
+    void Psd_Escape();
+
 //--------------------Private variables--------------------------//
     private:
     //로봇 상태
@@ -116,32 +123,35 @@ class Controller
 
     //우측 바퀴 속력
     float speedR;
+    //벽 충돌 감지
+    //4개의 사이드는 다 색영역인데 그냥 열거형 쓰기 ??
+    bool FrontCollision; 
+    bool BackCollision;
+    bool LeftCollision;
+    bool RightCollision;
 };
 
-class psd_side {
-    GP2A GP2A_;
-    uint16_t prev_distance;
-    uint16_t now_distance;
-    float filtered_distance;
-    float alpha;
+class psd_side:Controller {
     public:
         bool detection;
-        bool FrontCollision;
-        bool BackCollision;
-        bool LeftCollision;
-        bool RightCollision;
         psd_side(PinName, uint16_t, uint16_t, float, float);
         void refresh();
         bool FilterandDetection();
         float distance();
         void WallDetection();
+        void Psd_Escape();
+    private:
+        GP2A GP2A_;
+        uint16_t prev_distance;
+        uint16_t now_distance;
+        float filtered_distance;
+        float alpha;
 };
 
 class irs:Controller {
     uint16_t ir_val[5]; //irfl, irfr, irc, irbl, irbr //미리 선언되어야 함.
     uint32_t ir_total;
     public:
-        irs();
         enum class ColorOrient {
         //정면에 색영역
         FRONT,
