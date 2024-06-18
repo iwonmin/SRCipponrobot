@@ -5,6 +5,21 @@ DigitalOut DirL(PC_7);
 DigitalOut DirR(PB_6);
 PwmOut PwmL(PB_4);
 PwmOut PwmR(PB_5);
+GP2A psdf(PA_0,7,80,0.246,-0.297); //그냥 거리감지
+GP2A psdb(PA_0,7,80,0.246,-0.297);
+//detector psd
+GP2A psdlf(PA_0,30,150,60,0); //PA_0 -> 핀 바꿔야함 !!!!
+GP2A psdlc(PA_0,30,150,60,0);
+GP2A psdlb(PA_0,30,150,60,0);
+GP2A psdrf(PA_0,30,150,60,0);
+GP2A psdrc(PA_0,30,150,60,0);
+GP2A psdrb(PA_0,30,150,60,0);
+//ir pin
+DigitalIn irfl(PA_0);
+DigitalIn irfr(PA_0);
+DigitalIn irc(PA_0);
+DigitalIn irbl(PA_0);
+DigitalIn irbr(PA_0);
 #pragma endregion variables
 
 #pragma region Serial Variables
@@ -191,25 +206,289 @@ void Controller:: EnemyDetect()
         }
    }
 }
-        // if (ch == '-') {
-        //     isNegative = true; 
-        //     if (isNegative) {
-        //     //pc.printf("-"); // 부호 정보 출력
-        // }// 부호가 음수인 경우 표시
-        // } else if (ch == '.') {
-        //     decimalPointSeen = true; // 소수점 발견 시, 이후의 숫자는 무시
-        // } else if (ch >= '0' && ch <= '9' && !decimalPointSeen) {
-        //     // 소수점 전의 숫자만 PC로 전송
-        //     pc.putc(ch);
-        // } else if (ch == '/') {            
-        //     // '/' 문자를 만나면 새로운 줄로 이동하기 위해 줄바꿈 문자 출력
-        //     //pc.printf("\r\n");
-        //     decimalPointSeen = false; // 소수점 발견 여부 초기화
-        //     isNegative = false; // 부호 정보 초기화
-        //     //continue; // '/' 문자는 무시하고 다음 데이터로 이동
-        // }
-        // // Raspberry Pi로 받은 데이터를 다시 보냄 (필요한 경우)
-        // device.putc(ch);
-        // float hd = (int)(ch);
-        // pc.printf("%f\r\n", hd);
-        // SetHD(hd);
+
+void Controller::PsdDetection(GP2A GP2A_, uint8_t i) {
+        Controller::now_distance[i] = GP2A_.getDistance();
+        uint16_t difference = fabs(Controller::now_distance - Controller::prev_distance);
+        if(difference > PSD_THRESHOLD) {
+            Controller::detection[i] = 1;
+        } else {
+            Controller::detection[i] = 0;
+            }
+        Controller::prev_distance[i] = Controller::now_distance[i];
+    }
+
+float Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
+    Controller::now_distance[i] = GP2A_.getDistance();
+    Controller::filtered_distance[i] = Controller::now_distance[i] * Controller::alpha + (1-Controller::alpha) * Controller::prev_distance[i];
+    Controller::prev_distance[i] = Controller::now_distance[i];
+    return Controller::filtered_distance[i];
+}
+
+void Controller::PsdRefresh() {
+    psd_val[0] = Controller::PsdDistance(psdlf, 0);
+    Controller::PsdDetection(psdlf, 0);
+    psd_val[1] = Controller::PsdDistance(psdrf, 1);
+    Controller::PsdDetection(psdrf, 1);
+    psd_val[2] = Controller::PsdDistance(psdlc, 2);
+    Controller::PsdDetection(psdlc, 2);
+    psd_val[3] = Controller::PsdDistance(psdrc, 3);
+    Controller::PsdDetection(psdrc, 3);
+    psd_val[4] = Controller::PsdDistance(psdlb, 4);
+    Controller::PsdDetection(psdlb, 4);
+    psd_val[5] = Controller::PsdDistance(psdrb, 5);
+    Controller::PsdDetection(psdrb, 5);
+    psd_val[6] = Controller::PsdDistance(psdf, 6);
+    Controller::PsdDetection(psdf, 6);
+    psd_val[7] = Controller::PsdDistance(psdb, 7);
+    Controller::PsdDetection(psdb, 7);
+}
+
+void Controller::Psd_Escape() {
+    if(Controller::FrontCollision == 1) {
+        //전방에 벽 있으면 후진 후 돌기
+        SetSpeed(-0.5, -0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+    }
+    if(Controller::BackCollision == 1) {
+        //후방에 벽 있으면 전진 후 돌기
+        SetSpeed(0.5, 0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+    }
+    if(Controller::LeftCollision == 1) {
+        //왼쪽에 벽 있으면 90도 우회전
+        SetSpeed(0.5, -0.5);
+        ThisThread::sleep_for(50);
+    }
+    if(Controller::RightCollision == 1) {
+        //오른쪽에 벽 있으면 90도 좌회전
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+    }
+}
+void Controller::IrRefresh() {
+    ir_val[0] = irfl.read();
+    ir_val[1] = irfr.read();
+    ir_val[2] = irc.read();
+    ir_val[3] = irbl.read();
+    ir_val[4] = irbr.read();
+    ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4];
+    if(ir_total < 3) Controller::ColorOrient();
+}
+void Controller::ColorOrient() {
+    //5개 인식되었을떄
+    if (ir_total == 0) { //뭐하지??
+    } else if (ir_total == 1) {
+        if(ir_val[0] == 1) {
+            Controller::Orient = ColorOrient::BACK_RIGHT;
+        } else if (ir_val[1] == 1) {
+            Controller::Orient = ColorOrient::BACK_LEFT;
+        } else if (ir_val[3] == 1) {
+            Controller::Orient = ColorOrient::FRONT_RIGHT;
+        } else if (ir_val[4] == 1) {
+            Controller::Orient = ColorOrient::FRONT_LEFT;
+        } else {}
+    } else if (ir_total == 2) {
+        if(ir_val[0] + ir_val[1] + ir_val[2] == 0) {
+            Controller::Orient = ColorOrient::FRONT;
+        } else if(ir_val[0] + ir_val[2] + ir_val[3] == 0) {
+            Controller::Orient = ColorOrient::TAN_LEFT;
+        } else if(ir_val[2] + ir_val[3] + ir_val[4] == 0) {
+            Controller::Orient = ColorOrient::BACK;
+        } else if(ir_val[1] + ir_val[2] + ir_val[4] == 0) {
+            Controller::Orient = ColorOrient::TAN_RIGHT;
+        } else {}
+    } else Controller::Orient = ColorOrient::SAFE;
+}
+Controller::Position Controller::GetPosition() {
+    return CurrentPos;
+}
+void Controller::SetPosition() { //@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함. getDistance() 타이밍에 로봇 있을 때 거를 방안 찾아야함. //거리 함수 말고 전역 변수로 불러와야할 듯(controller)
+    //irs Colororient=>정확성 높음, 벽거리만 추가고려해서 바로 사용
+    if(Controller::Orient == Controller::ColorOrient::TAN_LEFT && Controller::filtered_distance[2] < CIRCLE_DISTANCE) {
+        Controller::CurrentPos = Position::ClosetoLeftWall;
+        return;
+        } else if(Controller::Orient == Controller::ColorOrient::TAN_RIGHT && Controller::filtered_distance[3] < CIRCLE_DISTANCE) {
+        Controller::CurrentPos = Position::ClosetoRightWall;
+        return;
+        } else if(Controller::Orient == Controller::ColorOrient::FRONT_LEFT && Controller::filtered_distance[2] < CIRCLE_DISTANCE) {
+        Controller::CurrentPos = Position::CriticalLeftWall;
+        //뒤로, 오른쪽으로 이동하는 것 필요
+        } else if(Controller::Orient == Controller::ColorOrient::BACK_LEFT && Controller::filtered_distance[2] < CIRCLE_DISTANCE) {
+        Controller::CurrentPos = Position::CriticalLeftWall;
+        //앞으로, 오른쪽으로 이동하는 것 필요
+        } else if(Controller::Orient == Controller::ColorOrient::FRONT_RIGHT && Controller::filtered_distance[3] < CIRCLE_DISTANCE) {
+        Controller::CurrentPos = Position::CriticalLeftWall;
+        //뒤로, 왼쪽으로 이동하는 것 필요
+        } else if(Controller::Orient == Controller::ColorOrient::BACK_RIGHT && Controller::filtered_distance[3] < CIRCLE_DISTANCE) {
+        Controller::CurrentPos = Position::CriticalLeftWall;
+        //앞으로, 왼쪽으로 이동하는 것 필요
+        } else if(Controller::Orient != Controller::ColorOrient::SAFE && Controller::filtered_distance[2] > 220 && Controller::filtered_distance[2] < 250 && Controller::filtered_distance[3] > 120 && Controller::filtered_distance[3] < 150) {
+        //일단 ir에 색은 감지되었지만 벽과의 거리가 생각보다 멀때 -> 중앙임
+        Controller::CurrentPos = Position::ClosetoCenter;
+        } else {
+            //ir 영역 아닐떄, psd만 사용(부정확)
+            if(psdf.getDistance() < 30) {
+                Controller::CurrentPos = Position::WallFront;
+            } else if (psdb.getDistance() < 30) {
+                Controller::CurrentPos = Position::WallBehind;
+            } else Controller::CurrentPos = Position::FartoCenter; // 색영역도 아닌데 안보임
+        }
+}
+void Controller::IrEscape(enum ColorOrient orient) {
+    if(orient==ColorOrient::SAFE) {
+        return;
+    } else if(orient==ColorOrient::FRONT) {
+        //180 turn, recheck, and move
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IrEscape(orient);
+    } else if(orient==ColorOrient::TAN_LEFT) {
+        //right turn
+        SetSpeed(0.5, -0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IrEscape(orient);
+    } else if(orient==ColorOrient::TAN_RIGHT) {
+        //left turn
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IrEscape(orient);
+    } else if(orient==ColorOrient::BACK) {
+        //180, turn, recheck, and move
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IrEscape(orient);
+    } else if(orient==ColorOrient::FRONT_LEFT) {
+        //back, and turn
+        SetSpeed(-0.5,0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IrEscape(orient);
+    } else if(orient==ColorOrient::FRONT_RIGHT) {
+        //back, and turn
+        SetSpeed(-0.5,0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IrEscape(orient);
+    } else if(orient==ColorOrient::BACK_LEFT) {
+        //back, and turn
+        SetSpeed(-0.5,0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IrEscape(orient);    
+    } else if(orient==ColorOrient::BACK_LEFT) {
+        //back, and turn
+        SetSpeed(-0.5,0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(-0.5, 0.5);
+        ThisThread::sleep_for(50);
+        ColorOrient();
+        if(orient != ColorOrient::SAFE) IrEscape(orient);
+    } else return;
+}
+
+
+void Controller::EnemyFind(Controller::Position pos) { 
+    if(pos==Position::ClosetoLeftWall) {
+        LeftWallTrack();
+    } else if(pos==Position::ClosetoRightWall) {
+        RightWallTrack();
+    } else if(pos==Position::CriticalLeftWall) {
+        //살짝 빠져나오는거 필요
+        LeftWallTrack();
+    } else if(pos==Position::CriticalRightWall) {
+        //살짝 빠져나오는거 필요
+        RightWallTrack();
+    } else if(pos==Position::ClosetoCenter || pos==Position::FartoCenter) {
+        //현재 거리값 대충 저장 후 빙글빙글 돌다가 갑자기 튀는 값 찾기
+    } else if(pos==Position::WallFront) {
+        FrontWall();
+    } else if(pos==Position::WallBehind) {
+        BehindWall();
+    }
+}
+
+void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
+    uint16_t avg_distance = (Controller::filtered_distance[0] + Controller::filtered_distance[2] + Controller::filtered_distance[4])/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
+    SetSpeed(0.5,0.5);
+    if(avg_distance > WALL_DISTANCE+10) {
+        SetSpeed(0.1,0.5);
+        ThisThread::sleep_for(50);
+    } else if(avg_distance < WALL_DISTANCE-10) {
+        SetSpeed(0.5,0.1);
+        ThisThread::sleep_for(50);
+    }
+    if(Controller::detection[5] == 1 || Controller::detection[3] == 1 || Controller::detection[1] == 1) {
+        SetSpeed(1.0,-1.0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    }
+}
+void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
+    uint16_t avg_distance = (Controller::filtered_distance[1] + Controller::filtered_distance[3] + Controller::filtered_distance[5])/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
+    SetSpeed(0.5,0.5);
+    if(avg_distance > WALL_DISTANCE+10) {
+        SetSpeed(0.5,0.1);
+        ThisThread::sleep_for(50);
+    } else if(avg_distance < WALL_DISTANCE-10) {
+        SetSpeed(0.1,0.5);
+        ThisThread::sleep_for(50);
+    }
+    if(Controller::detection[0] == 1 || Controller::detection[2] || Controller::detection[4] == 1) {
+        SetSpeed(-1.0,1.0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    }
+    
+}
+
+void Controller::CenterSpin() {
+    SetSpeed(0.5,-0.5); //빙글빙글
+    if(Controller::detection[0] == 1 || Controller::detection[2] == 1 || Controller::detection[4] == 1 || Controller::detection[1] == 1 || Controller::detection[3] == 1 || Controller::detection[5] == 1) {
+        SetSpeed(0,0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    }
+}
+
+void Controller::FrontWall() {
+    if(Controller::detection[0] == 1 || Controller::detection[2] || Controller::detection[4] == 1) {
+        SetSpeed(-1.0,1.0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    } else if(Controller::detection[5] == 1 || Controller::detection[3] == 1 || Controller::detection[1] == 1) {
+        SetSpeed(1.0, -1.0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    } else {
+        SetSpeed(0.5,-0.5); // 180도 회전
+    }
+}
+
+void Controller::BehindWall() {
+    if(Controller::detection[0] == 1 || Controller::detection[2] || Controller::detection[4] == 1) {
+        SetSpeed(-1.0,1.0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    }
+    if(Controller::detection[5] == 1 || Controller::detection[3] == 1 || Controller::detection[1] == 1) {
+        SetSpeed(1.0, -1.0);
+        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        SetState(RoboState::ATTACK);
+    }
+}
+

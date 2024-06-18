@@ -2,8 +2,33 @@
 #include <string>
 #include <stdlib.h>
 #include "Thread.h"
+#include "GP2A.h"
 #define MAXSPEED 0.5
 #define ESCAPESPEED -0.5
+#define PSD_INTERVAL_us 0.1 // @@ dummy value, should be defined !!@@
+#define PSD_THRESHOLD 5 // encounter distance(cm) diff, must be defined with experiment - threshold / inverval = speed
+#define IR_THRESHOLD 30000 // 30000 넘으면 대충 검정임, 실험 필요!!
+#define CIRCLE_DISTANCE 70 //cm
+#define WALL_DISTANCE 70 //cm
+#pragma region external
+extern DigitalOut DirL;
+extern DigitalOut DirR;
+extern PwmOut PwmL;
+extern PwmOut PwmR;
+extern GP2A psdf; //그냥 거리감지
+extern GP2A psdb;
+extern GP2A psdlf; //PA_0 -> 핀 바꿔야함 !!!!
+extern GP2A psdlc;
+extern GP2A psdlb;
+extern GP2A psdrf;
+extern GP2A psdrc;
+extern GP2A psdrb;
+extern DigitalIn irfl;
+extern DigitalIn irfr;
+extern DigitalIn irc;
+extern DigitalIn irbl;
+extern DigitalIn irbr;
+#pragma endregion external
 class Controller
 {
      public:   
@@ -19,6 +44,16 @@ class Controller
         ATTACK,
         //탈출
         ESCAPE
+    };
+
+        enum class ColorOrient
+    {
+        FRONT, TAN_LEFT, TAN_RIGHT, BACK, FRONT_LEFT, FRONT_RIGHT, BACK_LEFT, BACK_RIGHT, SAFE    
+    };
+        enum class Position
+    {
+        ClosetoLeftWall, CriticalLeftWall, ClosetoRightWall, CriticalRightWall,
+        WallFront, WallBehind, ClosetoCenter, FartoCenter
     };
     //객체 생성시 실행되는 생성자 함수
     Controller();
@@ -72,11 +107,53 @@ class Controller
     void Move(float sL, float sR);
 
     void EnemyDetect();
+
+    //-----------------------psd--------------------//
+    void PsdDetection(GP2A, uint8_t);
+
+    bool FilterandDetection();
+
+    float PsdDistance(GP2A, uint8_t);
+
+    void PsdRefresh();
+
+    void WallDetect();
+
+    void Psd_Escape();
+    
+
+    //-------------------------IR------------------------//
+    Position GetPosition();
+
+    void IrRefresh();
+
+    void IrEscape(ColorOrient orient);
+
+    void ColorOrient();
+
+    //----------------------적 찾기 & 위치파악-------------------------//
+    void SetPosition();
+
+    void EnemyFind(Position);
+
+    void LeftWallTrack();
+
+    void RightWallTrack();
+
+    void CenterSpin();
+
+    void FrontWall();
+
+    void BehindWall();
+
 //--------------------Private variables--------------------------//
     private:
     //로봇 상태
     RoboState robo_state;
-
+    //색 영역 위치
+    enum ColorOrient Orient;
+    //예상되는 위치
+    enum Position CurrentPos;
     //적 감지 여부
     bool enemy = false;
 
@@ -91,5 +168,32 @@ class Controller
 
     //우측 바퀴 속력
     float speedR;
+
+    uint16_t prev_distance[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
+
+    uint16_t now_distance[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
+
+    float filtered_distance[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
+
+    float alpha;
+
+    bool detection[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
+
+    bool ir_val[5]; //irfl, irfr, irc, irbl, irbr //미리 선언되어야 함.
+
+    uint8_t ir_total; 
+
+    uint16_t psd_val[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
+
+    //벽 충돌 감지
+    //벽이 두방향에서 보일때는 다 색영역인데 그냥 열거형 쓰기 ??
+    bool FrontCollision;
+
+    bool BackCollision;
+
+    bool LeftCollision;
+
+    bool RightCollision;
+
 };
 
