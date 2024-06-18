@@ -118,7 +118,7 @@ class Controller
 
     void PsdRefresh();
 
-    void WallDetect();
+    void PsdWallDetect();
 
     void Psd_Escape();
     

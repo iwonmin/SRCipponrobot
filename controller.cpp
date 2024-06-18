@@ -232,7 +232,7 @@ void Controller::PsdRefresh() {
     psd_val[7] = Controller::PsdDistance(psdb, 7);
 }
 
-void Controller::WallDetect() {
+void Controller::PsdWallDetect() {
     //지속적으로 쓰는것보다는 어떤 상태의 끝자락에서 쓰면 좋을듯??
     //확실한 collision : 7cm짜리 front or behind 쓰기
     if(psd_val[6] < 30 || psd_val[0] + psd_val[1] < 80) Controller::FrontCollision = 1;
