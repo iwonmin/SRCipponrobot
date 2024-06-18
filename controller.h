@@ -3,13 +3,18 @@
 #include <stdlib.h>
 #include "Thread.h"
 #include "GP2A.h"
+#include "MPU9250.h"
+#pragma region Preprocessor
 #define MAXSPEED 0.5
 #define ESCAPESPEED -0.5
 #define PSD_INTERVAL_us 0.1 // @@ dummy value, should be defined !!@@
 #define PSD_THRESHOLD 5 // encounter distance(cm) diff, must be defined with experiment - threshold / inverval = speed
-#define IR_THRESHOLD 30000 // 30000 넘으면 대충 검정임, 실험 필요!!
 #define CIRCLE_DISTANCE 70 //cm
 #define WALL_DISTANCE 70 //cm
+#define TIME_90DEGTURN 50 //ms, pwm == 0.5
+#define Time_10CMMOVE 20 //ms, pwm == 0.5
+#define imu_time 50 //확정X
+#pragma endregion Preprocessor
 #pragma region external
 extern DigitalOut DirL;
 extern DigitalOut DirR;
@@ -146,6 +151,13 @@ class Controller
 
     void BehindWall();
 
+    //-----------------------MPU9250-----------------------------//(작년 코드와 same)
+    void SetupImu();
+    
+    void ImuRefresh();
+
+    void ImuRead();
+
 //--------------------Private variables--------------------------//
     private:
     //로봇 상태
@@ -194,6 +206,25 @@ class Controller
     bool LeftCollision;
 
     bool RightCollision;
+    //------------------imu------------------//(미완성)
+    float tmp_angle_x, tmp_angle_y, tmp_angle_z;
 
+    float filltered_angle_x, filltered_angle_y, filltered_angle_z;
+
+    float tmp_acc_x, tmp_acc_y, tmp_acc_z;
+    
+    float filtered_acc_x = 0, filtered_acc_y, filtered_acc_z;
+
+    int imu_count = 0;
+
+    Timer t;
+
+    float sum = 0;
+    
+    uint32_t sumCount = 0;
+
+    uint64_t Now_time,Work_time,Nowm_time,Workm_time,Nowi_time,Worki_time;
+
+    uint16_t chek_time;
 };
 

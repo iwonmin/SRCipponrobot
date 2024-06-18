@@ -20,6 +20,7 @@ DigitalIn irfr(PA_0);
 DigitalIn irc(PA_0);
 DigitalIn irbl(PA_0);
 DigitalIn irbr(PA_0);
+MPU9250 mpu9250(D14, D15);
 #pragma endregion variables
 
 #pragma region Serial Variables
@@ -183,7 +184,7 @@ void Controller::Move(float sL, float sR){
     PwmR = abs(sR);
 };
 
-void Controller:: EnemyDetect()
+void Controller::EnemyDetect()
 {  
     if (device.readable()) {
         char receivedChar = device.getc();
@@ -491,4 +492,96 @@ void Controller::BehindWall() {
         SetState(RoboState::ATTACK);
     }
 }
+//--------------------------베껴온코드-----------------------//
+void Controller::SetupImu() {
+    uint8_t whoami = mpu9250.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250);  // Read WHO_AM_I register for MPU-9250
+    // pc.printf("I AM 0x%x\t", whoami); pc.printf("I SHOULD BE 0x71\n\r");
 
+    mpu9250.resetMPU9250(); // Reset registers to default in preparation for device calibration
+    mpu9250.MPU9250SelfTest(mpu9250.SelfTest); // Start by performing self test and reporting values 
+    
+    mpu9250.calibrateMPU9250(mpu9250.gyroBias, mpu9250.accelBias); 
+    // Calibrate gyro and accelerometers, load biases in bias registers  
+
+    mpu9250.initMPU9250();
+    // -6050확인용 mpu9250.initAK8963(mpu9250.magCalibration);
+
+    mpu9250.getAres(); // Get accelerometer sensitivity
+    mpu9250.getGres(); // Get gyro sensitivity
+    // -6050확인용 mpu9250.getMres(); // Get magnetometer sensitivity
+
+}
+
+void Controller::ImuRefresh() {
+    // If intPin goes high, all data registers have new data
+    if(mpu9250.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
+    {  // On interrupt, check if data ready interrupt
+        //pc.printf("imu main     ");
+        mpu9250.readAccelData(mpu9250.accelCount);  // Read the x/y/z adc values   
+        // Now we'll calculate the accleration value into actual g's
+        mpu9250.ax = (float)mpu9250.accelCount[0]*mpu9250.aRes - mpu9250.accelBias[0];  // get actual g value, this depends on scale being set
+        mpu9250.ay = (float)mpu9250.accelCount[1]*mpu9250.aRes - mpu9250.accelBias[1];   
+        mpu9250.az = (float)mpu9250.accelCount[2]*mpu9250.aRes - mpu9250.accelBias[2];  
+        mpu9250.readGyroData(mpu9250.gyroCount);  // Read the x/y/z adc values
+        // Calculate the gyro value into actual degrees per second
+        mpu9250.gx = (float)mpu9250.gyroCount[0]*mpu9250.gRes - mpu9250.gyroBias[0];  // get actual gyro value, this depends on scale being set
+        mpu9250.gy = (float)mpu9250.gyroCount[1]*mpu9250.gRes - mpu9250.gyroBias[1];  
+        mpu9250.gz = (float)mpu9250.gyroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
+        // -6050확인용 mpu9250.readMagData(mpu9250.magCount);  // Read the x/y/z adc values   
+        // // Calculate the magnetometer values in milliGauss
+        // // Include factory calibration per data sheet and user environmental corrections
+        // mpu9250.mx = (float)mpu9250.magCount[0]*mpu9250.mRes*mpu9250.magCalibration[0] - mpu9250.magbias[0];  // get actual magnetometer value, this depends on scale being set
+        // mpu9250.my = (float)mpu9250.magCount[1]*mpu9250.mRes*mpu9250.magCalibration[1] - mpu9250.magbias[1];  
+        // mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
+    }
+    //pc.printf("%c\n",mpu9250.readByte(MPU9250_ADDRESS, INT_STATUS));
+    //pc.printf("no if\n");
+    mpu9250.Now = t.read_us();
+    mpu9250.deltat = (float)((mpu9250.Now - mpu9250.lastUpdate)/1000000.0f) ; 
+    // set integration time by time elapsed since last filter update
+    mpu9250.lastUpdate = mpu9250.Now;
+    sum += mpu9250.deltat;
+    sumCount++;
+    // Serial print and/or display at 0.5 s rate independent of data rates
+    //mpu9250.delt_t = t.read_ms() - mpu9250.count;
+    mpu9250.roll = atan2(mpu9250.ay, sqrt(mpu9250.ax * mpu9250.ax + mpu9250.az * mpu9250.az)) * (180.0 / PI);
+    mpu9250.pitch = atan2(-mpu9250.ax, sqrt(mpu9250.ay * mpu9250.ay + mpu9250.az * mpu9250.az)) * (180.0 / PI);
+    //temp filter - gyro적분
+    // tmp_angle_x = filltered_angle_x + mpu9250.gx * mpu9250.deltat;
+    // tmp_angle_y = filltered_angle_y + mpu9250.gy * mpu9250.deltat;
+    // tmp_angle_z = filltered_angle_z + mpu9250.gz * mpu9250.deltat;
+    tmp_angle_x = filltered_angle_x + mpu9250.gx * 0.02;
+    tmp_angle_y = filltered_angle_y + mpu9250.gy * 0.02;
+    tmp_angle_z = filltered_angle_z + mpu9250.gz * 0.02;
+    //alpha를 이용한 보정(상보)
+    filltered_angle_x = alpha * tmp_angle_x + (1.0-alpha) * mpu9250.roll;
+    filltered_angle_y = alpha * tmp_angle_y + (1.0-alpha) * mpu9250.pitch;
+    // filltered_angle_z = tmp_angle_z;
+    mpu9250.count = t.read_ms(); 
+    if(mpu9250.count > 1<<21) {
+        t.start(); // start the timer over again if ~30 minutes has passed
+        mpu9250.count = 0;
+        mpu9250.deltat= 0;
+        //t.reset();
+        mpu9250.lastUpdate = t.read_us();
+    }
+    sum = 0;
+    sumCount = 0;
+}
+//imu thread에 넣고 돌리는 코드
+void Controller::ImuRead(){
+    // imu_th.set_priority(osPriorityNormal);
+    t.start();
+    Controller::SetupImu();
+    while (true){
+        // ThisThread::sleep_for(7);
+        Nowi_time = rtos::Kernel::get_ms_count();
+        //pc.printf("%11u ms\n", -(chek_time - Nowi_time));
+
+        Controller::ImuRefresh();
+
+        //chek_time = Nowi_time;
+        Worki_time = rtos::Kernel::get_ms_count();
+        ThisThread::sleep_until(rtos::Kernel::get_ms_count() + (imu_time-(Worki_time - Nowi_time)));
+    }
+}
