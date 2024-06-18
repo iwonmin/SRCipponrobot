@@ -114,11 +114,7 @@ class Controller
     void EnemyDetect();
 
     //-----------------------psd--------------------//
-    void PsdDetection(GP2A, uint8_t);
-
-    bool FilterandDetection();
-
-    float PsdDistance(GP2A, uint8_t);
+    uint16_t PsdDistance(GP2A, uint8_t);
 
     void PsdRefresh();
 
@@ -189,7 +185,7 @@ class Controller
 
     float filtered_distance[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
 
-    float alpha;
+    float alpha = 0.9f;
 
     bool detection[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
 

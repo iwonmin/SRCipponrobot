@@ -208,41 +208,28 @@ void Controller::EnemyDetect()
    }
 }
 
-void Controller::PsdDetection(GP2A GP2A_, uint8_t i) {
+uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
         Controller::now_distance[i] = GP2A_.getDistance();
-        uint16_t difference = fabs(Controller::now_distance - Controller::prev_distance);
+        Controller::filtered_distance[i] = Controller::now_distance[i] * Controller::alpha + (1-Controller::alpha) * Controller::prev_distance[i];
+        uint16_t difference = fabs(Controller::filtered_distance[i] - Controller::prev_distance[i]);
         if(difference > PSD_THRESHOLD) {
             Controller::detection[i] = 1;
         } else {
             Controller::detection[i] = 0;
             }
         Controller::prev_distance[i] = Controller::now_distance[i];
+        return Controller::filtered_distance[i];
     }
-
-float Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
-    Controller::now_distance[i] = GP2A_.getDistance();
-    Controller::filtered_distance[i] = Controller::now_distance[i] * Controller::alpha + (1-Controller::alpha) * Controller::prev_distance[i];
-    Controller::prev_distance[i] = Controller::now_distance[i];
-    return Controller::filtered_distance[i];
-}
 
 void Controller::PsdRefresh() {
     psd_val[0] = Controller::PsdDistance(psdlf, 0);
-    Controller::PsdDetection(psdlf, 0);
     psd_val[1] = Controller::PsdDistance(psdrf, 1);
-    Controller::PsdDetection(psdrf, 1);
     psd_val[2] = Controller::PsdDistance(psdlc, 2);
-    Controller::PsdDetection(psdlc, 2);
     psd_val[3] = Controller::PsdDistance(psdrc, 3);
-    Controller::PsdDetection(psdrc, 3);
     psd_val[4] = Controller::PsdDistance(psdlb, 4);
-    Controller::PsdDetection(psdlb, 4);
     psd_val[5] = Controller::PsdDistance(psdrb, 5);
-    Controller::PsdDetection(psdrb, 5);
     psd_val[6] = Controller::PsdDistance(psdf, 6);
-    Controller::PsdDetection(psdf, 6);
     psd_val[7] = Controller::PsdDistance(psdb, 7);
-    Controller::PsdDetection(psdb, 7);
 }
 
 void Controller::WallDetect() {
