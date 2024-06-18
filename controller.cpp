@@ -310,34 +310,34 @@ Controller::Position Controller::GetPosition() {
 }
 void Controller::SetPosition() { //@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함. getDistance() 타이밍에 로봇 있을 때 거를 방안 찾아야함. //거리 함수 말고 전역 변수로 불러와야할 듯(controller)
     //irs Colororient=>정확성 높음, 벽거리만 추가고려해서 바로 사용
-    if(Controller::Orient == Controller::ColorOrient::TAN_LEFT && Controller::filtered_distance[2] < CIRCLE_DISTANCE) {
-        Controller::CurrentPos = Position::ClosetoLeftWall;
+    if(Orient == ColorOrient::TAN_LEFT && psd_val[2] < CIRCLE_DISTANCE) {
+        CurrentPos = Position::ClosetoLeftWall;
         return;
-        } else if(Controller::Orient == Controller::ColorOrient::TAN_RIGHT && Controller::filtered_distance[3] < CIRCLE_DISTANCE) {
-        Controller::CurrentPos = Position::ClosetoRightWall;
+        } else if(Orient == ColorOrient::TAN_RIGHT && psd_val[3] < CIRCLE_DISTANCE) {
+        CurrentPos = Position::ClosetoRightWall;
         return;
-        } else if(Controller::Orient == Controller::ColorOrient::FRONT_LEFT && Controller::filtered_distance[2] < CIRCLE_DISTANCE) {
-        Controller::CurrentPos = Position::CriticalLeftWall;
+        } else if(Orient == ColorOrient::FRONT_LEFT && psd_val[2] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
+        CurrentPos = Position::CriticalLeftWall;
         //뒤로, 오른쪽으로 이동하는 것 필요
-        } else if(Controller::Orient == Controller::ColorOrient::BACK_LEFT && Controller::filtered_distance[2] < CIRCLE_DISTANCE) {
-        Controller::CurrentPos = Position::CriticalLeftWall;
+        } else if(Orient == ColorOrient::BACK_LEFT && psd_val[2] < CIRCLE_DISTANCE && psd_val[7] < WALL_DISTANCE) {
+        CurrentPos = Position::CriticalLeftWall;
         //앞으로, 오른쪽으로 이동하는 것 필요
-        } else if(Controller::Orient == Controller::ColorOrient::FRONT_RIGHT && Controller::filtered_distance[3] < CIRCLE_DISTANCE) {
-        Controller::CurrentPos = Position::CriticalLeftWall;
+        } else if(Orient == ColorOrient::FRONT_RIGHT && psd_val[3] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
+        CurrentPos = Position::CriticalRightWall;
         //뒤로, 왼쪽으로 이동하는 것 필요
-        } else if(Controller::Orient == Controller::ColorOrient::BACK_RIGHT && Controller::filtered_distance[3] < CIRCLE_DISTANCE) {
-        Controller::CurrentPos = Position::CriticalLeftWall;
+        } else if(Orient == ColorOrient::BACK_RIGHT && psd_val[3] < CIRCLE_DISTANCE && psd_val[7] < WALL_DISTANCE) {
+        CurrentPos = Position::CriticalRightWall;
         //앞으로, 왼쪽으로 이동하는 것 필요
-        } else if(Controller::Orient != Controller::ColorOrient::SAFE && Controller::filtered_distance[2] > 220 && Controller::filtered_distance[2] < 250 && Controller::filtered_distance[3] > 120 && Controller::filtered_distance[3] < 150) {
+        } else if(Orient != ColorOrient::SAFE && psd_val[2] > 220 && psd_val[2] < 250 && psd_val[3] > 120 && psd_val[3] < 150) {
         //일단 ir에 색은 감지되었지만 벽과의 거리가 생각보다 멀때 -> 중앙임
-        Controller::CurrentPos = Position::ClosetoCenter;
+        CurrentPos = Position::ClosetoCenter;
         } else {
             //ir 영역 아닐떄, psd만 사용(부정확)
-            if(psdf.getDistance() < 30) {
-                Controller::CurrentPos = Position::WallFront;
-            } else if (psdb.getDistance() < 30) {
-                Controller::CurrentPos = Position::WallBehind;
-            } else Controller::CurrentPos = Position::FartoCenter; // 색영역도 아닌데 안보임
+            if(psd_val[6] < 30) {
+                CurrentPos = Position::WallFront;
+            } else if (psd_val[7] < 30) {
+                CurrentPos = Position::WallBehind;
+            } else CurrentPos = Position::FartoCenter; // 색영역도 아닌데 안보임
         }
 }
 void Controller::IrEscape(enum ColorOrient orient) {
@@ -415,7 +415,7 @@ void Controller::EnemyFind(Controller::Position pos) {
         //살짝 빠져나오는거 필요
         RightWallTrack();
     } else if(pos==Position::ClosetoCenter || pos==Position::FartoCenter) {
-        //현재 거리값 대충 저장 후 빙글빙글 돌다가 갑자기 튀는 값 찾기
+        CenterSpin();
     } else if(pos==Position::WallFront) {
         FrontWall();
     } else if(pos==Position::WallBehind) {
@@ -428,7 +428,7 @@ void Controller::EnemyFind_Extended(Controller::Position pos) {
 }
 
 void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
-    uint16_t avg_distance = (Controller::filtered_distance[0] + Controller::filtered_distance[2] + Controller::filtered_distance[4])/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
+    uint16_t avg_distance = (Controller::psd_val[0] + Controller::psd_val[2] + Controller::psd_val[4])/3;
     SetSpeed(0.5,0.5);
     if(avg_distance > WALL_DISTANCE+10) {
         SetSpeed(0.1,0.5);
@@ -437,14 +437,14 @@ void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거
         SetSpeed(0.5,0.1);
         ThisThread::sleep_for(50);
     }
-    if(Controller::detection[5] == 1 || Controller::detection[3] == 1 || Controller::detection[1] == 1) {
+    if(Controller::detection[5] || Controller::detection[3] || Controller::detection[1]) {
         SetSpeed(1.0,-1.0);
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
     }
 }
 void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
-    uint16_t avg_distance = (Controller::filtered_distance[1] + Controller::filtered_distance[3] + Controller::filtered_distance[5])/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
+    uint16_t avg_distance = (Controller::psd_val[1] + Controller::psd_val[3] + Controller::psd_val[5])/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
     SetSpeed(0.5,0.5);
     if(avg_distance > WALL_DISTANCE+10) {
         SetSpeed(0.5,0.1);
@@ -453,7 +453,7 @@ void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 �
         SetSpeed(0.1,0.5);
         ThisThread::sleep_for(50);
     }
-    if(Controller::detection[0] == 1 || Controller::detection[2] || Controller::detection[4] == 1) {
+    if(Controller::detection[0] || Controller::detection[2] || Controller::detection[4]) {
         SetSpeed(-1.0,1.0);
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
@@ -463,7 +463,7 @@ void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 �
 
 void Controller::CenterSpin() {
     SetSpeed(0.5,-0.5); //빙글빙글
-    if(Controller::detection[0] == 1 || Controller::detection[2] == 1 || Controller::detection[4] == 1 || Controller::detection[1] == 1 || Controller::detection[3] == 1 || Controller::detection[5] == 1) {
+    if(Controller::detection[0] || Controller::detection[2] || Controller::detection[4] || Controller::detection[1] || Controller::detection[3] || Controller::detection[5]) {
         SetSpeed(0,0);
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
@@ -471,13 +471,13 @@ void Controller::CenterSpin() {
 }
 
 void Controller::FrontWall() {
-    if(Controller::detection[0] == 1 || Controller::detection[2] || Controller::detection[4] == 1) {
+    if(Controller::detection[2] || Controller::detection[4] == 1) {
         SetSpeed(-1.0,1.0);
-        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        ThisThread::sleep_for(50); //반시계 방향으로 135도 회전
         SetState(RoboState::ATTACK);
-    } else if(Controller::detection[5] == 1 || Controller::detection[3] == 1 || Controller::detection[1] == 1) {
+    } else if(Controller::detection[5] == 1 || Controller::detection[3] == 1) {
         SetSpeed(1.0, -1.0);
-        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        ThisThread::sleep_for(50); //시계 방향으로 135도 회전
         SetState(RoboState::ATTACK);
     } else {
         SetSpeed(0.5,-0.5); // 180도 회전
@@ -485,14 +485,14 @@ void Controller::FrontWall() {
 }
 
 void Controller::BehindWall() {
-    if(Controller::detection[0] == 1 || Controller::detection[2] || Controller::detection[4] == 1) {
-        SetSpeed(-1.0,1.0);
-        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+    if(Controller::detection[2]) {
+        SetSpeed(-1.0, 1.0);
+        ThisThread::sleep_for(50); //반시계 방향 90도 회전
         SetState(RoboState::ATTACK);
     }
-    if(Controller::detection[5] == 1 || Controller::detection[3] == 1 || Controller::detection[1] == 1) {
+    if(Controller::detection[3]) {
         SetSpeed(1.0, -1.0);
-        ThisThread::sleep_for(50); //90도 돌만큼의 시간
+        ThisThread::sleep_for(50); //시계 방향 90도 회전
         SetState(RoboState::ATTACK);
     }
 }
