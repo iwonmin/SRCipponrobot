@@ -245,6 +245,19 @@ void Controller::PsdRefresh() {
     Controller::PsdDetection(psdb, 7);
 }
 
+void Controller::WallDetect() {
+    //지속적으로 쓰는것보다는 어떤 상태의 끝자락에서 쓰면 좋을듯??
+    //확실한 collision : 7cm짜리 front or behind 쓰기
+    if(psd_val[6] < 30 || psd_val[0] + psd_val[1] < 80) Controller::FrontCollision = 1;
+    else Controller::FrontCollision = 0;
+    if(psd_val[7]  < 30 || psd_val[4] + psd_val[5] < 80) Controller::BackCollision = 1;
+    else Controller::BackCollision = 0;
+    if(psd_val[0] + psd_val[2] + psd_val[4] < 120) Controller::LeftCollision = 1;
+    else Controller::LeftCollision = 0;
+    if(psd_val[1] + psd_val[3] + psd_val[5] < 120) Controller::RightCollision = 1;
+    else Controller::RightCollision = 0;
+}
+
 void Controller::Psd_Escape() {
     if(Controller::FrontCollision == 1) {
         //전방에 벽 있으면 후진 후 돌기
@@ -279,10 +292,10 @@ void Controller::IrRefresh() {
     ir_val[4] = irbr.read();
     ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4];
     if(ir_total < 3) Controller::ColorOrient();
+    else Controller::Orient = ColorOrient::SAFE;
 }
 void Controller::ColorOrient() {
-    //5개 인식되었을떄
-    if (ir_total == 0) { //뭐하지??
+    if (ir_total == 0) { //5개에서 색영역 인식
     } else if (ir_total == 1) {
         if(ir_val[0] == 1) {
             Controller::Orient = ColorOrient::BACK_RIGHT;
@@ -421,6 +434,10 @@ void Controller::EnemyFind(Controller::Position pos) {
     } else if(pos==Position::WallBehind) {
         BehindWall();
     }
+}
+
+void Controller::EnemyFind_Extended(Controller::Position pos) {
+    if(pos == Position::ClosetoCenter){}
 }
 
 void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적

@@ -140,13 +140,15 @@ class Controller
     void SetPosition();
 
     void EnemyFind(Position);
+    
+    void EnemyFind_Extended(Position);
 
     void LeftWallTrack();
 
     void RightWallTrack();
 
     void CenterSpin();
-
+    
     void FrontWall();
 
     void BehindWall();
