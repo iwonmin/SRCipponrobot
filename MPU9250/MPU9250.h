@@ -176,10 +176,10 @@ enum Gscale {
   GFS_2000DPS
 };
 
-// enum Mscale {   -6050확인용
-//   MFS_14BITS = 0, // 0.6 mG per LSB
-//   MFS_16BITS      // 0.15 mG per LSB
-// };
+enum Mscale { 
+    MFS_14BITS = 0, // 0.6 mG per LSB
+    MFS_16BITS      // 0.15 mG per LSB
+};
 
 class MPU9250 {
  
@@ -194,12 +194,12 @@ class MPU9250 {
          void writeByte(uint8_t address, uint8_t subAddress, uint8_t data);
          char readByte(uint8_t address, uint8_t subAddress);
          void readBytes(uint8_t address, uint8_t subAddress, uint8_t count, uint8_t * dest);
-         //void getMres(); -6050확인용
+         void getMres(); 
          void getGres();
          void getAres();
          void readAccelData(int16_t * destination);
          void readGyroData(int16_t * destination);
-         //void readMagData(int16_t * destination);  -6050확인용
+         void readMagData(int16_t * destination);
          int16_t readTempData();
          void resetMPU9250();
          void initAK8963(float * destination);
@@ -207,25 +207,25 @@ class MPU9250 {
          void calibrateMPU9250(float * dest1, float * dest2);
          void MPU9250SelfTest(float * destination);
          //-6050확인용
-         //void MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
-         //void MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
+        //  void MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
+        //  void MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
 
          float SelfTest[6];
          float gyroBias[3],accelBias[3]; // Bias corrections for gyro and accelerometer
-         //float magCalibration[3], magbias[3];  // Factory mag calibration and mag bias
+         float magCalibration[3], magbias[3];  // Factory mag calibration and mag bias
          
          uint8_t Ascale;               // AFS_2G, AFS_4G, AFS_8G, AFS_16G
          uint8_t Gscale;               // GFS_250DPS, GFS_500DPS, GFS_1000DPS, GFS_2000DPS
-         //uint8_t Mscale;               // MFS_14BITS or MFS_16BITS, 14-bit or 16-bit magnetometer resolution
+         uint8_t Mscale;               // MFS_14BITS or MFS_16BITS, 14-bit or 16-bit magnetometer resolution
          uint8_t Mmode;                // Either 8 Hz 0x02) or 100 Hz (0x06) magnetometer data ODR  
          float aRes, gRes, mRes;       // scale resolutions per LSB for the sensors
          
          int16_t accelCount[3];  // Stores the 16-bit signed accelerometer sensor output
          int16_t gyroCount[3];   // Stores the 16-bit signed gyro sensor output
-         //int16_t magCount[3];    // Stores the 16-bit signed magnetometer sensor output
+         int16_t magCount[3];    // Stores the 16-bit signed magnetometer sensor output
          float q[4];           // vector to hold quaternion
          
-         float ax, ay, az, gx, gy, gz ; //-6050확인용, mx, my, mz; // variables to hold latest sensor data values 
+         float ax, ay, az, gx, gy, gz, mx, my, mz; // variables to hold latest sensor data values 
          float pitch, yaw, roll;
          float deltat;                             // integration interval for both filter schemes
          int lastUpdate, firstUpdate, Now;    // used to calculate integration interval                               

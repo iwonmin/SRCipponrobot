@@ -209,63 +209,63 @@ void Controller::EnemyDetect()
 }
 
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
-        Controller::now_distance[i] = GP2A_.getDistance();
-        Controller::filtered_distance[i] = Controller::now_distance[i] * Controller::alpha + (1-Controller::alpha) * Controller::prev_distance[i];
-        uint16_t difference = fabs(Controller::filtered_distance[i] - Controller::prev_distance[i]);
+        now_distance[i] = GP2A_.getDistance();
+        filtered_distance[i] = now_distance[i] * alpha_psd + (1-alpha_psd) * prev_distance[i];
+        uint16_t difference = fabs(filtered_distance[i] - prev_distance[i]);
         if(difference > PSD_THRESHOLD) {
-            Controller::detection[i] = 1;
+            detection[i] = 1;
         } else {
-            Controller::detection[i] = 0;
+            detection[i] = 0;
             }
-        Controller::prev_distance[i] = Controller::now_distance[i];
-        return Controller::filtered_distance[i];
+        prev_distance[i] = now_distance[i];
+        return filtered_distance[i];
     }
 
 void Controller::PsdRefresh() {
-    psd_val[0] = Controller::PsdDistance(psdlf, 0);
-    psd_val[1] = Controller::PsdDistance(psdrf, 1);
-    psd_val[2] = Controller::PsdDistance(psdlc, 2);
-    psd_val[3] = Controller::PsdDistance(psdrc, 3);
-    psd_val[4] = Controller::PsdDistance(psdlb, 4);
-    psd_val[5] = Controller::PsdDistance(psdrb, 5);
-    psd_val[6] = Controller::PsdDistance(psdf, 6);
-    psd_val[7] = Controller::PsdDistance(psdb, 7);
+    psd_val[0] = PsdDistance(psdlf, 0);
+    psd_val[1] = PsdDistance(psdrf, 1);
+    psd_val[2] = PsdDistance(psdlc, 2);
+    psd_val[3] = PsdDistance(psdrc, 3);
+    psd_val[4] = PsdDistance(psdlb, 4);
+    psd_val[5] = PsdDistance(psdrb, 5);
+    psd_val[6] = PsdDistance(psdf, 6);
+    psd_val[7] = PsdDistance(psdb, 7);
 }
 
 void Controller::PsdWallDetect() {
     //지속적으로 쓰는것보다는 어떤 상태의 끝자락에서 쓰면 좋을듯??
     //확실한 collision : 7cm짜리 front or behind 쓰기
-    if(psd_val[6] < 30 || psd_val[0] + psd_val[1] < 80) Controller::FrontCollision = 1;
-    else Controller::FrontCollision = 0;
-    if(psd_val[7]  < 30 || psd_val[4] + psd_val[5] < 80) Controller::BackCollision = 1;
-    else Controller::BackCollision = 0;
-    if(psd_val[0] + psd_val[2] + psd_val[4] < 120) Controller::LeftCollision = 1;
-    else Controller::LeftCollision = 0;
-    if(psd_val[1] + psd_val[3] + psd_val[5] < 120) Controller::RightCollision = 1;
-    else Controller::RightCollision = 0;
+    if(psd_val[6] < 30 || psd_val[0] + psd_val[1] < 80) FrontCollision = 1;
+    else FrontCollision = 0;
+    if(psd_val[7]  < 30 || psd_val[4] + psd_val[5] < 80) BackCollision = 1;
+    else BackCollision = 0;
+    if(psd_val[0] + psd_val[2] + psd_val[4] < 120) LeftCollision = 1;
+    else LeftCollision = 0;
+    if(psd_val[1] + psd_val[3] + psd_val[5] < 120) RightCollision = 1;
+    else RightCollision = 0;
 }
 
 void Controller::Psd_Escape() {
-    if(Controller::FrontCollision == 1) {
+    if(FrontCollision == 1) {
         //전방에 벽 있으면 후진 후 돌기
         SetSpeed(-0.5, -0.5);
         ThisThread::sleep_for(50);
         SetSpeed(-0.5, 0.5);
         ThisThread::sleep_for(50);
     }
-    if(Controller::BackCollision == 1) {
+    if(BackCollision == 1) {
         //후방에 벽 있으면 전진 후 돌기
         SetSpeed(0.5, 0.5);
         ThisThread::sleep_for(50);
         SetSpeed(-0.5, 0.5);
         ThisThread::sleep_for(50);
     }
-    if(Controller::LeftCollision == 1) {
+    if(LeftCollision == 1) {
         //왼쪽에 벽 있으면 90도 우회전
         SetSpeed(0.5, -0.5);
         ThisThread::sleep_for(50);
     }
-    if(Controller::RightCollision == 1) {
+    if(RightCollision == 1) {
         //오른쪽에 벽 있으면 90도 좌회전
         SetSpeed(-0.5, 0.5);
         ThisThread::sleep_for(50);
@@ -278,32 +278,32 @@ void Controller::IrRefresh() {
     ir_val[3] = irbl.read();
     ir_val[4] = irbr.read();
     ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4];
-    if(ir_total < 3) Controller::ColorOrient();
-    else Controller::Orient = ColorOrient::SAFE;
+    if(ir_total < 3) ColorOrient();
+    else Orient = ColorOrient::SAFE;
 }
 void Controller::ColorOrient() {
     if (ir_total == 0) { //5개에서 색영역 인식
     } else if (ir_total == 1) {
         if(ir_val[0] == 1) {
-            Controller::Orient = ColorOrient::BACK_RIGHT;
+            Orient = ColorOrient::BACK_RIGHT;
         } else if (ir_val[1] == 1) {
-            Controller::Orient = ColorOrient::BACK_LEFT;
+            Orient = ColorOrient::BACK_LEFT;
         } else if (ir_val[3] == 1) {
-            Controller::Orient = ColorOrient::FRONT_RIGHT;
+            Orient = ColorOrient::FRONT_RIGHT;
         } else if (ir_val[4] == 1) {
-            Controller::Orient = ColorOrient::FRONT_LEFT;
+            Orient = ColorOrient::FRONT_LEFT;
         } else {}
     } else if (ir_total == 2) {
         if(ir_val[0] + ir_val[1] + ir_val[2] == 0) {
-            Controller::Orient = ColorOrient::FRONT;
+            Orient = ColorOrient::FRONT;
         } else if(ir_val[0] + ir_val[2] + ir_val[3] == 0) {
-            Controller::Orient = ColorOrient::TAN_LEFT;
+            Orient = ColorOrient::TAN_LEFT;
         } else if(ir_val[2] + ir_val[3] + ir_val[4] == 0) {
-            Controller::Orient = ColorOrient::BACK;
+            Orient = ColorOrient::BACK;
         } else if(ir_val[1] + ir_val[2] + ir_val[4] == 0) {
-            Controller::Orient = ColorOrient::TAN_RIGHT;
+            Orient = ColorOrient::TAN_RIGHT;
         } else {}
-    } else Controller::Orient = ColorOrient::SAFE;
+    } else Orient = ColorOrient::SAFE;
 }
 Controller::Position Controller::GetPosition() {
     return CurrentPos;
@@ -428,7 +428,7 @@ void Controller::EnemyFind_Extended(Controller::Position pos) {
 }
 
 void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
-    uint16_t avg_distance = (Controller::psd_val[0] + Controller::psd_val[2] + Controller::psd_val[4])/3;
+    uint16_t avg_distance = (psd_val[0] + psd_val[2] + psd_val[4])/3;
     SetSpeed(0.5,0.5);
     if(avg_distance > WALL_DISTANCE+10) {
         SetSpeed(0.1,0.5);
@@ -437,14 +437,14 @@ void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거
         SetSpeed(0.5,0.1);
         ThisThread::sleep_for(50);
     }
-    if(Controller::detection[5] || Controller::detection[3] || Controller::detection[1]) {
+    if(detection[5] || detection[3] || detection[1]) {
         SetSpeed(1.0,-1.0);
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
     }
 }
 void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
-    uint16_t avg_distance = (Controller::psd_val[1] + Controller::psd_val[3] + Controller::psd_val[5])/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
+    uint16_t avg_distance = (psd_val[1] + psd_val[3] + psd_val[5])/3;// 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
     SetSpeed(0.5,0.5);
     if(avg_distance > WALL_DISTANCE+10) {
         SetSpeed(0.5,0.1);
@@ -453,7 +453,7 @@ void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 �
         SetSpeed(0.1,0.5);
         ThisThread::sleep_for(50);
     }
-    if(Controller::detection[0] || Controller::detection[2] || Controller::detection[4]) {
+    if(detection[0] || detection[2] || detection[4]) {
         SetSpeed(-1.0,1.0);
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
@@ -463,7 +463,7 @@ void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 �
 
 void Controller::CenterSpin() {
     SetSpeed(0.5,-0.5); //빙글빙글
-    if(Controller::detection[0] || Controller::detection[2] || Controller::detection[4] || Controller::detection[1] || Controller::detection[3] || Controller::detection[5]) {
+    if(detection[0] || detection[2] || detection[4] || detection[1] || detection[3] || detection[5]) {
         SetSpeed(0,0);
         ThisThread::sleep_for(50); //90도 돌만큼의 시간
         SetState(RoboState::ATTACK);
@@ -471,11 +471,11 @@ void Controller::CenterSpin() {
 }
 
 void Controller::FrontWall() {
-    if(Controller::detection[2] || Controller::detection[4] == 1) {
+    if(detection[2] || detection[4] == 1) {
         SetSpeed(-1.0,1.0);
         ThisThread::sleep_for(50); //반시계 방향으로 135도 회전
         SetState(RoboState::ATTACK);
-    } else if(Controller::detection[5] == 1 || Controller::detection[3] == 1) {
+    } else if(detection[5] == 1 || detection[3] == 1) {
         SetSpeed(1.0, -1.0);
         ThisThread::sleep_for(50); //시계 방향으로 135도 회전
         SetState(RoboState::ATTACK);
@@ -485,12 +485,12 @@ void Controller::FrontWall() {
 }
 
 void Controller::BehindWall() {
-    if(Controller::detection[2]) {
+    if(detection[2]) {
         SetSpeed(-1.0, 1.0);
         ThisThread::sleep_for(50); //반시계 방향 90도 회전
         SetState(RoboState::ATTACK);
     }
-    if(Controller::detection[3]) {
+    if(detection[3]) {
         SetSpeed(1.0, -1.0);
         ThisThread::sleep_for(50); //시계 방향 90도 회전
         SetState(RoboState::ATTACK);
@@ -508,12 +508,12 @@ void Controller::SetupImu() {
     // Calibrate gyro and accelerometers, load biases in bias registers  
 
     mpu9250.initMPU9250();
-    // -6050확인용 mpu9250.initAK8963(mpu9250.magCalibration);
+    mpu9250.initAK8963(mpu9250.magCalibration);
 
     mpu9250.getAres(); // Get accelerometer sensitivity
     mpu9250.getGres(); // Get gyro sensitivity
-    // -6050확인용 mpu9250.getMres(); // Get magnetometer sensitivity
-
+    mpu9250.getMres(); // Get magnetometer sensitivity
+    t.start();
 }
 
 void Controller::ImuRefresh() {
@@ -531,12 +531,13 @@ void Controller::ImuRefresh() {
         mpu9250.gx = (float)mpu9250.gyroCount[0]*mpu9250.gRes - mpu9250.gyroBias[0];  // get actual gyro value, this depends on scale being set
         mpu9250.gy = (float)mpu9250.gyroCount[1]*mpu9250.gRes - mpu9250.gyroBias[1];  
         mpu9250.gz = (float)mpu9250.gyroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
-        // -6050확인용 mpu9250.readMagData(mpu9250.magCount);  // Read the x/y/z adc values   
+        // Read the x/y/z adc values   
         // // Calculate the magnetometer values in milliGauss
         // // Include factory calibration per data sheet and user environmental corrections
-        // mpu9250.mx = (float)mpu9250.magCount[0]*mpu9250.mRes*mpu9250.magCalibration[0] - mpu9250.magbias[0];  // get actual magnetometer value, this depends on scale being set
-        // mpu9250.my = (float)mpu9250.magCount[1]*mpu9250.mRes*mpu9250.magCalibration[1] - mpu9250.magbias[1];  
-        // mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
+        mpu9250.readMagData(mpu9250.magCount);
+        mpu9250.mx = (float)mpu9250.magCount[0]*mpu9250.mRes*mpu9250.magCalibration[0] - mpu9250.magbias[0];  // get actual magnetometer value, this depends on scale being set
+        mpu9250.my = (float)mpu9250.magCount[1]*mpu9250.mRes*mpu9250.magCalibration[1] - mpu9250.magbias[1];  
+        mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
     }
     //pc.printf("%c\n",mpu9250.readByte(MPU9250_ADDRESS, INT_STATUS));
     //pc.printf("no if\n");
@@ -548,19 +549,17 @@ void Controller::ImuRefresh() {
     sumCount++;
     // Serial print and/or display at 0.5 s rate independent of data rates
     //mpu9250.delt_t = t.read_ms() - mpu9250.count;
-    mpu9250.roll = atan2(mpu9250.ay, sqrt(mpu9250.ax * mpu9250.ax + mpu9250.az * mpu9250.az)) * (180.0 / PI);
-    mpu9250.pitch = atan2(-mpu9250.ax, sqrt(mpu9250.ay * mpu9250.ay + mpu9250.az * mpu9250.az)) * (180.0 / PI);
-    //temp filter - gyro적분
-    // tmp_angle_x = filltered_angle_x + mpu9250.gx * mpu9250.deltat;
-    // tmp_angle_y = filltered_angle_y + mpu9250.gy * mpu9250.deltat;
-    // tmp_angle_z = filltered_angle_z + mpu9250.gz * mpu9250.deltat;
-    tmp_angle_x = filltered_angle_x + mpu9250.gx * 0.02;
-    tmp_angle_y = filltered_angle_y + mpu9250.gy * 0.02;
-    tmp_angle_z = filltered_angle_z + mpu9250.gz * 0.02;
+    mpu9250.roll = atan2(mpu9250.ay, mpu9250.az) * (180.0f / PI);
+    mpu9250.pitch = atan2(-mpu9250.ax, sqrt(mpu9250.ay * mpu9250.ay + mpu9250.az * mpu9250.az)) * (180.0f / PI);
+    mpu9250.yaw = atan2(mpu9250.my, mpu9250.mx) *(180 / PI);
+    //gyro값 넣기
+    tmp_angle_x = filtered_angle_x + mpu9250.gx * 0.02;
+    tmp_angle_y = filtered_angle_y + mpu9250.gy * 0.02;
+    tmp_angle_z = filtered_angle_z + mpu9250.gz * 0.02;
     //alpha를 이용한 보정(상보)
-    filltered_angle_x = alpha * tmp_angle_x + (1.0-alpha) * mpu9250.roll;
-    filltered_angle_y = alpha * tmp_angle_y + (1.0-alpha) * mpu9250.pitch;
-    // filltered_angle_z = tmp_angle_z;
+    filtered_angle_x = alpha_imu * tmp_angle_x + (1.0-alpha_imu) * mpu9250.roll;
+    filtered_angle_y = alpha_imu * tmp_angle_y + (1.0-alpha_imu) * mpu9250.pitch;
+    filtered_angle_z = alpha_imu * tmp_angle_z + (1.0-alpha_imu) * mpu9250.yaw;
     mpu9250.count = t.read_ms(); 
     if(mpu9250.count > 1<<21) {
         t.start(); // start the timer over again if ~30 minutes has passed
@@ -573,19 +572,21 @@ void Controller::ImuRefresh() {
     sumCount = 0;
 }
 //imu thread에 넣고 돌리는 코드
-void Controller::ImuRead(){
+void Controller::ImuThread(){
     // imu_th.set_priority(osPriorityNormal);
     t.start();
-    Controller::SetupImu();
+    SetupImu();
     while (true){
         // ThisThread::sleep_for(7);
         Nowi_time = rtos::Kernel::get_ms_count();
         //pc.printf("%11u ms\n", -(chek_time - Nowi_time));
 
-        Controller::ImuRefresh();
+        ImuRefresh();
 
         //chek_time = Nowi_time;
         Worki_time = rtos::Kernel::get_ms_count();
+        pc.printf("roll : %.1f pitch : %.1f yaw : %.1f\r\n",filtered_angle_x,filtered_angle_y,filtered_angle_z);
         ThisThread::sleep_until(rtos::Kernel::get_ms_count() + (imu_time-(Worki_time - Nowi_time)));
+        SetSpeed(1.0,1.0);
     }
 }

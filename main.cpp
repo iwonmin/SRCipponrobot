@@ -1,9 +1,9 @@
 #include "mbed.h"
 #include "controller.h"
-
+Controller controller;
+Thread imuthread;
 int main()
 {
-Controller controller;
 // wait(3000);
 // controller.SetEnemyState(true);
 // wait(3000);
@@ -28,6 +28,7 @@ Controller controller;
             controller.Escape();
             break;
         }
-        controller.Move(controller.GetSpeedL(),controller.GetSpeedR());
+        controller.ImuThread();
+        ThisThread::sleep_for(100);
     }
 }

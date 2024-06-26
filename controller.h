@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "Thread.h"
 #include "GP2A.h"
-#include "MPU9250.h"
+#include "MPU9250/MPU9250.h"
 #pragma region Preprocessor
 #define MAXSPEED 0.5
 #define ESCAPESPEED -0.5
@@ -33,6 +33,7 @@ extern DigitalIn irfr;
 extern DigitalIn irc;
 extern DigitalIn irbl;
 extern DigitalIn irbr;
+extern class Controller controller;
 #pragma endregion external
 class Controller
 {
@@ -154,7 +155,7 @@ class Controller
     
     void ImuRefresh();
 
-    void ImuRead();
+    void ImuThread();
 
 //--------------------Private variables--------------------------//
     private:
@@ -179,13 +180,13 @@ class Controller
     //우측 바퀴 속력
     float speedR;
 
+    const float alpha_psd = 0.9f;
+
     uint16_t prev_distance[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
 
     uint16_t now_distance[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
 
     float filtered_distance[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
-
-    float alpha = 0.9f;
 
     bool detection[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
 
@@ -205,9 +206,11 @@ class Controller
 
     bool RightCollision;
     //------------------imu------------------//(미완성)
+    const float alpha_imu = 0.98f;
+
     float tmp_angle_x, tmp_angle_y, tmp_angle_z;
 
-    float filltered_angle_x, filltered_angle_y, filltered_angle_z;
+    float filtered_angle_x, filtered_angle_y, filtered_angle_z;
 
     float tmp_acc_x, tmp_acc_y, tmp_acc_z;
     
@@ -216,7 +219,7 @@ class Controller
     int imu_count = 0;
 
     Timer t;
-
+    
     float sum = 0;
     
     uint32_t sumCount = 0;
