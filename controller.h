@@ -128,8 +128,8 @@ class Controller
     Position GetPosition();
 
     void IrRefresh();
-
-    void IrEscape(ColorOrient orient);
+    void IrEscape();
+    void IrEscape_EnemyFind(ColorOrient orient);
 
     void ColorOrient();
 
@@ -150,7 +150,7 @@ class Controller
 
     void BehindWall();
 
-    //-----------------------MPU9250-----------------------------//(작년 코드와 same)
+    //-----------------------MPU9250-----------------------------//
     void SetupImu();
     
     void ImuRefresh();
@@ -206,26 +206,12 @@ class Controller
 
     bool RightCollision;
     //------------------imu------------------//(미완성)
-    const float alpha_imu = 0.98f;
+    const float alpha_imu = 0.9f;
 
-    float tmp_angle_x, tmp_angle_y, tmp_angle_z;
+    float gyro_angle_x, gyro_angle_y, gyro_angle_z;
 
-    float filtered_angle_x, filtered_angle_y, filtered_angle_z;
-
-    float tmp_acc_x, tmp_acc_y, tmp_acc_z;
-    
-    float filtered_acc_x = 0, filtered_acc_y, filtered_acc_z;
-
-    int imu_count = 0;
+    float accel_angle_x, accel_angle_y, mag_angle_z;
 
     Timer t;
-    
-    float sum = 0;
-    
-    uint32_t sumCount = 0;
-
-    uint64_t Now_time,Work_time,Nowm_time,Workm_time,Nowi_time,Worki_time;
-
-    uint16_t chek_time;
 };
 
