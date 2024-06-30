@@ -1,7 +1,6 @@
 #include "mbed.h"
 #include "controller.h"
-Controller controller;
-Thread imuthread;
+
 int main()
 {
 // wait(3000);
@@ -28,7 +27,5 @@ int main()
             controller.Escape();
             break;
         }
-        controller.ImuThread();
-        ThisThread::sleep_for(100);
     }
 }

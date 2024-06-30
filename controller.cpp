@@ -1,6 +1,7 @@
 #include "controller.h"
 char buffer[8] = "";
 #pragma region variables
+DigitalIn btn(BUTTON1);
 DigitalOut DirL(PC_7);
 DigitalOut DirR(PB_6);
 PwmOut PwmL(PB_4);
@@ -21,6 +22,9 @@ DigitalIn irc(PA_0);
 DigitalIn irbl(PA_0);
 DigitalIn irbr(PA_0);
 MPU9250 mpu9250(D14, D15);
+Controller controller;
+Thread Thread1;
+Thread Thread2;
 #pragma endregion variables
 
 #pragma region Serial Variables
@@ -40,7 +44,11 @@ int bufferIndex = 0;
 
 DigitalOut led1(LED1);
 
-Controller::Controller() { SetState(RoboState::START); };
+Controller::Controller() { 
+    SetState(RoboState::START);
+    PwmL.period_us(66);
+    PwmR.period_us(66);
+  }
 
 Controller::RoboState Controller::GetState() { return robo_state; };
 
@@ -77,28 +85,41 @@ void Controller::SetSpeed(float sL, float sR) {
   // speedR = sR;
 };
 
-bool Controller::GetEnemyState() { return enemy; };
+bool Controller::GetEnemyState() { return enemy; }
 
-void Controller::SetEnemyState(bool enemyState) { enemy = enemyState; };
+void Controller::SetEnemyState(bool enemyState) { enemy = enemyState; }
 
-int Controller::GetHD() { return enemy_horizontal_distance; };
+bool Controller::GetIrSafetyState() { return irSafe; }
+
+void Controller::SetIrSafetyState(bool IrSafetyState) { irSafe = IrSafetyState; }
+
+bool Controller::GetImuSafetyState() { return imuSafe; };
+
+void Controller::SetImuSafetyState(bool ImuSafetyState) { imuSafe = ImuSafetyState; }
+
+int Controller::GetHD() { return enemy_horizontal_distance; }
 
 void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
 
 void Controller::Start() {
-  PwmL.period_us(66);
-  PwmR.period_us(66);
-  SetState(RoboState::IDLE);
+  if(btn == 1) {
+    Thread1.start(ImuThread);
+    Thread2.start(PsdThread);
+    Thread1.set_priority(osPriorityHigh);
+    Thread2.set_priority(osPriorityAboveNormal);
+    SetState(RoboState::IDLE);
+      
+  }
 };
 
 void Controller::Idle() {
-  if (isSafe) {
+  if (imuSafe && irSafe) {
     SetState(RoboState::DETECT);
   } else {
     SetState(RoboState::ESCAPE);
   }
 };
-
+/*
 void Controller::Detect() {
   if (isSafe) {
     if (GetEnemyState()) {
@@ -115,9 +136,14 @@ void Controller::Detect() {
     SetState(RoboState::IDLE);
   }
 };
+*/
+void Controller::Detect() {
+    EnemyFind(GetPosition());//실행하면 적 찾을때까지 함수 못빠져나옴;
+    SetEnemyState(true);
+}
 
-void Controller::Attack() {
-  if (isSafe) {
+void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
+  if (irSafe) {
     led1 = 1;
     SetSpeed(MAXSPEED);
     if (!GetEnemyState()) {
@@ -129,10 +155,11 @@ void Controller::Attack() {
 };
 
 void Controller::Escape() {
-  SetSpeed(ESCAPESPEED);
-  if (isSafe) {
+    if (!GetIrSafetyState()) IrEscape(Orient);
+    if (!GetImuSafetyState()) ImuEscape();
+    if (!GetImuSafetyState() && !GetImuSafetyState()) {/*이부분 생각필요*/}
+    //위험 상태 종료..되면좋겠다
     SetState(RoboState::IDLE);
-  }
 };
 
 void Controller::Move(float sL, float sR) {
@@ -246,22 +273,19 @@ void Controller::Psd_Escape() {
   }
 }
 void Controller::IrRefresh() {
-  ir_val[0] = irfl.read();
-  ir_val[1] = irfr.read();
-  ir_val[2] = irc.read();
-  ir_val[3] = irbl.read();
-  ir_val[4] = irbr.read();
-  ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4];
-  if (ir_total < 3)
-    ColorOrient();
-  else
-    Orient = ColorOrient::SAFE;
+    ir_val[0] = irfl.read();
+    ir_val[1] = irfr.read();
+    ir_val[2] = irc.read();
+    ir_val[3] = irbl.read();
+    ir_val[4] = irbr.read();
+    ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4];
+    if (ir_total < 3) ColorOrient();
+    else Orient = ColorOrient::SAFE;
 }
-void Controller::IrEscape() {}
+
 void Controller::ColorOrient() {
-  if (ir_total == 0) { // 5개에서 색영역 인식
-  } else if (ir_total == 1) {
-    if (ir_val[0] == 1) {
+  if (ir_total == 1) { 
+      if (ir_val[0] == 1) {
       Orient = ColorOrient::BACK_RIGHT;
     } else if (ir_val[1] == 1) {
       Orient = ColorOrient::BACK_LEFT;
@@ -269,8 +293,7 @@ void Controller::ColorOrient() {
       Orient = ColorOrient::FRONT_RIGHT;
     } else if (ir_val[4] == 1) {
       Orient = ColorOrient::FRONT_LEFT;
-    } else {
-    }
+    } else {}
   } else if (ir_total == 2) {
     if (ir_val[0] + ir_val[1] + ir_val[2] == 0) {
       Orient = ColorOrient::FRONT;
@@ -280,44 +303,39 @@ void Controller::ColorOrient() {
       Orient = ColorOrient::BACK;
     } else if (ir_val[1] + ir_val[2] + ir_val[4] == 0) {
       Orient = ColorOrient::TAN_RIGHT;
-    } else {
-    }
-  } else
+    } else {} // 5개에서 색영역 인식(Ir_Total == 0)
+  } else 
     Orient = ColorOrient::SAFE;
 }
+
 Controller::Position Controller::GetPosition() { return CurrentPos; }
-void Controller::SetPosition() { //@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함.
-                                 //getDistance() 타이밍에 로봇 있을 때 거를 방안
-                                 //찾아야함. //거리 함수 말고 전역 변수로
-                                 //불러와야할 듯(controller)
-  // irs Colororient=>정확성 높음, 벽거리만 추가고려해서 바로 사용
-  if (Orient == ColorOrient::TAN_LEFT && psd_val[2] < CIRCLE_DISTANCE) {
+//Position::@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함.
+//getDistance() 타이밍에 로봇 있을 때 거를 방안 찾아야함. 
+//거리 함수 말고 전역 변수로 불러와야할 듯(controller)
+// irs Colororient=>정확성 높음, 벽거리만 추가고려해서 바로 사용
+void Controller::SetPosition() { 
+    if (Orient == ColorOrient::TAN_LEFT && psd_val[2] < CIRCLE_DISTANCE) {
     CurrentPos = Position::ClosetoLeftWall;
     return;
-  } else if (Orient == ColorOrient::TAN_RIGHT && psd_val[3] < CIRCLE_DISTANCE) {
+    } else if (Orient == ColorOrient::TAN_RIGHT && psd_val[3] < CIRCLE_DISTANCE) {
     CurrentPos = Position::ClosetoRightWall;
     return;
-  } else if (Orient == ColorOrient::FRONT_LEFT &&
-             psd_val[2] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
+    } else if (Orient == ColorOrient::FRONT_LEFT && psd_val[2] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
     CurrentPos = Position::CriticalLeftWall;
     //뒤로, 오른쪽으로 이동하는 것 필요
-  } else if (Orient == ColorOrient::BACK_LEFT && psd_val[2] < CIRCLE_DISTANCE &&
-             psd_val[7] < WALL_DISTANCE) {
+    } else if (Orient == ColorOrient::BACK_LEFT && psd_val[2] < CIRCLE_DISTANCE && psd_val[7] < WALL_DISTANCE) {
     CurrentPos = Position::CriticalLeftWall;
     //앞으로, 오른쪽으로 이동하는 것 필요
-  } else if (Orient == ColorOrient::FRONT_RIGHT &&
-             psd_val[3] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
+    } else if (Orient == ColorOrient::FRONT_RIGHT && psd_val[3] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
     CurrentPos = Position::CriticalRightWall;
     //뒤로, 왼쪽으로 이동하는 것 필요
-  } else if (Orient == ColorOrient::BACK_RIGHT &&
-             psd_val[3] < CIRCLE_DISTANCE && psd_val[7] < WALL_DISTANCE) {
+    } else if (Orient == ColorOrient::BACK_RIGHT && psd_val[3] < CIRCLE_DISTANCE && psd_val[7] < WALL_DISTANCE) {
     CurrentPos = Position::CriticalRightWall;
     //앞으로, 왼쪽으로 이동하는 것 필요
-  } else if (Orient != ColorOrient::SAFE && psd_val[2] > 220 &&
-             psd_val[2] < 250 && psd_val[3] > 120 && psd_val[3] < 150) {
+    } else if (Orient != ColorOrient::SAFE && psd_val[2] > 220 && psd_val[2] < 250 && psd_val[3] > 120 && psd_val[3] < 150) {
     //일단 ir에 색은 감지되었지만 벽과의 거리가 생각보다 멀때 -> 중앙임
     CurrentPos = Position::ClosetoCenter;
-  } else {
+    } else {
     // ir 영역 아닐떄, psd만 사용(부정확)
     if (psd_val[6] < 30) {
       CurrentPos = Position::WallFront;
@@ -327,7 +345,7 @@ void Controller::SetPosition() { //@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐�
       CurrentPos = Position::FartoCenter; // 색영역도 아닌데 안보임
   }
 }
-void Controller::IrEscape_EnemyFind(enum ColorOrient orient) {
+void Controller::IrEscape(enum ColorOrient orient) {
   if (orient == ColorOrient::SAFE) {
     return;
   } else if (orient == ColorOrient::FRONT) {
@@ -336,28 +354,28 @@ void Controller::IrEscape_EnemyFind(enum ColorOrient orient) {
     ThisThread::sleep_for(50);
     ColorOrient();
     if (orient != ColorOrient::SAFE)
-      IrEscape_EnemyFind(orient);
+      IrEscape(orient);
   } else if (orient == ColorOrient::TAN_LEFT) {
     // right turn
     SetSpeed(0.5, -0.5);
     ThisThread::sleep_for(50);
     ColorOrient();
     if (orient != ColorOrient::SAFE)
-      IrEscape_EnemyFind(orient);
+      IrEscape(orient);
   } else if (orient == ColorOrient::TAN_RIGHT) {
     // left turn
     SetSpeed(-0.5, 0.5);
     ThisThread::sleep_for(50);
     ColorOrient();
     if (orient != ColorOrient::SAFE)
-      IrEscape_EnemyFind(orient);
+      IrEscape(orient);
   } else if (orient == ColorOrient::BACK) {
     // 180, turn, recheck, and move
     SetSpeed(-0.5, 0.5);
     ThisThread::sleep_for(50);
     ColorOrient();
     if (orient != ColorOrient::SAFE)
-      IrEscape_EnemyFind(orient);
+      IrEscape(orient);
   } else if (orient == ColorOrient::FRONT_LEFT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
@@ -366,7 +384,7 @@ void Controller::IrEscape_EnemyFind(enum ColorOrient orient) {
     ThisThread::sleep_for(50);
     ColorOrient();
     if (orient != ColorOrient::SAFE)
-      IrEscape_EnemyFind(orient);
+      IrEscape(orient);
   } else if (orient == ColorOrient::FRONT_RIGHT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
@@ -375,7 +393,7 @@ void Controller::IrEscape_EnemyFind(enum ColorOrient orient) {
     ThisThread::sleep_for(50);
     ColorOrient();
     if (orient != ColorOrient::SAFE)
-      IrEscape_EnemyFind(orient);
+      IrEscape(orient);
   } else if (orient == ColorOrient::BACK_LEFT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
@@ -384,7 +402,7 @@ void Controller::IrEscape_EnemyFind(enum ColorOrient orient) {
     ThisThread::sleep_for(50);
     ColorOrient();
     if (orient != ColorOrient::SAFE)
-      IrEscape_EnemyFind(orient);
+      IrEscape(orient);
   } else if (orient == ColorOrient::BACK_LEFT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
@@ -393,9 +411,9 @@ void Controller::IrEscape_EnemyFind(enum ColorOrient orient) {
     ThisThread::sleep_for(50);
     ColorOrient();
     if (orient != ColorOrient::SAFE)
-      IrEscape_EnemyFind(orient);
+      IrEscape(orient);
   } else
-    return;
+    SetIrSafetyState(true);
 }
 
 void Controller::EnemyFind(Controller::Position pos) {
@@ -417,12 +435,12 @@ void Controller::EnemyFind(Controller::Position pos) {
     BehindWall();
   }
 }
-
+/*
 void Controller::EnemyFind_Extended(Controller::Position pos) {
   if (pos == Position::ClosetoCenter) {
   }
 }
-
+*/
 void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리
                                    // 따고 right로 추적
   uint16_t avg_distance = (psd_val[0] + psd_val[2] + psd_val[4]) / 3;
@@ -496,7 +514,7 @@ void Controller::BehindWall() {
     SetState(RoboState::ATTACK);
   }
 }
-//--------------------------베껴온코드-----------------------//
+
 void Controller::SetupImu() {
   uint8_t whoami = mpu9250.readByte(
       MPU9250_ADDRESS, WHO_AM_I_MPU9250); // Read WHO_AM_I register for MPU-9250
@@ -556,7 +574,28 @@ void Controller::ImuRefresh() {
     mpu9250.pitch = alpha_imu * gyro_angle_y + (1.0-alpha_imu) * accel_angle_y;
     mpu9250.yaw = alpha_imu * gyro_angle_z + (1.0-alpha_imu) * mag_angle_z;
 }
-// imu thread에 넣고 돌리는 코드
-void Controller::ImuThread() {
-    
+//------------------------------Thread--------------------------------//
+void ImuThread() {
+    controller.SetupImu();
+    while(1) {
+        controller.ImuRefresh();
+        if(controller.Escape_Timer == 0.f && (mpu9250.roll > IMU_THRESHOLD || mpu9250.pitch > IMU_THRESHOLD)) {
+        controller.Escape_Timer.start();
+        }
+        if(controller.Escape_Timer.read_ms() > ESCAPE_TIME) controller.SetImuSafetyState(false);
+        ThisThread::sleep_for(50); //임의
+    }
 }
+void PsdThread() {
+    while(1) {
+        controller.PsdRefresh();
+        controller.IrRefresh();
+        controller.SetPosition();
+        ThisThread::sleep_for(50); //임의
+    }
+}
+
+//Interrupt to Idle
+//Imu ThresHold -> Idle -> Escape
+//Enemy Lost -> Idle -> Detect
+//Enemy Detected -> Idle -> Attack

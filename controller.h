@@ -1,9 +1,9 @@
 #include "mbed.h"
 #include <string>
 #include <stdlib.h>
-#include "Thread.h"
 #include "GP2A.h"
-#include "MPU9250/MPU9250.h"
+#include "rtos.h"
+#include "MPU9250.h"
 #pragma region Preprocessor
 #define MAXSPEED 0.5
 #define ESCAPESPEED -0.5
@@ -13,9 +13,11 @@
 #define WALL_DISTANCE 70 //cm
 #define TIME_90DEGTURN 50 //ms, pwm == 0.5
 #define Time_10CMMOVE 20 //ms, pwm == 0.5
-#define imu_time 50 //확정X
+#define IMU_THRESHOLD 30.0f
+#define ESCAPE_TIME 500 //ms
 #pragma endregion Preprocessor
 #pragma region external
+extern DigitalIn btn;
 extern DigitalOut DirL;
 extern DigitalOut DirR;
 extern PwmOut PwmL;
@@ -34,6 +36,8 @@ extern DigitalIn irc;
 extern DigitalIn irbl;
 extern DigitalIn irbr;
 extern class Controller controller;
+extern Thread Thread1;
+extern Thread Thread2;
 #pragma endregion external
 class Controller
 {
@@ -69,12 +73,21 @@ class Controller
 
     //로봇의 상태를 변환
     void SetState(RoboState state);
-
+    
+    //적 감지 여부 변환
+    void SetEnemyState(bool enemyState);
     //적 감지 여부 반환
     bool GetEnemyState();
 
     //적 감지 여부 변환
-    void SetEnemyState(bool enemyState);
+    void SetIrSafetyState(bool IrSafetyState);
+    //적 감지 여부 반환
+    bool GetIrSafetyState();
+
+    //적 감지 여부 변환
+    void SetImuSafetyState(bool ImuSafetyState);
+    //적 감지 여부 반환
+    bool GetImuSafetyState();
 
     //좌측 바퀴 속도 반환
     float GetSpeedL();
@@ -128,8 +141,8 @@ class Controller
     Position GetPosition();
 
     void IrRefresh();
-    void IrEscape();
-    void IrEscape_EnemyFind(ColorOrient orient);
+
+    void IrEscape(ColorOrient orient);
 
     void ColorOrient();
 
@@ -155,7 +168,9 @@ class Controller
     
     void ImuRefresh();
 
-    void ImuThread();
+    void ImuEscape();
+
+    Timer Escape_Timer;
 
 //--------------------Private variables--------------------------//
     private:
@@ -172,7 +187,9 @@ class Controller
     int enemy_horizontal_distance;
 
     //위험 지역 여부
-    bool isSafe = true;
+    bool irSafe = true;
+
+    bool imuSafe = true;
 
     //좌측 바퀴 속력
     float speedL;
@@ -205,13 +222,19 @@ class Controller
     bool LeftCollision;
 
     bool RightCollision;
-    //------------------imu------------------//(미완성)
+
     const float alpha_imu = 0.9f;
 
     float gyro_angle_x, gyro_angle_y, gyro_angle_z;
 
     float accel_angle_x, accel_angle_y, mag_angle_z;
 
-    Timer t;
+    Timer t; //for gyro integral;
+
 };
 
+
+//-------------------------Thread----------------------------//
+void ImuThread();
+
+void PsdThread();
