@@ -10,10 +10,10 @@ GP2A psdf(PA_0, 7, 80, 0.246, -0.297); //그냥 거리감지
 GP2A psdb(PA_0, 7, 80, 0.246, -0.297);
 // detector psd
 GP2A psdlf(PA_0, 30, 150, 60, 0); // PA_0 -> 핀 바꿔야함 !!!!
-GP2A psdlc(PA_0, 30, 150, 60, 0);
+GP2A psdlc(PA_0, 7, 80, 0.246, -0.297);
 GP2A psdlb(PA_0, 30, 150, 60, 0);
 GP2A psdrf(PA_0, 30, 150, 60, 0);
-GP2A psdrc(PA_0, 30, 150, 60, 0);
+GP2A psdrc(PA_0, 7, 80, 0.246, -0.297);
 GP2A psdrb(PA_0, 30, 150, 60, 0);
 // ir pin
 DigitalIn irfl(PA_0);
@@ -113,15 +113,15 @@ void Controller::Start() {
 };
 
 void Controller::Idle() {
-  if (imuSafe && irSafe) {
+  if (imuSafe && irSafe && wallSafe) {
     SetState(RoboState::DETECT);
   } else {
     SetState(RoboState::ESCAPE);
   }
 };
-/*
+
 void Controller::Detect() {
-  if (isSafe) {
+  if (imuSafe && irSafe && wallSafe) {
     if (GetEnemyState()) {
       SetSpeed(0);
       SetState(RoboState::ATTACK);
@@ -136,14 +136,14 @@ void Controller::Detect() {
     SetState(RoboState::IDLE);
   }
 };
-*/
+/*
 void Controller::Detect() {
     EnemyFind(GetPosition());//실행하면 적 찾을때까지 함수 못빠져나옴;
     SetEnemyState(true);
 }
-
+*/
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
-  if (irSafe) {
+  if (irSafe && imuSafe) {
     led1 = 1;
     SetSpeed(MAXSPEED);
     if (!GetEnemyState()) {
@@ -155,8 +155,9 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
 };
 
 void Controller::Escape() {
-    if (!GetIrSafetyState()) IrEscape(Orient);
     if (!GetImuSafetyState()) ImuEscape();
+    if (!GetIrSafetyState()) IrEscape(Orient);
+    if (!GetWallSafetyState()) PsdWallEscape();
     if (!GetImuSafetyState() && !GetImuSafetyState()) {/*이부분 생각필요*/}
     //위험 상태 종료..되면좋겠다
     SetState(RoboState::IDLE);
@@ -223,30 +224,26 @@ void Controller::PsdRefresh() {
   psd_val[5] = PsdDistance(psdrb, 5);
   psd_val[6] = PsdDistance(psdf, 6);
   psd_val[7] = PsdDistance(psdb, 7);
+  PsdWallDetect();
 }
 
 void Controller::PsdWallDetect() {
-  //지속적으로 쓰는것보다는 어떤 상태의 끝자락에서 쓰면 좋을듯??
-  //확실한 collision : 7cm짜리 front or behind 쓰기
-  if (psd_val[6] < 30 || psd_val[0] + psd_val[1] < 80)
-    FrontCollision = 1;
-  else
-    FrontCollision = 0;
-  if (psd_val[7] < 30 || psd_val[4] + psd_val[5] < 80)
-    BackCollision = 1;
-  else
-    BackCollision = 0;
-  if (psd_val[0] + psd_val[2] + psd_val[4] < 120)
-    LeftCollision = 1;
-  else
-    LeftCollision = 0;
-  if (psd_val[1] + psd_val[3] + psd_val[5] < 120)
-    RightCollision = 1;
-  else
-    RightCollision = 0;
+    if (psd_val[6] <= 10 && !GetEnemyState()) {
+        FrontCollision = true; 
+        wallSafe = false;
+    }
+    if (psd_val[7] <= 10) {
+        BackCollision = true;
+        wallSafe = false;
+    }
+    if (psd_val[3] <= 10) {
+        LeftCollision = true;
+    }
+    if (psd_val[4] <= 10) {
+        RightCollision = true;
+    }
 }
-
-void Controller::Psd_Escape() {
+void Controller::PsdWallEscape() {
   if (FrontCollision == 1) {
     //전방에 벽 있으면 후진 후 돌기
     SetSpeed(-0.5, -0.5);
@@ -312,7 +309,7 @@ Controller::Position Controller::GetPosition() { return CurrentPos; }
 //Position::@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함.
 //getDistance() 타이밍에 로봇 있을 때 거를 방안 찾아야함. 
 //거리 함수 말고 전역 변수로 불러와야할 듯(controller)
-// irs Colororient=>정확성 높음, 벽거리만 추가고려해서 바로 사용
+//irs Colororient=>정확성 높음, 벽거리만 추가고려해서 바로 사용
 void Controller::SetPosition() { 
     if (Orient == ColorOrient::TAN_LEFT && psd_val[2] < CIRCLE_DISTANCE) {
     CurrentPos = Position::ClosetoLeftWall;
@@ -573,6 +570,7 @@ void ImuThread() {
         controller.Escape_Timer.start();
         }
         if(controller.Escape_Timer.read_ms() > ESCAPE_TIME) controller.SetImuSafetyState(false);
+        pc.printf("this is imuthread\r\n");
         ThisThread::sleep_for(50); //임의
     }
 }
@@ -581,6 +579,7 @@ void PsdThread() {
         controller.PsdRefresh();
         controller.IrRefresh();
         controller.SetPosition();
+        pc.printf("this is psdthread\r\n");
         ThisThread::sleep_for(50); //임의
     }
 }

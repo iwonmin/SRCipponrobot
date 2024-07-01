@@ -79,15 +79,20 @@ class Controller
     //적 감지 여부 반환
     bool GetEnemyState();
 
-    //적 감지 여부 변환
+    //Ir 감지 여부 변환
     void SetIrSafetyState(bool IrSafetyState);
-    //적 감지 여부 반환
+    //Ir 감지 여부 반환
     bool GetIrSafetyState();
 
-    //적 감지 여부 변환
+    //Psd 감지 여부 변환
     void SetImuSafetyState(bool ImuSafetyState);
-    //적 감지 여부 반환
+    //Psd 감지 여부 반환
     bool GetImuSafetyState();
+
+    //벽 감지 여부 변환
+    void SetWallSafetyState(bool WallSafetyState);
+    //벽 감지 여부 반환
+    bool GetWallSafetyState();
 
     //좌측 바퀴 속도 반환
     float GetSpeedL();
@@ -134,9 +139,8 @@ class Controller
 
     void PsdWallDetect();
 
-    void Psd_Escape();
+    void PsdWallEscape();
     
-
     //-------------------------IR------------------------//
     Position GetPosition();
 
@@ -190,6 +194,8 @@ class Controller
     bool irSafe = true;
 
     bool imuSafe = true;
+
+    bool wallSafe = true;
 
     //좌측 바퀴 속력
     float speedL;
