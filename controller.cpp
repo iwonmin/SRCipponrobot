@@ -435,14 +435,8 @@ void Controller::EnemyFind(Controller::Position pos) {
     BehindWall();
   }
 }
-/*
-void Controller::EnemyFind_Extended(Controller::Position pos) {
-  if (pos == Position::ClosetoCenter) {
-  }
-}
-*/
-void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리
-                                   // 따고 right로 추적
+
+void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
   uint16_t avg_distance = (psd_val[0] + psd_val[2] + psd_val[4]) / 3;
   SetSpeed(0.5, 0.5);
   if (avg_distance > WALL_DISTANCE + 10) {
@@ -458,11 +452,8 @@ void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거
     SetState(RoboState::ATTACK);
   }
 }
-void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리
-                                    // 따고 right로 추적
-  uint16_t avg_distance =
-      (psd_val[1] + psd_val[3] + psd_val[5]) /
-      3; // 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
+void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
+  uint16_t avg_distance = (psd_val[1] + psd_val[3] + psd_val[5]) / 3; // 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
   SetSpeed(0.5, 0.5);
   if (avg_distance > WALL_DISTANCE + 10) {
     SetSpeed(0.5, 0.1);
@@ -480,8 +471,7 @@ void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 �
 
 void Controller::CenterSpin() {
   SetSpeed(0.5, -0.5); //빙글빙글
-  if (detection[0] || detection[2] || detection[4] || detection[1] ||
-      detection[3] || detection[5]) {
+  if (detection[0] || detection[2] || detection[4] || detection[1] || detection[3] || detection[5]) {
     SetSpeed(0, 0);
     ThisThread::sleep_for(50); // 90도 돌만큼의 시간
     SetState(RoboState::ATTACK);
