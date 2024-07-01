@@ -160,12 +160,13 @@ class Controller
     void LeftWallTrack();
 
     void RightWallTrack();
-
+    /*
     void CenterSpin();
     
     void FrontWall();
 
     void BehindWall();
+    */
 
     //-----------------------MPU9250-----------------------------//
     void SetupImu();
@@ -205,19 +206,19 @@ class Controller
 
     const float alpha_psd = 0.9f;
 
-    uint16_t prev_distance[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
+    uint16_t prev_distance[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
 
-    uint16_t now_distance[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
+    uint16_t now_distance[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
 
-    float filtered_distance[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
+    float filtered_distance[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
 
-    bool detection[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
+    bool detection[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
 
     bool ir_val[5]; //irfl, irfr, irc, irbl, irbr //미리 선언되어야 함.
 
     uint8_t ir_total; 
 
-    uint16_t psd_val[8]; //psdlf, psdrf, psdlc, psdrc, psdlb, psdrb, psdf, psdb
+    uint16_t psd_val[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
 
     //벽 충돌 감지
     //벽이 두방향에서 보일때는 다 색영역인데 그냥 열거형 쓰기 ??

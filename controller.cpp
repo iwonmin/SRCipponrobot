@@ -217,22 +217,22 @@ uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
 
 void Controller::PsdRefresh() {
   psd_val[0] = PsdDistance(psdlf, 0);
-  psd_val[1] = PsdDistance(psdrf, 1);
-  psd_val[2] = PsdDistance(psdlc, 2);
-  psd_val[3] = PsdDistance(psdrc, 3);
-  psd_val[4] = PsdDistance(psdlb, 4);
-  psd_val[5] = PsdDistance(psdrb, 5);
-  psd_val[6] = PsdDistance(psdf, 6);
-  psd_val[7] = PsdDistance(psdb, 7);
+  psd_val[1] = PsdDistance(psdf, 1);
+  psd_val[2] = PsdDistance(psdrf, 2);
+  psd_val[3] = PsdDistance(psdlc, 3);
+  psd_val[4] = PsdDistance(psdrc, 4);
+  psd_val[5] = PsdDistance(psdlb, 5);
+  psd_val[6] = PsdDistance(psdb, 6);
+  psd_val[7] = PsdDistance(psdrb, 7);
   PsdWallDetect();
 }
 
 void Controller::PsdWallDetect() {
-    if (psd_val[6] <= 10 && !GetEnemyState()) {
+    if (psd_val[1] <= 10 && !GetEnemyState()) {
         FrontCollision = true; 
         wallSafe = false;
     }
-    if (psd_val[7] <= 10) {
+    if (psd_val[6] <= 10) {
         BackCollision = true;
         wallSafe = false;
     }
@@ -311,32 +311,32 @@ Controller::Position Controller::GetPosition() { return CurrentPos; }
 //거리 함수 말고 전역 변수로 불러와야할 듯(controller)
 //irs Colororient=>정확성 높음, 벽거리만 추가고려해서 바로 사용
 void Controller::SetPosition() { 
-    if (Orient == ColorOrient::TAN_LEFT && psd_val[2] < CIRCLE_DISTANCE) {
+    if (Orient == ColorOrient::TAN_LEFT && psd_val[3] < CIRCLE_DISTANCE) {
     CurrentPos = Position::ClosetoLeftWall;
     return;
-    } else if (Orient == ColorOrient::TAN_RIGHT && psd_val[3] < CIRCLE_DISTANCE) {
+    } else if (Orient == ColorOrient::TAN_RIGHT && psd_val[4] < CIRCLE_DISTANCE) {
     CurrentPos = Position::ClosetoRightWall;
     return;
-    } else if (Orient == ColorOrient::FRONT_LEFT && psd_val[2] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
+    } else if (Orient == ColorOrient::FRONT_LEFT && psd_val[3] < CIRCLE_DISTANCE && psd_val[1] < WALL_DISTANCE) {
     CurrentPos = Position::CriticalLeftWall;
     //뒤로, 오른쪽으로 이동하는 것 필요
-    } else if (Orient == ColorOrient::BACK_LEFT && psd_val[2] < CIRCLE_DISTANCE && psd_val[7] < WALL_DISTANCE) {
+    } else if (Orient == ColorOrient::BACK_LEFT && psd_val[3] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
     CurrentPos = Position::CriticalLeftWall;
     //앞으로, 오른쪽으로 이동하는 것 필요
-    } else if (Orient == ColorOrient::FRONT_RIGHT && psd_val[3] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
+    } else if (Orient == ColorOrient::FRONT_RIGHT && psd_val[4] < CIRCLE_DISTANCE && psd_val[1] < WALL_DISTANCE) {
     CurrentPos = Position::CriticalRightWall;
     //뒤로, 왼쪽으로 이동하는 것 필요
-    } else if (Orient == ColorOrient::BACK_RIGHT && psd_val[3] < CIRCLE_DISTANCE && psd_val[7] < WALL_DISTANCE) {
+    } else if (Orient == ColorOrient::BACK_RIGHT && psd_val[4] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
     CurrentPos = Position::CriticalRightWall;
     //앞으로, 왼쪽으로 이동하는 것 필요
-    } else if (Orient != ColorOrient::SAFE && psd_val[2] > 220 && psd_val[2] < 250 && psd_val[3] > 120 && psd_val[3] < 150) {
+    } else if (Orient != ColorOrient::SAFE && psd_val[0] > 90 && psd_val[7] > 90 || psd_val[2] > 90 && psd_val[5] > 90) {
     //일단 ir에 색은 감지되었지만 벽과의 거리가 생각보다 멀때 -> 중앙임
     CurrentPos = Position::ClosetoCenter;
     } else {
     // ir 영역 아닐떄, psd만 사용(부정확)
-    if (psd_val[6] < 30) {
+    if (psd_val[1] <= 10) {
       CurrentPos = Position::WallFront;
-    } else if (psd_val[7] < 30) {
+    } else if (psd_val[6] <= 10) {
       CurrentPos = Position::WallBehind;
     } else
       CurrentPos = Position::FartoCenter; // 색영역도 아닌데 안보임
@@ -424,17 +424,18 @@ void Controller::EnemyFind(Controller::Position pos) {
   } else if (pos == Position::CriticalRightWall) {
     //살짝 빠져나오는거 필요
     RightWallTrack();
-  } else if (pos == Position::ClosetoCenter || pos == Position::FartoCenter) {
+  } /*else if (pos == Position::ClosetoCenter || pos == Position::FartoCenter) {
     CenterSpin();
   } else if (pos == Position::WallFront) {
     FrontWall();
   } else if (pos == Position::WallBehind) {
     BehindWall();
-  }
+  }*/
+  else return;
 }
 
 void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
-  uint16_t avg_distance = (psd_val[0] + psd_val[2] + psd_val[4]) / 3;
+  uint16_t avg_distance = (psd_val[0] + psd_val[5]) / 2;
   SetSpeed(0.5, 0.5);
   if (avg_distance > WALL_DISTANCE + 10) {
     SetSpeed(0.1, 0.5);
@@ -443,14 +444,14 @@ void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거
     SetSpeed(0.5, 0.1);
     ThisThread::sleep_for(50);
   }
-  if (detection[5] || detection[3] || detection[1]) {
+  if (detection[2] || detection[7]) {
     SetSpeed(1.0, -1.0);
     ThisThread::sleep_for(50); // 90도 돌만큼의 시간
     SetState(RoboState::ATTACK);
   }
 }
 void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
-  uint16_t avg_distance = (psd_val[1] + psd_val[3] + psd_val[5]) / 3; // 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
+  uint16_t avg_distance = (psd_val[2] + psd_val[7]) / 2; // 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
   SetSpeed(0.5, 0.5);
   if (avg_distance > WALL_DISTANCE + 10) {
     SetSpeed(0.5, 0.1);
@@ -459,16 +460,16 @@ void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 �
     SetSpeed(0.1, 0.5);
     ThisThread::sleep_for(50);
   }
-  if (detection[0] || detection[2] || detection[4]) {
+  if (detection[0] || detection[5]) {
     SetSpeed(-1.0, 1.0);
     ThisThread::sleep_for(50); // 90도 돌만큼의 시간
     SetState(RoboState::ATTACK);
   }
 }
-
-void Controller::CenterSpin() {
+/*
+void Controller::CenterSpin() {//굳이??싶은 함수
   SetSpeed(0.5, -0.5); //빙글빙글
-  if (detection[0] || detection[2] || detection[4] || detection[1] || detection[3] || detection[5]) {
+  if (detection[0] || detection[2] || detection[5] || detection[7]) {
     SetSpeed(0, 0);
     ThisThread::sleep_for(50); // 90도 돌만큼의 시간
     SetState(RoboState::ATTACK);
@@ -501,7 +502,7 @@ void Controller::BehindWall() {
     SetState(RoboState::ATTACK);
   }
 }
-
+*/
 void Controller::SetupImu() {
   uint8_t whoami = mpu9250.readByte(
       MPU9250_ADDRESS, WHO_AM_I_MPU9250); // Read WHO_AM_I register for MPU-9250
