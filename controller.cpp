@@ -1,7 +1,7 @@
 #include "controller.h"
 char buffer[8] = "";
 #pragma region variables
-DigitalIn btn(BUTTON1);
+InterruptIn btn(BUTTON1);
 DigitalOut DirL(PC_7);
 DigitalOut DirR(PB_6);
 PwmOut PwmL(PB_4);
@@ -16,11 +16,12 @@ GP2A psdrf(PA_0, 30, 150, 60, 0);
 GP2A psdrc(PA_0, 7, 80, 0.246, -0.297);
 GP2A psdrb(PA_0, 30, 150, 60, 0);
 // ir pin
-DigitalIn irfl(PA_0);
-DigitalIn irfr(PA_0);
-DigitalIn irc(PA_0);
-DigitalIn irbl(PA_0);
-DigitalIn irbr(PA_0);
+DigitalIn irfl(PA_14);
+DigitalIn irfr(PA_4);
+DigitalIn irc(PC_2);
+DigitalIn irbl(PB_0);
+DigitalIn irbr(PC_3);
+
 MPU9250 mpu9250(D14, D15);
 Controller controller;
 Thread Thread1;
@@ -46,6 +47,7 @@ DigitalOut led1(LED1);
 
 Controller::Controller() { 
     SetState(RoboState::START);
+    btn.fall(&Starter);
     PwmL.period_us(66);
     PwmR.period_us(66);
   }
@@ -93,23 +95,26 @@ bool Controller::GetIrSafetyState() { return irSafe; }
 
 void Controller::SetIrSafetyState(bool IrSafetyState) { irSafe = IrSafetyState; }
 
-bool Controller::GetImuSafetyState() { return imuSafe; };
+bool Controller::GetImuSafetyState() { return imuSafe; }
 
 void Controller::SetImuSafetyState(bool ImuSafetyState) { imuSafe = ImuSafetyState; }
+
+bool Controller::GetWallSafetyState() { return wallSafe; };
+
+void Controller::SetWallSafetyState(bool WallSafetyState) { wallSafe = WallSafetyState; }
 
 int Controller::GetHD() { return enemy_horizontal_distance; }
 
 void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
 
 void Controller::Start() {
-  if(btn == 1) {
+    if(StartFlag) {
     Thread1.start(ImuThread);
     Thread2.start(PsdThread);
     Thread1.set_priority(osPriorityHigh);
     Thread2.set_priority(osPriorityAboveNormal);
     SetState(RoboState::IDLE);
-      
-  }
+    }
 };
 
 void Controller::Idle() {
@@ -300,10 +305,11 @@ void Controller::ColorOrient() {
       Orient = ColorOrient::BACK;
     } else if (ir_val[1] + ir_val[2] + ir_val[4] == 0) {
       Orient = ColorOrient::TAN_RIGHT;
-    } else {} // 5개에서 색영역 인식(Ir_Total == 0)
-  } else 
+    } else {} 
+  } else {} // 5개에서 색영역 인식(Ir_Total == 0)
     Orient = ColorOrient::SAFE;
 }
+enum Controller::ColorOrient Controller::GetOrient() { return Orient;}
 
 Controller::Position Controller::GetPosition() { return CurrentPos; }
 //Position::@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함.
@@ -562,16 +568,40 @@ void Controller::ImuRefresh() {
     mpu9250.pitch = alpha_imu * gyro_angle_y + (1.0-alpha_imu) * accel_angle_y;
     mpu9250.yaw = alpha_imu * gyro_angle_z + (1.0-alpha_imu) * mag_angle_z;
 }
-//------------------------------Thread--------------------------------//
+
+void Controller::ImuEscape() {
+    if(mpu9250.pitch < -IMU_THRESHOLD) {
+        //앞에서 들렸을때
+        SetSpeed(-0.5, -0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(-1.0, -0.3);
+        ThisThread::sleep_for(50);
+    } else if(mpu9250.pitch > IMU_THRESHOLD) {
+        //뒤에서 들렸을때
+        SetSpeed(0.5, 0.5);
+        ThisThread::sleep_for(50);
+        SetSpeed(1.0, 0.3);
+        ThisThread::sleep_for(50);
+    } else if(mpu9250.roll < -IMU_THRESHOLD) {
+        //오른쪽에서 들렸을때
+        SetSpeed(1.0, 1.0);
+        ThisThread::sleep_for(50);
+    } else if(mpu9250.roll > IMU_THRESHOLD) {
+        //왼쪽에서 들렸을때
+        SetSpeed(1.0, 1.0);
+        ThisThread::sleep_for(50);
+    }
+}
+//------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
     controller.SetupImu();
     while(1) {
         controller.ImuRefresh();
-        if(controller.Escape_Timer == 0.f && (mpu9250.roll > IMU_THRESHOLD || mpu9250.pitch > IMU_THRESHOLD)) {
+        if(controller.Escape_Timer == 0.f && (abs(mpu9250.roll) > IMU_THRESHOLD || abs(mpu9250.pitch) > IMU_THRESHOLD)) {
         controller.Escape_Timer.start();
         }
         if(controller.Escape_Timer.read_ms() > ESCAPE_TIME) controller.SetImuSafetyState(false);
-        pc.printf("this is imuthread\r\n");
+        //pc.printf("%.2f, %.2f, %.2f\r\n",mpu9250.roll, mpu9250.pitch, mpu9250.yaw);
         ThisThread::sleep_for(50); //임의
     }
 }
@@ -580,12 +610,38 @@ void PsdThread() {
         controller.PsdRefresh();
         controller.IrRefresh();
         controller.SetPosition();
-        pc.printf("this is psdthread\r\n");
-        ThisThread::sleep_for(50); //임의
+        //enumfucker((int)controller.GetOrient());
+        pc.printf("%d",(int)controller.GetOrient());
+        ThisThread::sleep_for(100); //임의
     }
 }
-
+void Starter() {
+    controller.StartFlag = true;
+}
 //Interrupt to Idle
 //Imu ThresHold -> Idle -> Escape
 //Enemy Lost -> Idle -> Detect
 //Enemy Detected -> Idle -> Attack
+
+//---------------임시------------------//
+void enumfucker(int orient) {
+    if(orient == 0) {
+        pc.printf("FRONT\r\n");
+    } else if(orient == 1) {
+        pc.printf("TAN_LEFT\r\n");
+    } else if(orient == 2) {
+        pc.printf("TAN_RIGHT\r\n");
+    } else if(orient == 3) {
+        pc.printf("BACK\r\n");
+    } else if(orient == 4) {
+        pc.printf("FRONT_LEFT\r\n");
+    } else if(orient == 5) {
+        pc.printf("FRONT_RIGHT\r\n");
+    } else if(orient == 6) {
+        pc.printf("BACK_LEFT\r\n");
+    } else if(orient == 7) {
+        pc.printf("BACK_RIGHT\r\n");
+    } else if(orient == 8) {
+        pc.printf("SAFE\r\n");
+    }
+}

@@ -17,7 +17,7 @@
 #define ESCAPE_TIME 500 //ms
 #pragma endregion Preprocessor
 #pragma region external
-extern DigitalIn btn;
+extern InterruptIn btn;
 extern DigitalOut DirL;
 extern DigitalOut DirR;
 extern PwmOut PwmL;
@@ -38,6 +38,7 @@ extern DigitalIn irbr;
 extern class Controller controller;
 extern Thread Thread1;
 extern Thread Thread2;
+extern Serial pc;
 #pragma endregion external
 class Controller
 {
@@ -65,6 +66,7 @@ class Controller
         ClosetoLeftWall, CriticalLeftWall, ClosetoRightWall, CriticalRightWall,
         WallFront, WallBehind, ClosetoCenter, FartoCenter
     };
+        bool StartFlag = false;
     //객체 생성시 실행되는 생성자 함수
     Controller();
 //-------------------Get & Set methods----------------------//
@@ -150,6 +152,7 @@ class Controller
 
     void ColorOrient();
 
+    enum ColorOrient GetOrient();
     //----------------------적 찾기 & 위치파악-------------------------//
     void SetPosition();
 
@@ -186,17 +189,17 @@ class Controller
     //예상되는 위치
     enum Position CurrentPos;
     //적 감지 여부
-    bool enemy = false;
+    volatile bool enemy = false;
 
     //적과 벌어진 거리
     int enemy_horizontal_distance;
 
     //위험 지역 여부
-    bool irSafe = true;
+    volatile bool irSafe = true;
 
-    bool imuSafe = true;
+    volatile bool imuSafe = true;
 
-    bool wallSafe = true;
+    volatile bool wallSafe = true;
 
     //좌측 바퀴 속력
     float speedL;
@@ -240,8 +243,11 @@ class Controller
 
 };
 
-
 //-------------------------Thread----------------------------//
 void ImuThread();
 
 void PsdThread();
+
+void Starter();
+
+void enumfucker(int);
