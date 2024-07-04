@@ -13,8 +13,8 @@
 #define WALL_DISTANCE 70 //cm
 #define TIME_90DEGTURN 50 //ms, pwm == 0.5
 #define Time_10CMMOVE 20 //ms, pwm == 0.5
-#define IMU_THRESHOLD 30.0f
-#define ESCAPE_TIME 500 //ms
+#define IMU_THRESHOLD 4.f
+#define ESCAPE_TIME 800 //ms
 #pragma endregion Preprocessor
 #pragma region external
 extern InterruptIn btn;
@@ -150,6 +150,8 @@ class Controller
 
     void IrEscape(ColorOrient orient);
 
+    // void IrEscapeWhenImuUnsafe();
+
     void ColorOrient();
 
     enum ColorOrient GetOrient();
@@ -207,7 +209,7 @@ class Controller
     //우측 바퀴 속력
     float speedR;
 
-    const float alpha_psd = 0.9f;
+    const float alpha_psd = 0.85f;
 
     uint16_t prev_distance[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
 
@@ -233,7 +235,7 @@ class Controller
 
     bool RightCollision;
 
-    const float alpha_imu = 0.9f;
+    const float alpha_imu = 0.85f;
 
     float gyro_angle_x, gyro_angle_y, gyro_angle_z;
 
@@ -249,5 +251,5 @@ void ImuThread();
 void PsdThread();
 
 void Starter();
-
-void enumfucker(int);
+//------------------------Tester's Choice-------------------//
+void OrientViewer(int);

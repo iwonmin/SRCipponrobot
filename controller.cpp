@@ -16,11 +16,11 @@ GP2A psdrf(PA_0, 30, 150, 60, 0);
 GP2A psdrc(PA_0, 7, 80, 0.246, -0.297);
 GP2A psdrb(PA_0, 30, 150, 60, 0);
 // ir pin
-DigitalIn irfl(PA_14);
-DigitalIn irfr(PA_4);
+DigitalIn irfl(PB_0);
+DigitalIn irfr(PA_14);
 DigitalIn irc(PC_2);
-DigitalIn irbl(PB_0);
-DigitalIn irbr(PC_3);
+DigitalIn irbl(PC_3);
+DigitalIn irbr(PA_4);
 
 MPU9250 mpu9250(D14, D15);
 Controller controller;
@@ -109,10 +109,10 @@ void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
 
 void Controller::Start() {
     if(StartFlag) {
-    Thread1.start(ImuThread);
-    Thread2.start(PsdThread);
     Thread1.set_priority(osPriorityHigh);
     Thread2.set_priority(osPriorityAboveNormal);
+    Thread1.start(ImuThread);
+    Thread2.start(PsdThread);
     SetState(RoboState::IDLE);
     }
 };
@@ -141,12 +141,7 @@ void Controller::Detect() {
     SetState(RoboState::IDLE);
   }
 };
-/*
-void Controller::Detect() {
-    EnemyFind(GetPosition());//실행하면 적 찾을때까지 함수 못빠져나옴;
-    SetEnemyState(true);
-}
-*/
+
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
   if (irSafe && imuSafe) {
     led1 = 1;
@@ -160,11 +155,13 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
 };
 
 void Controller::Escape() {
-    if (!GetImuSafetyState()) ImuEscape();
-    if (!GetIrSafetyState()) IrEscape(Orient);
-    if (!GetWallSafetyState()) PsdWallEscape();
-    if (!GetImuSafetyState() && !GetImuSafetyState()) {/*이부분 생각필요*/}
-    //위험 상태 종료..되면좋겠다
+    if (!GetImuSafetyState()) {
+        ImuEscape(); 
+    } else if (!GetIrSafetyState()) {
+        IrEscape(Orient);
+    } else if (!GetWallSafetyState()) {
+        PsdWallEscape();
+    } 
     SetState(RoboState::IDLE);
 };
 
@@ -208,8 +205,7 @@ void Controller::EnemyDetect() {
 
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
-  filtered_distance[i] =
-      now_distance[i] * alpha_psd + (1 - alpha_psd) * prev_distance[i];
+  filtered_distance[i] = now_distance[i] * alpha_psd + (1 - alpha_psd) * prev_distance[i];
   uint16_t difference = fabs(filtered_distance[i] - prev_distance[i]);
   if (difference > PSD_THRESHOLD) {
     detection[i] = 1;
@@ -275,6 +271,7 @@ void Controller::PsdWallEscape() {
   }
 }
 void Controller::IrRefresh() {
+    //IR = false 이면 색영역
     ir_val[0] = irfl.read();
     ir_val[1] = irfr.read();
     ir_val[2] = irc.read();
@@ -286,6 +283,7 @@ void Controller::IrRefresh() {
 }
 
 void Controller::ColorOrient() {
+    SetIrSafetyState(false);
   if (ir_total == 1) { 
       if (ir_val[0] == 1) {
       Orient = ColorOrient::BACK_RIGHT;
@@ -307,7 +305,6 @@ void Controller::ColorOrient() {
       Orient = ColorOrient::TAN_RIGHT;
     } else {} 
   } else {} // 5개에서 색영역 인식(Ir_Total == 0)
-    Orient = ColorOrient::SAFE;
 }
 enum Controller::ColorOrient Controller::GetOrient() { return Orient;}
 
@@ -355,70 +352,86 @@ void Controller::IrEscape(enum ColorOrient orient) {
     // 180 turn, recheck, and move
     SetSpeed(-0.5, 0.5);
     ThisThread::sleep_for(50);
-    ColorOrient();
-    if (orient != ColorOrient::SAFE)
-      IrEscape(orient);
+    // ColorOrient();
+    // if (orient != ColorOrient::SAFE)
+    //   IrEscape(orient);
   } else if (orient == ColorOrient::TAN_LEFT) {
     // right turn
     SetSpeed(0.5, -0.5);
     ThisThread::sleep_for(50);
-    ColorOrient();
-    if (orient != ColorOrient::SAFE)
-      IrEscape(orient);
+    // ColorOrient();
+    // if (orient != ColorOrient::SAFE)
+    //   IrEscape(orient);
   } else if (orient == ColorOrient::TAN_RIGHT) {
     // left turn
     SetSpeed(-0.5, 0.5);
     ThisThread::sleep_for(50);
-    ColorOrient();
-    if (orient != ColorOrient::SAFE)
-      IrEscape(orient);
+    // ColorOrient();
+    // if (orient != ColorOrient::SAFE)
+    //   IrEscape(orient);
   } else if (orient == ColorOrient::BACK) {
     // 180, turn, recheck, and move
     SetSpeed(-0.5, 0.5);
     ThisThread::sleep_for(50);
-    ColorOrient();
-    if (orient != ColorOrient::SAFE)
-      IrEscape(orient);
+    // ColorOrient();
+    // if (orient != ColorOrient::SAFE)
+    //   IrEscape(orient);
   } else if (orient == ColorOrient::FRONT_LEFT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
     ThisThread::sleep_for(50);
     SetSpeed(-0.5, 0.5);
     ThisThread::sleep_for(50);
-    ColorOrient();
-    if (orient != ColorOrient::SAFE)
-      IrEscape(orient);
+    // ColorOrient();
+    // if (orient != ColorOrient::SAFE)
+    //   IrEscape(orient);
   } else if (orient == ColorOrient::FRONT_RIGHT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
     ThisThread::sleep_for(50);
     SetSpeed(-0.5, 0.5);
     ThisThread::sleep_for(50);
-    ColorOrient();
-    if (orient != ColorOrient::SAFE)
-      IrEscape(orient);
+    // ColorOrient();
+    // if (orient != ColorOrient::SAFE)
+    //   IrEscape(orient);
   } else if (orient == ColorOrient::BACK_LEFT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
     ThisThread::sleep_for(50);
     SetSpeed(-0.5, 0.5);
     ThisThread::sleep_for(50);
-    ColorOrient();
-    if (orient != ColorOrient::SAFE)
-      IrEscape(orient);
+    // ColorOrient();
+    // if (orient != ColorOrient::SAFE)
+    //   IrEscape(orient);
   } else if (orient == ColorOrient::BACK_LEFT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
     ThisThread::sleep_for(50);
     SetSpeed(-0.5, 0.5);
     ThisThread::sleep_for(50);
-    ColorOrient();
-    if (orient != ColorOrient::SAFE)
-      IrEscape(orient);
-  } else
+    // ColorOrient();
+    // if (orient != ColorOrient::SAFE)
+    //   IrEscape(orient);
+  } else {}
     SetIrSafetyState(true);
 }
-
+/*
+void Controller::IrEscapeWhenImuUnsafe() {
+    if(Controller::ir_val[2]+Controller::ir_val[3]+Controller::ir_val[4] < 2) {
+        //뒤쪽에 IR영역
+        SetSpeed(0.5,-0.5);
+    } else if(Controller::ir_val[0]+Controller::ir_val[1]+Controller::ir_val[2] < 2) {
+        //앞쪽에 IR영역
+        SetSpeed(-0.5, 0.5);
+    } else if(Controller::ir_val[0]+Controller::ir_val[1]+Controller::ir_val[3] < 2) {
+        //왼쪽에 IR영역
+        SetSpeed(0.5, 0.5);
+    } else if(Controller::ir_val[1]+Controller::ir_val[2]+Controller::ir_val[4] < 2) {
+        //오른쪽에 IR영역
+        SetSpeed(-0.5, -0.5);
+    }
+}
+*/
 void Controller::EnemyFind(Controller::Position pos) {
   if (pos == Position::ClosetoLeftWall) {
     LeftWallTrack();
@@ -510,8 +523,7 @@ void Controller::BehindWall() {
 }
 */
 void Controller::SetupImu() {
-  uint8_t whoami = mpu9250.readByte(
-      MPU9250_ADDRESS, WHO_AM_I_MPU9250); // Read WHO_AM_I register for MPU-9250
+  uint8_t whoami = mpu9250.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250); // Read WHO_AM_I register for MPU-9250
   // pc.printf("I AM 0x%x\t", whoami); pc.printf("I SHOULD BE 0x71\n\r");
 
   mpu9250.resetMPU9250(); // Reset registers to default in preparation for
@@ -523,11 +535,11 @@ void Controller::SetupImu() {
   // Calibrate gyro and accelerometers, load biases in bias registers
 
   mpu9250.initMPU9250();
-  mpu9250.initAK8963(mpu9250.magCalibration);
+//   mpu9250.initAK8963(mpu9250.magCalibration);
 
   mpu9250.getAres(); // Get accelerometer sensitivity
   mpu9250.getGres(); // Get gyro sensitivity
-  mpu9250.getMres(); // Get magnetometer sensitivity
+//   mpu9250.getMres(); // Get magnetometer sensitivity
   t.start();
 }
 
@@ -550,44 +562,84 @@ void Controller::ImuRefresh() {
         // Read the x/y/z adc values   
         // // Calculate the magnetometer values in milliGauss
         // // Include factory calibration per data sheet and user environmental corrections
-        mpu9250.readMagData(mpu9250.magCount);
-        mpu9250.mx = (float)mpu9250.magCount[0]*mpu9250.mRes*mpu9250.magCalibration[0] - mpu9250.magbias[0];  // get actual magnetometer value, this depends on scale being set
-        mpu9250.my = (float)mpu9250.magCount[1]*mpu9250.mRes*mpu9250.magCalibration[1] - mpu9250.magbias[1];  
-        mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
+        // mpu9250.readMagData(mpu9250.magCount);
+        // mpu9250.mx = (float)mpu9250.magCount[0]*mpu9250.mRes*mpu9250.magCalibration[0] - mpu9250.magbias[0];  // get actual magnetometer value, this depends on scale being set
+        // mpu9250.my = (float)mpu9250.magCount[1]*mpu9250.mRes*mpu9250.magCalibration[1] - mpu9250.magbias[1];  
+        // mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
     }
     mpu9250.deltat = t.read_us()/1000000.0f;
     accel_angle_x = atan2(mpu9250.ay, sqrt(mpu9250.ax * mpu9250.ax + mpu9250.az * mpu9250.az)) * (180.0f / PI); 
     accel_angle_y = atan2(mpu9250.ax, sqrt(mpu9250.ay * mpu9250.ay + mpu9250.az * mpu9250.az)) * (180.0f / PI);
-    mag_angle_z  = atan2(mpu9250.my*cos(mpu9250.pitch*PI/180.0f) - mpu9250.mz*sin(mpu9250.pitch*PI/180.0f), mpu9250.mx*cos(mpu9250.roll*PI/180.0f)+mpu9250.my*sin(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)+mpu9250.mz*cos(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)) * (180.0f / PI);
+    // mag_angle_z  = atan2(mpu9250.my*cos(mpu9250.pitch*PI/180.0f) - mpu9250.mz*sin(mpu9250.pitch*PI/180.0f), mpu9250.mx*cos(mpu9250.roll*PI/180.0f)+mpu9250.my*sin(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)+mpu9250.mz*cos(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)) * (180.0f / PI);
     //gyro값 넣기
     gyro_angle_x = mpu9250.roll + mpu9250.gx * mpu9250.deltat;
     gyro_angle_y = mpu9250.pitch + mpu9250.gy * mpu9250.deltat;
-    gyro_angle_z = mpu9250.yaw + mpu9250.gz * mpu9250.deltat;
+    // gyro_angle_z = mpu9250.yaw + mpu9250.gz * mpu9250.deltat;
     //alpha를 이용한 보정(상보)
     mpu9250.roll = alpha_imu * gyro_angle_x + (1.0-alpha_imu) * accel_angle_x;
     mpu9250.pitch = alpha_imu * gyro_angle_y + (1.0-alpha_imu) * accel_angle_y;
-    mpu9250.yaw = alpha_imu * gyro_angle_z + (1.0-alpha_imu) * mag_angle_z;
+    // mpu9250.yaw = alpha_imu * gyro_angle_z + (1.0-alpha_imu) * mag_angle_z;
 }
 
 void Controller::ImuEscape() {
     if(mpu9250.pitch < -IMU_THRESHOLD) {
         //앞에서 들렸을때
+        if(!ir_val[3] && ir_val[4]) {
+            //앞에서 들렸을때 색영역 뒤쪽
+
+        } else if(!ir_val[3]) {
+            //앞에서 들렸을때 색영역 뒤 왼쪽
+
+        } else if(!ir_val[4]) {
+            //앞에서 들렸을때 색영역 뒤 오른쪽
+            
+        }
         SetSpeed(-0.5, -0.5);
         ThisThread::sleep_for(50);
         SetSpeed(-1.0, -0.3);
         ThisThread::sleep_for(50);
     } else if(mpu9250.pitch > IMU_THRESHOLD) {
         //뒤에서 들렸을때
+        if(!ir_val[0] && ir_val[1]) {
+            //뒤에서 들렸을때 색영역 앞쪽
+
+        } else if(!ir_val[0]) {
+            //뒤에서 들렸을때 색영역 앞 왼쪽
+
+        } else if(!ir_val[1]) {
+            //앞에서 들렸을때 색영역 앞 오른쪽
+
+        }
         SetSpeed(0.5, 0.5);
         ThisThread::sleep_for(50);
         SetSpeed(1.0, 0.3);
         ThisThread::sleep_for(50);
     } else if(mpu9250.roll < -IMU_THRESHOLD) {
         //오른쪽에서 들렸을때
+        if(!ir_val[0] && ir_val[3]) {
+            //앞에서 들렸을때 색영역 뒤쪽
+
+        } else if(!ir_val[0]) {
+            //앞에서 들렸을때 색영역 뒤 왼쪽
+
+        } else if(!ir_val[3]) {
+            //앞에서 들렸을때 색영역 뒤 오른쪽
+
+        }
         SetSpeed(1.0, 1.0);
         ThisThread::sleep_for(50);
     } else if(mpu9250.roll > IMU_THRESHOLD) {
         //왼쪽에서 들렸을때
+        if(!ir_val[1] && ir_val[4]) {
+            //앞에서 들렸을때 색영역 뒤쪽
+
+        } else if(!ir_val[1]) {
+            //앞에서 들렸을때 색영역 뒤 왼쪽
+
+        } else if(!ir_val[4]) {
+            //앞에서 들렸을때 색영역 뒤 오른쪽
+
+        }
         SetSpeed(1.0, 1.0);
         ThisThread::sleep_for(50);
     }
@@ -601,8 +653,7 @@ void ImuThread() {
         controller.Escape_Timer.start();
         }
         if(controller.Escape_Timer.read_ms() > ESCAPE_TIME) controller.SetImuSafetyState(false);
-        //pc.printf("%.2f, %.2f, %.2f\r\n",mpu9250.roll, mpu9250.pitch, mpu9250.yaw);
-        ThisThread::sleep_for(50); //임의
+        ThisThread::sleep_for(100); //임의
     }
 }
 void PsdThread() {
@@ -610,8 +661,7 @@ void PsdThread() {
         controller.PsdRefresh();
         controller.IrRefresh();
         controller.SetPosition();
-        //enumfucker((int)controller.GetOrient());
-        pc.printf("%d",(int)controller.GetOrient());
+        OrientViewer((int)controller.GetOrient());
         ThisThread::sleep_for(100); //임의
     }
 }
@@ -624,7 +674,7 @@ void Starter() {
 //Enemy Detected -> Idle -> Attack
 
 //---------------임시------------------//
-void enumfucker(int orient) {
+void OrientViewer(int orient) {
     if(orient == 0) {
         pc.printf("FRONT\r\n");
     } else if(orient == 1) {

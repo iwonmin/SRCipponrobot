@@ -3,10 +3,6 @@
 
 int main()
 {
-// wait(3000);
-// controller.SetEnemyState(true);
-// wait(3000);
-// controller.SetEnemyState(false);
  while (true) {
         controller.EnemyDetect();
         switch(controller.GetState())
