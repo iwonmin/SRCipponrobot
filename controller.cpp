@@ -581,6 +581,17 @@ void Controller::ImuRefresh() {
     // mpu9250.yaw = alpha_imu * gyro_angle_z + (1.0-alpha_imu) * mag_angle_z;
 }
 
+void Controller::ImuDetect() {
+    if(Escape_Timer.read_ms() == 0.f && (abs(mpu9250.roll) > IMU_THRESHOLD || abs(mpu9250.pitch) > IMU_THRESHOLD)) {
+        Escape_Timer.start();
+    }
+    if(Escape_Timer.read_ms() > ESCAPE_TIME && (abs(mpu9250.roll) > IMU_THRESHOLD || abs(mpu9250.pitch) > IMU_THRESHOLD)) {
+        Escape_Timer.reset();
+        Escape_Timer.stop();
+        controller.SetImuSafetyState(false);
+    }
+    ThisThread::sleep_for(100); //임의
+}
 void Controller::ImuEscape() {
     if(mpu9250.pitch < -IMU_THRESHOLD) {
         //앞에서 들렸을때
@@ -649,11 +660,7 @@ void ImuThread() {
     controller.SetupImu();
     while(1) {
         controller.ImuRefresh();
-        if(controller.Escape_Timer == 0.f && (abs(mpu9250.roll) > IMU_THRESHOLD || abs(mpu9250.pitch) > IMU_THRESHOLD)) {
-        controller.Escape_Timer.start();
-        }
-        if(controller.Escape_Timer.read_ms() > ESCAPE_TIME) controller.SetImuSafetyState(false);
-        ThisThread::sleep_for(100); //임의
+        controller.ImuDetect();
     }
 }
 void PsdThread() {

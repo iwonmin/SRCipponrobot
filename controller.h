@@ -178,6 +178,8 @@ class Controller
     
     void ImuRefresh();
 
+    void ImuDetect();
+    
     void ImuEscape();
 
     Timer Escape_Timer;
