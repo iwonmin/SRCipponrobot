@@ -81,6 +81,11 @@ class Controller
     //적 감지 여부 반환
     bool GetEnemyState();
 
+    //적 감지 여부 변환
+    void SetAttackState(bool attackState);
+    //적 감지 여부 반환
+    bool GetAttackState();
+
     //Ir 감지 여부 변환
     void SetIrSafetyState(bool IrSafetyState);
     //Ir 감지 여부 반환
@@ -111,7 +116,7 @@ class Controller
     //적과의 수평거리 반환 함수
     int GetHD();
 
-    //적과의 수평거리 변환환
+    //적과의 수평거리 변환
     void SetHD(int HD);
 //--------------------State Machine methods----------------------//
     //초기상태 시 실행 함수
@@ -147,6 +152,8 @@ class Controller
     Position GetPosition();
 
     void IrRefresh();
+    
+    void EnemyPushPull();
 
     void IrEscape(ColorOrient orient);
 
@@ -155,7 +162,7 @@ class Controller
     void ColorOrient();
 
     enum ColorOrient GetOrient();
-    //----------------------적 찾기 & 위치파악-------------------------//
+    //----------------------적 찾기 & 위치파악 & 적 괴롭히기 전략-------------------------//
     void SetPosition();
 
     void EnemyFind(Position);
@@ -165,6 +172,8 @@ class Controller
     void LeftWallTrack();
 
     void RightWallTrack();
+
+    void WallTwerk();
     /*
     void CenterSpin();
     
@@ -195,6 +204,8 @@ class Controller
     //적 감지 여부
     volatile bool enemy = false;
 
+    volatile bool attack = false;
+    
     //적과 벌어진 거리
     int enemy_horizontal_distance;
 

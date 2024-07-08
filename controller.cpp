@@ -6,14 +6,14 @@ DigitalOut DirL(PC_7);
 DigitalOut DirR(PB_6);
 PwmOut PwmL(PB_4);
 PwmOut PwmR(PB_5);
-GP2A psdf(PA_0, 7, 80, 0.246, -0.297); //그냥 거리감지
-GP2A psdb(PA_0, 7, 80, 0.246, -0.297);
+GP2A psdf(PA_0, 7, 80, 24.6, -0.297); //그냥 거리감지
+GP2A psdb(PA_0, 7, 80, 24.6, -0.297);
 // detector psd
 GP2A psdlf(PA_0, 30, 150, 60, 0); // PA_0 -> 핀 바꿔야함 !!!!
-GP2A psdlc(PA_0, 7, 80, 0.246, -0.297);
+GP2A psdlc(PA_0, 7, 80, 24.6, -0.297);
 GP2A psdlb(PA_0, 30, 150, 60, 0);
 GP2A psdrf(PA_0, 30, 150, 60, 0);
-GP2A psdrc(PA_0, 7, 80, 0.246, -0.297);
+GP2A psdrc(PA_0, 7, 80, 24.6, -0.297);
 GP2A psdrb(PA_0, 30, 150, 60, 0);
 // ir pin
 DigitalIn irfl(PB_0);
@@ -86,10 +86,14 @@ void Controller::SetSpeed(float sL, float sR) {
   // speedL = sL;
   // speedR = sR;
 };
-
+//==================================flags startregion=================================//
 bool Controller::GetEnemyState() { return enemy; }
 
 void Controller::SetEnemyState(bool enemyState) { enemy = enemyState; }
+
+bool Controller::GetAttackState() { return attack; }
+
+void Controller::SetAttackState(bool attackState) { enemy = attackState; }
 
 bool Controller::GetIrSafetyState() { return irSafe; }
 
@@ -102,6 +106,7 @@ void Controller::SetImuSafetyState(bool ImuSafetyState) { imuSafe = ImuSafetySta
 bool Controller::GetWallSafetyState() { return wallSafe; };
 
 void Controller::SetWallSafetyState(bool WallSafetyState) { wallSafe = WallSafetyState; }
+//==================================flags endregion=================================//
 
 int Controller::GetHD() { return enemy_horizontal_distance; }
 
@@ -126,35 +131,38 @@ void Controller::Idle() {
 };
 
 void Controller::Detect() {
-  if (imuSafe && irSafe && wallSafe) {
-    if (GetEnemyState()) {
-      SetSpeed(0);
-      SetState(RoboState::ATTACK);
-    } else if (!GetEnemyState() && GetHD() > 0) {
-      led1 = 0;
-      SetSpeed(-0.5, 0.5);
-    } else if (!GetEnemyState() && GetHD() < 0) {
-      led1 = 0;
-      SetSpeed(0.5, -0.5);
+    if (imuSafe && irSafe && wallSafe) {
+        if (GetEnemyState()) {
+        SetSpeed(0);
+        SetState(RoboState::ATTACK);
+        } else if (!GetEnemyState() && GetHD() > 0) {
+        led1 = 0;
+        SetSpeed(-0.5, 0.5);
+        } else if (!GetEnemyState() && GetHD() < 0) {
+        led1 = 0;
+        SetSpeed(0.5, -0.5);
+        }
+    } else {
+        SetState(RoboState::IDLE);
     }
-  } else {
-    SetState(RoboState::IDLE);
-  }
 };
 
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
-  if (irSafe && imuSafe) {
-    led1 = 1;
-    SetSpeed(MAXSPEED);
-    if (!GetEnemyState()) {
-      SetState(RoboState::IDLE);
+    if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
+    if (irSafe && imuSafe) {
+        led1 = 1;
+        SetSpeed(MAXSPEED);
+        if (!GetEnemyState()) {
+        SetState(RoboState::IDLE);
+        SetAttackState(false);
+        }
+    } else {
+        SetState(RoboState::IDLE);
     }
-  } else {
-    SetState(RoboState::IDLE);
-  }
 };
 
 void Controller::Escape() {
+    if (!GetIrSafetyState() && GetEnemyState()) EnemyPushPull();
     if (!GetImuSafetyState()) {
         ImuEscape(); 
     } else if (!GetIrSafetyState()) {
@@ -284,27 +292,28 @@ void Controller::IrRefresh() {
 
 void Controller::ColorOrient() {
     SetIrSafetyState(false);
-  if (ir_total == 1) { 
-      if (ir_val[0] == 1) {
-      Orient = ColorOrient::BACK_RIGHT;
-    } else if (ir_val[1] == 1) {
-      Orient = ColorOrient::BACK_LEFT;
-    } else if (ir_val[3] == 1) {
-      Orient = ColorOrient::FRONT_RIGHT;
-    } else if (ir_val[4] == 1) {
-      Orient = ColorOrient::FRONT_LEFT;
-    } else {}
-  } else if (ir_total == 2) {
-    if (ir_val[0] + ir_val[1] + ir_val[2] == 0) {
-      Orient = ColorOrient::FRONT;
-    } else if (ir_val[0] + ir_val[2] + ir_val[3] == 0) {
-      Orient = ColorOrient::TAN_LEFT;
-    } else if (ir_val[2] + ir_val[3] + ir_val[4] == 0) {
-      Orient = ColorOrient::BACK;
-    } else if (ir_val[1] + ir_val[2] + ir_val[4] == 0) {
-      Orient = ColorOrient::TAN_RIGHT;
-    } else {} 
-  } else {} // 5개에서 색영역 인식(Ir_Total == 0)
+    if(GetAttackState() && (ir_val[0] || ir_val[1]) ) Orient = ColorOrient::FRONT; //적 있을때 조금이라도 IR 있으면 일단 피하기
+    if (ir_total == 1) { 
+        if (ir_val[0] == 1) {
+        Orient = ColorOrient::BACK_RIGHT;
+        } else if (ir_val[1] == 1) {
+        Orient = ColorOrient::BACK_LEFT;
+        } else if (ir_val[3] == 1) {
+        Orient = ColorOrient::FRONT_RIGHT;
+        } else if (ir_val[4] == 1) {
+        Orient = ColorOrient::FRONT_LEFT;
+        } else {}
+    } else if (ir_total == 2) {
+        if (ir_val[0] + ir_val[1] + ir_val[2] == 0) {
+        Orient = ColorOrient::FRONT;
+        } else if (ir_val[0] + ir_val[2] + ir_val[3] == 0) {
+        Orient = ColorOrient::TAN_LEFT;
+        } else if (ir_val[2] + ir_val[3] + ir_val[4] == 0) {
+        Orient = ColorOrient::BACK;
+        } else if (ir_val[1] + ir_val[2] + ir_val[4] == 0) {
+        Orient = ColorOrient::TAN_RIGHT;
+        } else {} 
+    } else {} // 5개에서 색영역 인식(Ir_Total == 0)
 }
 enum Controller::ColorOrient Controller::GetOrient() { return Orient;}
 
@@ -485,6 +494,12 @@ void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 �
     SetState(RoboState::ATTACK);
   }
 }
+
+void Controller::WallTwerk() {
+    if(abs(psd_val[5] - psd_val[7]) > 5) SetSpeed(0.3,-0.3);
+    if(abs(psd_val[5] - psd_val[7]) < 5) SetSpeed(-0.5,-0.5);
+    if(mpu9250.pitch > -50 || mpu9250.pitch < -40) SetSpeed(0.0, 0.0);
+}
 /*
 void Controller::CenterSpin() {//굳이??싶은 함수
   SetSpeed(0.5, -0.5); //빙글빙글
@@ -608,7 +623,7 @@ void Controller::ImuEscape() {
         SetSpeed(-0.5, -0.5);
         ThisThread::sleep_for(50);
         SetSpeed(-1.0, -0.3);
-        ThisThread::sleep_for(50);
+        ThisThread::sleep_for(50); /*
     } else if(mpu9250.pitch > IMU_THRESHOLD) {
         //뒤에서 들렸을때
         if(!ir_val[0] && ir_val[1]) {
@@ -624,7 +639,7 @@ void Controller::ImuEscape() {
         SetSpeed(0.5, 0.5);
         ThisThread::sleep_for(50);
         SetSpeed(1.0, 0.3);
-        ThisThread::sleep_for(50);
+        ThisThread::sleep_for(50); */ //뒤에서 들렸을때는 벽타기 전략으로 인해 폐기 !!
     } else if(mpu9250.roll < -IMU_THRESHOLD) {
         //오른쪽에서 들렸을때
         if(!ir_val[0] && ir_val[3]) {
