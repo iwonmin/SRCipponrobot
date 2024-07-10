@@ -189,6 +189,8 @@ class Controller
 
     void ImuDetect();
     
+    void ImuDetect2();
+    
     void ImuEscape();
 
     Timer Escape_Timer;
@@ -248,7 +250,7 @@ class Controller
 
     bool RightCollision;
 
-    const float alpha_imu = 0.85f;
+    const float alpha_imu = 0.9f;
 
     float gyro_angle_x, gyro_angle_y, gyro_angle_z;
 
@@ -266,3 +268,4 @@ void PsdThread();
 void Starter();
 //------------------------Tester's Choice-------------------//
 void OrientViewer(int);
+

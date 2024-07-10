@@ -286,13 +286,14 @@ void Controller::IrRefresh() {
     ir_val[3] = irbl.read();
     ir_val[4] = irbr.read();
     ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4];
+    if (GetAttackState() && (ir_val[0] || ir_val[1]) ) Orient = ColorOrient::FRONT;
+    //ir에서 피스톤질 모드::조금이라도 IR 있으면 일단 피하기->적 만나서 ATTACK 일때 색영역 Front 일때까지 밀면, 그때부터는 ir하나만걸려도 뒤로뺄예정.
     if (ir_total < 3) ColorOrient();
     else Orient = ColorOrient::SAFE;
 }
 
 void Controller::ColorOrient() {
     SetIrSafetyState(false);
-    if(GetAttackState() && (ir_val[0] || ir_val[1]) ) Orient = ColorOrient::FRONT; //적 있을때 조금이라도 IR 있으면 일단 피하기
     if (ir_total == 1) { 
         if (ir_val[0] == 1) {
         Orient = ColorOrient::BACK_RIGHT;
@@ -496,9 +497,27 @@ void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 �
 }
 
 void Controller::WallTwerk() {
-    if(abs(psd_val[5] - psd_val[7]) > 5) SetSpeed(0.3,-0.3);
-    if(abs(psd_val[5] - psd_val[7]) < 5) SetSpeed(-0.5,-0.5);
-    if(mpu9250.pitch > -50 || mpu9250.pitch < -40) SetSpeed(0.0, 0.0);
+    bool FinishMove = false;
+    bool Orient = false;
+    while(1) {
+        EnemyDetect();
+        if(!FinishMove) {
+            if (!Orient) {
+                if (abs(psd_val[5] - psd_val[7]) < 5) Orient = true;
+                if (psd_val[5] > psd_val[7]) SetSpeed(-0.3, 0.3);
+                if (psd_val[5] < psd_val[7]) SetSpeed(0.3,-0.3);
+            }
+            if (!BackCollision) { SetSpeed(-0.3); }
+            else {
+                SetSpeed(-0.1);
+                if(mpu9250.pitch < -10.0f) FinishMove = true;
+            }
+        }
+        if(GetEnemyState()) {
+            SetState(RoboState::ATTACK);
+            return;
+        }
+    }
 }
 /*
 void Controller::CenterSpin() {//굳이??싶은 함수
@@ -607,6 +626,12 @@ void Controller::ImuDetect() { //Color Area Spin, imu jonna tuim, alpha value
     }
     ThisThread::sleep_for(100); //임의
 }
+void Controller::ImuDetect2()  {
+    //first condition upon front lifted = 정면 힘싸움 : psd_val[1] low, GetEnemyState true, minus pitch
+    if (psd_val[1] <= 10 && GetEnemyState() && mpu9250.pitch < -5.f) SetImuSafetyState(false);//이샛기:원래 attack 상태
+    //전측면 or 왼쪽/오른쪽 lifted
+    if (sqrt(mpu9250.roll * mpu9250.roll + mpu9250.pitch * mpu9250.pitch) > 10.f && (psd_val[3] <=10 || psd_val[4] <= 10 || psd_val[0] <= 10)) SetImuSafetyState(false);
+}
 void Controller::ImuEscape() {
     if(mpu9250.pitch < -IMU_THRESHOLD) {
         //앞에서 들렸을때
@@ -670,6 +695,7 @@ void Controller::ImuEscape() {
         ThisThread::sleep_for(50);
     }
 }
+
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
     controller.SetupImu();
@@ -717,3 +743,4 @@ void OrientViewer(int orient) {
         pc.printf("SAFE\r\n");
     }
 }
+
