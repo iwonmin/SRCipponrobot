@@ -596,7 +596,7 @@ void Controller::ImuRefresh() {
     // mpu9250.yaw = alpha_imu * gyro_angle_z + (1.0-alpha_imu) * mag_angle_z;
 }
 
-void Controller::ImuDetect() {
+void Controller::ImuDetect() { //Color Area Spin, imu jonna tuim, alpha value 
     if(Escape_Timer.read_ms() == 0.f && (abs(mpu9250.roll) > IMU_THRESHOLD || abs(mpu9250.pitch) > IMU_THRESHOLD)) {
         Escape_Timer.start();
     }
