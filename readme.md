@@ -10,3 +10,9 @@ SetSpeed
 2. 뒤쪽 바퀴로 벽 타고 올라가서 낮은자세잡기 = while문으로 구현했는데 흐음..
 3. 중앙 색영역에 상대 넣었을때 왔다갔다 가동범위 늘리기(ir 앞쪽에서만 감지되도 바로 빼기, 기존은 3개 감지하기) = partially done
 4. 더 나은 IMU Criterion
+
+(7.12)또 회의
+1. BURROW 상태 추가
+2. PSD로 영처 없을때 적 확인하기?
+3. IMU 바꾸기
+4. WallDetection 추가

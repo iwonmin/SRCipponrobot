@@ -6,21 +6,21 @@ DigitalOut DirL(PC_7);
 DigitalOut DirR(PB_6);
 PwmOut PwmL(PB_4);
 PwmOut PwmR(PB_5);
-GP2A psdf(PA_0, 7, 80, 24.6, -0.297); //그냥 거리감지
-GP2A psdb(PA_0, 7, 80, 24.6, -0.297);
-// detector psd
-GP2A psdlf(PA_0, 30, 150, 60, 0); // PA_0 -> 핀 바꿔야함 !!!!
-GP2A psdlc(PA_0, 7, 80, 24.6, -0.297);
-GP2A psdlb(PA_0, 30, 150, 60, 0);
-GP2A psdrf(PA_0, 30, 150, 60, 0);
-GP2A psdrc(PA_0, 7, 80, 24.6, -0.297);
-GP2A psdrb(PA_0, 30, 150, 60, 0);
+// PA_0 -> 핀 바꿔야함 !!!!
+GP2A psdlf(PA_0, 7, 80, 24.6, -0.297);
+GP2A psdf(PB_0, 7, 80, 24.6, -0.297);
+GP2A psdrf(PA_1, 7, 80, 24.6, -0.297);
+GP2A psdlc(PA_4, 30, 150, 60, 0);
+GP2A psdrc(PC_1, 30, 150, 60, 0);
+GP2A psdlb(PC_3, 7, 80, 24.6, -0.297);
+GP2A psdb(PC_2, 30, 150, 60, 0);
+GP2A psdrb(PC_0, 7, 80, 24.6, -0.297);
 // ir pin
-DigitalIn irfl(PB_0);
-DigitalIn irfr(PA_14);
-DigitalIn irc(PC_2);
-DigitalIn irbl(PC_3);
-DigitalIn irbr(PA_4);
+DigitalIn irfl(PC_4);
+DigitalIn irfr(PB_1);
+DigitalIn irc(PA_6);
+DigitalIn irbl(PA_7);
+DigitalIn irbr(PA_5);
 
 MPU9250 mpu9250(D14, D15);
 Controller controller;
@@ -114,10 +114,10 @@ void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
 
 void Controller::Start() {
     if(StartFlag) {
-    Thread1.set_priority(osPriorityHigh);
-    Thread2.set_priority(osPriorityAboveNormal);
     Thread1.start(ImuThread);
+    Thread1.set_priority(osPriorityHigh);
     Thread2.start(PsdThread);
+    Thread2.set_priority(osPriorityAboveNormal);
     SetState(RoboState::IDLE);
     }
 };
@@ -162,7 +162,7 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
 };
 
 void Controller::Escape() {
-    if (!GetIrSafetyState() && GetEnemyState()) EnemyPushPull();
+    //if (!GetIrSafetyState() && GetEnemyState()) EnemyPushPull();
     if (!GetImuSafetyState()) {
         ImuEscape(); 
     } else if (!GetIrSafetyState()) {
@@ -178,7 +178,6 @@ void Controller::Move(float sL, float sR) {
     DirL = 0;
   else
     DirL = 1;
-
   if (sR < 0)
     DirR = 0;
   else
@@ -237,45 +236,51 @@ void Controller::PsdRefresh() {
 }
 
 void Controller::PsdWallDetect() {
-    if (psd_val[1] <= 10 && !GetEnemyState()) {
+    if ((psd_val[0]+psd_val[2])/2 <= 20 && !GetEnemyState()) {
         FrontCollision = true; 
         wallSafe = false;
+    } else if ((psd_val[0]+psd_val[2])/2 > 20) {
+        FrontCollision = false;
+        wallSafe = true;
     }
-    if (psd_val[6] <= 10) {
+    if ((psd_val[5]+psd_val[7])/2 <= 20) {
         BackCollision = true;
         wallSafe = false;
+    } else if ((psd_val[5]+psd_val[7])/2 > 20) {
+        BackCollision = false;
+        wallSafe = true;
     }
-    if (psd_val[3] <= 10) {
+    if ((psd_val[0]+psd_val[5])/2 <= 20) {
         LeftCollision = true;
+        wallSafe = false;
+    } else if ((psd_val[0]+psd_val[5])/2 > 20) {
+        LeftCollision = false;
+        wallSafe = true;
     }
-    if (psd_val[4] <= 10) {
+    if ((psd_val[2]+psd_val[7])/2 <= 20) {
         RightCollision = true;
+        wallSafe = false;
+    } else if ((psd_val[2]+psd_val[7])/2 > 20) {
+        RightCollision = false;
+        wallSafe = true;
     }
 }
 void Controller::PsdWallEscape() {
   if (FrontCollision == 1) {
     //전방에 벽 있으면 후진 후 돌기
     SetSpeed(-0.5, -0.5);
-    ThisThread::sleep_for(50);
-    SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
   }
   if (BackCollision == 1) {
     //후방에 벽 있으면 전진 후 돌기
     SetSpeed(0.5, 0.5);
-    ThisThread::sleep_for(50);
-    SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
   }
   if (LeftCollision == 1) {
     //왼쪽에 벽 있으면 90도 우회전
-    SetSpeed(0.5, -0.5);
-    ThisThread::sleep_for(50);
+    SetSpeed(1.0, 0.3);
   }
   if (RightCollision == 1) {
     //오른쪽에 벽 있으면 90도 좌회전
-    SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
+    SetSpeed(0.3, 1.0);
   }
 }
 void Controller::IrRefresh() {
@@ -614,7 +619,7 @@ void Controller::ImuRefresh() {
     mpu9250.pitch = alpha_imu * gyro_angle_y + (1.0-alpha_imu) * accel_angle_y;
     // mpu9250.yaw = alpha_imu * gyro_angle_z + (1.0-alpha_imu) * mag_angle_z;
 }
-
+/*
 void Controller::ImuDetect() { //Color Area Spin, imu jonna tuim, alpha value 
     if(Escape_Timer.read_ms() == 0.f && (abs(mpu9250.roll) > IMU_THRESHOLD || abs(mpu9250.pitch) > IMU_THRESHOLD)) {
         Escape_Timer.start();
@@ -624,9 +629,9 @@ void Controller::ImuDetect() { //Color Area Spin, imu jonna tuim, alpha value
         Escape_Timer.stop();
         controller.SetImuSafetyState(false);
     }
-    ThisThread::sleep_for(100); //임의
 }
-void Controller::ImuDetect2()  {
+*/
+void Controller::ImuDetect()  {
     //first condition upon front lifted = 정면 힘싸움 : psd_val[1] low, GetEnemyState true, minus pitch
     if (psd_val[1] <= 10 && GetEnemyState() && mpu9250.pitch < -5.f) SetImuSafetyState(false);//이샛기:원래 attack 상태
     //전측면 or 왼쪽/오른쪽 lifted
@@ -702,6 +707,7 @@ void ImuThread() {
     while(1) {
         controller.ImuRefresh();
         controller.ImuDetect();
+        ThisThread::sleep_for(100);
     }
 }
 void PsdThread() {
@@ -709,7 +715,7 @@ void PsdThread() {
         controller.PsdRefresh();
         controller.IrRefresh();
         controller.SetPosition();
-        OrientViewer((int)controller.GetOrient());
+        controller.WallViewer();
         ThisThread::sleep_for(100); //임의
     }
 }
@@ -744,3 +750,15 @@ void OrientViewer(int orient) {
     }
 }
 
+void Controller::WallViewer() {
+    pc.printf("Distance : %d ",psd_val[1]);
+    if(controller.FrontCollision == true) pc.printf("Front ");
+    else pc.printf("      ");
+    if(controller.BackCollision == true) pc.printf("Back ");
+    else pc.printf("     ");
+    if(controller.LeftCollision == true) pc.printf("Left ");
+    else pc.printf("     ");
+    if(controller.RightCollision == true) pc.printf("Right ");
+    else pc.printf("      ");
+    pc.printf("\r\n");
+}

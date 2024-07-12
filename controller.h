@@ -22,13 +22,13 @@ extern DigitalOut DirL;
 extern DigitalOut DirR;
 extern PwmOut PwmL;
 extern PwmOut PwmR;
-extern GP2A psdf; //그냥 거리감지
-extern GP2A psdb;
-extern GP2A psdlf; //PA_0 -> 핀 바꿔야함 !!!!
-extern GP2A psdlc;
-extern GP2A psdlb;
+extern GP2A psdlf;
+extern GP2A psdf;
 extern GP2A psdrf;
+extern GP2A psdlc;
 extern GP2A psdrc;
+extern GP2A psdlb;
+extern GP2A psdb;
 extern GP2A psdrb;
 extern DigitalIn irfl;
 extern DigitalIn irfr;
@@ -189,12 +189,14 @@ class Controller
 
     void ImuDetect();
     
-    void ImuDetect2();
-    
     void ImuEscape();
 
     Timer Escape_Timer;
 
+    //------------------------Tester's Choice-------------------//
+    void OrientViewer(int);
+
+    void WallViewer();
 //--------------------Private variables--------------------------//
     private:
     //로봇 상태
@@ -266,6 +268,3 @@ void ImuThread();
 void PsdThread();
 
 void Starter();
-//------------------------Tester's Choice-------------------//
-void OrientViewer(int);
-
