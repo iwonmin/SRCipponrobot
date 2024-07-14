@@ -6,7 +6,6 @@ DigitalOut DirL(PC_7);
 DigitalOut DirR(PB_6);
 PwmOut PwmL(PB_4);
 PwmOut PwmR(PB_5);
-// PA_0 -> 핀 바꿔야함 !!!!
 GP2A psdlf(PA_0, 7, 80, 24.6, -0.297);
 GP2A psdf(PB_0, 7, 80, 24.6, -0.297);
 GP2A psdrf(PA_1, 7, 80, 24.6, -0.297);
@@ -15,7 +14,6 @@ GP2A psdrc(PC_1, 30, 150, 60, 0);
 GP2A psdlb(PC_3, 7, 80, 24.6, -0.297);
 GP2A psdb(PC_2, 30, 150, 60, 0);
 GP2A psdrb(PC_0, 7, 80, 24.6, -0.297);
-// ir pin
 DigitalIn irfl(PC_4);
 DigitalIn irfr(PB_1);
 DigitalIn irc(PA_6);
@@ -236,28 +234,28 @@ void Controller::PsdRefresh() {
 }
 
 void Controller::PsdWallDetect() {
-    if ((psd_val[0]+psd_val[2])/2 <= 20 && !GetEnemyState()) {
+    if (psd_val[0] <= 20 && psd_val[2] <= 20 && !GetEnemyState()) {
         FrontCollision = true; 
         wallSafe = false;
     } else if ((psd_val[0]+psd_val[2])/2 > 20) {
         FrontCollision = false;
         wallSafe = true;
     }
-    if ((psd_val[5]+psd_val[7])/2 <= 20) {
+    if (psd_val[5] <= 20 && psd_val[7] <= 20) {
         BackCollision = true;
         wallSafe = false;
     } else if ((psd_val[5]+psd_val[7])/2 > 20) {
         BackCollision = false;
         wallSafe = true;
     }
-    if ((psd_val[0]+psd_val[5])/2 <= 20) {
+    if (psd_val[0] <= 20 && psd_val[5] <= 20) {
         LeftCollision = true;
         wallSafe = false;
     } else if ((psd_val[0]+psd_val[5])/2 > 20) {
         LeftCollision = false;
         wallSafe = true;
     }
-    if ((psd_val[2]+psd_val[7])/2 <= 20) {
+    if (psd_val[2] <= 20 && psd_val[7] <= 20) {
         RightCollision = true;
         wallSafe = false;
     } else if ((psd_val[2]+psd_val[7])/2 > 20) {
@@ -266,19 +264,19 @@ void Controller::PsdWallDetect() {
     }
 }
 void Controller::PsdWallEscape() {
-  if (FrontCollision == 1) {
+  if (FrontCollision) {
     //전방에 벽 있으면 후진 후 돌기
     SetSpeed(-0.5, -0.5);
   }
-  if (BackCollision == 1) {
+  if (BackCollision) {
     //후방에 벽 있으면 전진 후 돌기
     SetSpeed(0.5, 0.5);
   }
-  if (LeftCollision == 1) {
+  if (LeftCollision) {
     //왼쪽에 벽 있으면 90도 우회전
     SetSpeed(1.0, 0.3);
   }
-  if (RightCollision == 1) {
+  if (RightCollision) {
     //오른쪽에 벽 있으면 90도 좌회전
     SetSpeed(0.3, 1.0);
   }
@@ -447,59 +445,7 @@ void Controller::IrEscapeWhenImuUnsafe() {
     }
 }
 */
-void Controller::EnemyFind(Controller::Position pos) {
-  if (pos == Position::ClosetoLeftWall) {
-    LeftWallTrack();
-  } else if (pos == Position::ClosetoRightWall) {
-    RightWallTrack();
-  } else if (pos == Position::CriticalLeftWall) {
-    //살짝 빠져나오는거 필요
-    LeftWallTrack();
-  } else if (pos == Position::CriticalRightWall) {
-    //살짝 빠져나오는거 필요
-    RightWallTrack();
-  } /*else if (pos == Position::ClosetoCenter || pos == Position::FartoCenter) {
-    CenterSpin();
-  } else if (pos == Position::WallFront) {
-    FrontWall();
-  } else if (pos == Position::WallBehind) {
-    BehindWall();
-  }*/
-  else return;
-}
 
-void Controller::LeftWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
-  uint16_t avg_distance = (psd_val[0] + psd_val[5]) / 2;
-  SetSpeed(0.5, 0.5);
-  if (avg_distance > WALL_DISTANCE + 10) {
-    SetSpeed(0.1, 0.5);
-    ThisThread::sleep_for(50);
-  } else if (avg_distance < WALL_DISTANCE - 10) {
-    SetSpeed(0.5, 0.1);
-    ThisThread::sleep_for(50);
-  }
-  if (detection[2] || detection[7]) {
-    SetSpeed(1.0, -1.0);
-    ThisThread::sleep_for(50); // 90도 돌만큼의 시간
-    SetState(RoboState::ATTACK);
-  }
-}
-void Controller::RightWallTrack() { // 왼쪽에 벽, psdlf, psdlc, psdlb 로 거리 따고 right로 추적
-  uint16_t avg_distance = (psd_val[2] + psd_val[7]) / 2; // 나중에 제어 주기로 인해 새로고침된 전역변수로 바꾸기
-  SetSpeed(0.5, 0.5);
-  if (avg_distance > WALL_DISTANCE + 10) {
-    SetSpeed(0.5, 0.1);
-    ThisThread::sleep_for(50);
-  } else if (avg_distance < WALL_DISTANCE - 10) {
-    SetSpeed(0.1, 0.5);
-    ThisThread::sleep_for(50);
-  }
-  if (detection[0] || detection[5]) {
-    SetSpeed(-1.0, 1.0);
-    ThisThread::sleep_for(50); // 90도 돌만큼의 시간
-    SetState(RoboState::ATTACK);
-  }
-}
 
 void Controller::WallTwerk() {
     bool FinishMove = false;
@@ -719,6 +665,7 @@ void PsdThread() {
         ThisThread::sleep_for(100); //임의
     }
 }
+
 void Starter() {
     controller.StartFlag = true;
 }
