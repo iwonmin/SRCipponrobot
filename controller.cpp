@@ -364,67 +364,27 @@ void Controller::IrEscape(enum ColorOrient orient) {
   } else if (orient == ColorOrient::FRONT) {
     // 180 turn, recheck, and move
     SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
-    // ColorOrient();
-    // if (orient != ColorOrient::SAFE)
-    //   IrEscape(orient);
   } else if (orient == ColorOrient::TAN_LEFT) {
     // right turn
     SetSpeed(0.5, -0.5);
-    ThisThread::sleep_for(50);
-    // ColorOrient();
-    // if (orient != ColorOrient::SAFE)
-    //   IrEscape(orient);
   } else if (orient == ColorOrient::TAN_RIGHT) {
     // left turn
     SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
-    // ColorOrient();
-    // if (orient != ColorOrient::SAFE)
-    //   IrEscape(orient);
   } else if (orient == ColorOrient::BACK) {
     // 180, turn, recheck, and move
     SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
-    // ColorOrient();
-    // if (orient != ColorOrient::SAFE)
-    //   IrEscape(orient);
   } else if (orient == ColorOrient::FRONT_LEFT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
-    SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
-    // ColorOrient();
-    // if (orient != ColorOrient::SAFE)
-    //   IrEscape(orient);
   } else if (orient == ColorOrient::FRONT_RIGHT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
-    SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
-    // ColorOrient();
-    // if (orient != ColorOrient::SAFE)
-    //   IrEscape(orient);
   } else if (orient == ColorOrient::BACK_LEFT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
-    SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
-    // ColorOrient();
-    // if (orient != ColorOrient::SAFE)
-    //   IrEscape(orient);
   } else if (orient == ColorOrient::BACK_LEFT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
-    SetSpeed(-0.5, 0.5);
-    ThisThread::sleep_for(50);
-    // ColorOrient();
-    // if (orient != ColorOrient::SAFE)
-    //   IrEscape(orient);
   } else {}
     SetIrSafetyState(true);
 }
@@ -599,7 +559,8 @@ void Controller::ImuEscape() {
         SetSpeed(-0.5, -0.5);
         ThisThread::sleep_for(50);
         SetSpeed(-1.0, -0.3);
-        ThisThread::sleep_for(50); /*
+        ThisThread::sleep_for(50); 
+        /*
     } else if(mpu9250.pitch > IMU_THRESHOLD) {
         //뒤에서 들렸을때
         if(!ir_val[0] && ir_val[1]) {
