@@ -233,6 +233,111 @@ void Controller::PsdRefresh() {
   PsdWallDetect();
 }
 
+void Controller::PsdDetect() {
+    if (FollowIndex == 0){
+        MinValue = psd_val[6];
+        MinIndex = 1;
+        if (psdlc < MinValue) { MinValue = psd_val[3]; MinIndex = 2; }
+        if (psdrc < MinValue) { MinValue = psd_val[4]; MinIndex = 3; }
+        switch (MinIndex) {
+            case 1: //in which case psdb is minimum
+                    if(detection[3]) {
+                        //psdlc detected, ccw
+                        SetSpeed(-1.0,1.0);
+                        FollowIndex = 2;
+                    } else if(detection[4]) {
+                        //psdrc detected, cw
+                        SetSpeed(1.0,-1.0);
+                        FollowIndex = 3;
+                    } else if(detection[6]) {
+                        //psdb detected, both but cw
+                        SetSpeed(1.0,-1.0);
+                        FollowIndex = 1;
+                    }
+                break;
+            case 2: //in which case psdlc is minimum
+                    if(detection[6]) {
+                        //psdb detected, both but cw
+                        SetSpeed(1.0,-1.0);
+                        FollowIndex = 1;
+                    } else if(detection[4]) {
+                        //psdrc detected, cw
+                        SetSpeed(1.0,-1.0);
+                        FollowIndex = 3;
+                    } else if(detection[3]) {
+                        //psdlc detected, ccw
+                        SetSpeed(-1.0,1.0);
+                        FollowIndex = 2;
+                    }             
+                break;
+            case 3: //in which case psdrc is minimum
+                    if(detection[3]) {
+                        //psdlc detected, both but cw
+                        SetSpeed(1.0,-1.0);
+                        FollowIndex = 2;
+                    } else if(detection[6]) {
+                        //psdb detected, ccw
+                        SetSpeed(-1.0,1.0);
+                        FollowIndex = 1;
+                    } else if(detection[4]) {
+                        //psdrc detected, cw
+                        SetSpeed(1.0,-1.0);
+                        FollowIndex = 3;
+                    }
+                break;
+        }        
+    }
+    if (FollowIndex != 0){
+        switch (MinIndex) {
+            case 1: //in which case psdb is minimum
+                    if(psd_val[3] == MinValue) {
+                        //psdlc detected, ccw
+                        SetSpeed(0,0);
+                        FollowIndex = 0;
+                    } else if(psd_val[4] == MinValue) {
+                        //psdrc detected, cw
+                        SetSpeed(0,0);
+                        FollowIndex = 0;
+                    } else if(psd_val[6] == MinValue) {
+                        //psdb detected, both but cw
+                        SetSpeed(0,0);
+                        FollowIndex = 0;
+                    }
+                break;
+            case 2: //in which case psdlc is minimum
+                    if(psd_val[6] == MinValue) {
+                        //psdb detected, both but cw
+                        SetSpeed(0,0);
+                        FollowIndex = 0;
+                    } else if(psd_val[4]) {
+                        //psdrc detected, cw
+                        SetSpeed(0,0);
+                        FollowIndex = 3;
+                    } else if(psd_val[3] == MinValue) {
+                        //psdlc detected, ccw
+                        SetSpeed(0,0);
+                        FollowIndex = 0;
+                    }             
+                break;
+            case 3: //in which case psdrc is minimum
+                    if(psd_val[3] == MinValue) {
+                        //psdlc detected, both but cw
+                        SetSpeed(0,0);
+                        FollowIndex = 0;
+                    } else if(psd_val[6] == MinValue) {
+                        //psdb detected, ccw
+                        SetSpeed(0,0);
+                        FollowIndex = 0;
+                    } else if(psd_val[4] == MinValue) {
+                        //psdrc detected, cw
+                        SetSpeed(0,0);
+                        FollowIndex = 0;
+                    }
+                break;
+        }        
+    }
+}
+
 void Controller::PsdWallDetect() {
     if (psd_val[0] <= 20 && psd_val[2] <= 20 && !GetEnemyState()) {
         FrontCollision = true; 
@@ -542,28 +647,28 @@ void Controller::ImuDetect()  {
             SetImuSafetyState(false);
             tilt_state = TiltState::SIDE_LEFT;
             Escape_Timer.reset();
-        }
+        }/*
     } else if(psd_val[3] <= 30 && mpu9250.roll < -IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[3] <= 30 && mpu9250.roll < -IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
             tilt_state = TiltState::SIDE_LEFT;
             Escape_Timer.reset();
-        }
+        }*/
     } else if(psd_val[2] < 15 && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > 4.f) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[2] < 15 && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > 4.f && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
             tilt_state = TiltState::SIDE_RIGHT;
             Escape_Timer.reset();
-        }
+        }/*
     } else if(psd_val[4] <= 30 && mpu9250.roll > IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[4] <= 30 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
             tilt_state = TiltState::SIDE_RIGHT;
             Escape_Timer.reset();
-        }
+        }*/
     } else { SetImuSafetyState(true); tilt_state = TiltState::SAFE;}
     if(Escape_Timer.read_ms() > 10000) Escape_Timer.reset();
 }
@@ -595,6 +700,7 @@ void ImuThread() {
     while(1) {
         controller.ImuRefresh();
         controller.ImuDetect();
+        controller.ImuViewer();
         ThisThread::sleep_for(5);
     }
 }
@@ -603,7 +709,7 @@ void PsdThread() {
         controller.PsdRefresh();
         controller.IrRefresh();
         controller.SetPosition();
-        controller.WallViewer();
+        // controller.WallViewer();
         ThisThread::sleep_for(5); //임의
     }
 }

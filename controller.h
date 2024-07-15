@@ -148,6 +148,8 @@ class Controller
     uint16_t PsdDistance(GP2A, uint8_t);
 
     void PsdRefresh();
+    
+    void PsdDetect();
 
     void PsdWallDetect();
 
@@ -244,6 +246,12 @@ class Controller
     float filtered_distance[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
 
     bool detection[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
+
+    uint16_t MinValue = 0;
+
+    uint8_t MinIndex = 0;
+
+    uint8_t FollowIndex = 0;
 
     bool ir_val[5]; //irfl, irfr, irc, irbl, irbr //미리 선언되어야 함.
 
