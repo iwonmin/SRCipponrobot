@@ -525,96 +525,77 @@ void Controller::ImuRefresh() {
     mpu9250.pitch = alpha_imu * gyro_angle_y + (1.0-alpha_imu) * accel_angle_y;
     // mpu9250.yaw = alpha_imu * gyro_angle_z + (1.0-alpha_imu) * mag_angle_z;
 }
-/*
-void Controller::ImuDetect() { //Color Area Spin, imu jonna tuim, alpha value 
-    if(Escape_Timer.read_ms() == 0.f && (abs(mpu9250.roll) > IMU_THRESHOLD || abs(mpu9250.pitch) > IMU_THRESHOLD)) {
-        Escape_Timer.start();
-    }
-    if(Escape_Timer.read_ms() > ESCAPE_TIME && (abs(mpu9250.roll) > IMU_THRESHOLD || abs(mpu9250.pitch) > IMU_THRESHOLD)) {
-        Escape_Timer.reset();
-        Escape_Timer.stop();
-        controller.SetImuSafetyState(false);
-    }
-}
-*/
+
 void Controller::ImuDetect()  {
-    //first condition upon front lifted = 정면 힘싸움 : psd_val[1] low, GetEnemyState true, minus pitch
-    if (psd_val[1] <= 10 && GetEnemyState() && mpu9250.pitch < -5.f) SetImuSafetyState(false);//이샛기:원래 attack 상태
-    //전측면 or 왼쪽/오른쪽 lifted
-    if (sqrt(mpu9250.roll * mpu9250.roll + mpu9250.pitch * mpu9250.pitch) > 10.f && (psd_val[3] <=10 || psd_val[4] <= 10 || psd_val[0] <= 10)) SetImuSafetyState(false);
+    if(GetEnemyState() && psd_val[1] < 15 && mpu9250.pitch > IMU_THRESHOLD) {
+        SetImuSafetyState(false);
+        tilt_state = TiltState::FRONT;
+    } else if(GetEnemyState() && (psd_val[0] < 15 && psd_val[1] < 15) && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > IMU_THRESHOLD) {
+        SetImuSafetyState(false);
+        tilt_state = TiltState::FRONT_LEFT;
+    } else if((GetEnemyState() && psd_val[2] < 15 && psd_val[1] < 15) && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > IMU_THRESHOLD) {
+        SetImuSafetyState(false);
+        tilt_state = TiltState::FRONT_RIGHT;
+    } else if(psd_val[0] < 15 && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > IMU_THRESHOLD) {
+        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
+        if(psd_val[0] < 15 && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
+            SetImuSafetyState(false);
+            tilt_state = TiltState::SIDE_LEFT;
+            Escape_Timer.reset();
+        }
+    } else if(psd_val[3] <= 30 && mpu9250.roll < -IMU_THRESHOLD) {
+        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
+        if(psd_val[3] <= 30 && mpu9250.roll < -IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
+            SetImuSafetyState(false);
+            tilt_state = TiltState::SIDE_LEFT;
+            Escape_Timer.reset();
+        }
+    } else if(psd_val[2] < 15 && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > 4.f) {
+        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
+        if(psd_val[2] < 15 && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > 4.f && Escape_Timer.read_ms() > ESCAPE_TIME) {
+            SetImuSafetyState(false);
+            tilt_state = TiltState::SIDE_RIGHT;
+            Escape_Timer.reset();
+        }
+    } else if(psd_val[4] <= 30 && mpu9250.roll > IMU_THRESHOLD) {
+        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
+        if(psd_val[4] <= 30 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
+            SetImuSafetyState(false);
+            tilt_state = TiltState::SIDE_RIGHT;
+            Escape_Timer.reset();
+        }
+    } else { SetImuSafetyState(true); tilt_state = TiltState::SAFE;}
+    if(Escape_Timer.read_ms() > 10000) Escape_Timer.reset();
 }
 void Controller::ImuEscape() {
-    if(mpu9250.pitch < -IMU_THRESHOLD) {
-        //앞에서 들렸을때
-        if(!ir_val[3] && ir_val[4]) {
-            //앞에서 들렸을때 색영역 뒤쪽
-
-        } else if(!ir_val[3]) {
-            //앞에서 들렸을때 색영역 뒤 왼쪽
-
-        } else if(!ir_val[4]) {
-            //앞에서 들렸을때 색영역 뒤 오른쪽
-            
-        }
-        SetSpeed(-0.5, -0.5);
-        ThisThread::sleep_for(50);
-        SetSpeed(-1.0, -0.3);
-        ThisThread::sleep_for(50); 
-        /*
-    } else if(mpu9250.pitch > IMU_THRESHOLD) {
-        //뒤에서 들렸을때
-        if(!ir_val[0] && ir_val[1]) {
-            //뒤에서 들렸을때 색영역 앞쪽
-
-        } else if(!ir_val[0]) {
-            //뒤에서 들렸을때 색영역 앞 왼쪽
-
-        } else if(!ir_val[1]) {
-            //앞에서 들렸을때 색영역 앞 오른쪽
-
-        }
-        SetSpeed(0.5, 0.5);
-        ThisThread::sleep_for(50);
-        SetSpeed(1.0, 0.3);
-        ThisThread::sleep_for(50); */ //뒤에서 들렸을때는 벽타기 전략으로 인해 폐기 !!
-    } else if(mpu9250.roll < -IMU_THRESHOLD) {
-        //오른쪽에서 들렸을때
-        if(!ir_val[0] && ir_val[3]) {
-            //앞에서 들렸을때 색영역 뒤쪽
-
-        } else if(!ir_val[0]) {
-            //앞에서 들렸을때 색영역 뒤 왼쪽
-
-        } else if(!ir_val[3]) {
-            //앞에서 들렸을때 색영역 뒤 오른쪽
-
-        }
-        SetSpeed(1.0, 1.0);
-        ThisThread::sleep_for(50);
-    } else if(mpu9250.roll > IMU_THRESHOLD) {
-        //왼쪽에서 들렸을때
-        if(!ir_val[1] && ir_val[4]) {
-            //앞에서 들렸을때 색영역 뒤쪽
-
-        } else if(!ir_val[1]) {
-            //앞에서 들렸을때 색영역 뒤 왼쪽
-
-        } else if(!ir_val[4]) {
-            //앞에서 들렸을때 색영역 뒤 오른쪽
-
-        }
-        SetSpeed(1.0, 1.0);
-        ThisThread::sleep_for(50);
+    switch (tilt_state) {
+        case TiltState::FRONT:
+            SetSpeed(1.0,1.0);
+            if(BackCollision) //벽_타기_함수(); 또는 벽_타기 State
+            break;
+        case TiltState::FRONT_LEFT:
+            SetSpeed(0.5,1.0);
+            break;
+        case TiltState::FRONT_RIGHT:
+            SetSpeed(1.0,0.5);
+            break;
+        case TiltState::SIDE_LEFT:
+            SetSpeed(-1.0,-1.0);
+            break;
+        case TiltState::SIDE_RIGHT:
+            SetSpeed(-1.0,-1.0);
+            break;
+        case TiltState::SAFE:
+            return;
     }
 }
-
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
     controller.SetupImu();
     while(1) {
         controller.ImuRefresh();
         controller.ImuDetect();
-        ThisThread::sleep_for(100);
+        ThisThread::sleep_for(5);
     }
 }
 void PsdThread() {
@@ -623,7 +604,7 @@ void PsdThread() {
         controller.IrRefresh();
         controller.SetPosition();
         controller.WallViewer();
-        ThisThread::sleep_for(100); //임의
+        ThisThread::sleep_for(5); //임의
     }
 }
 
@@ -669,4 +650,29 @@ void Controller::WallViewer() {
     if(controller.RightCollision == true) pc.printf("Right ");
     else pc.printf("      ");
     pc.printf("\r\n");
+}
+
+void Controller::ImuViewer() {
+    if(GetImuSafetyState()) pc.printf("SAFE!   ");
+    else if(!GetImuSafetyState()) pc.printf("UNSAFE!   ");
+    switch (tilt_state) {
+        case TiltState::FRONT:
+            pc.printf("FRONT TILTED\r\n");
+            break;
+        case TiltState::FRONT_LEFT:
+            pc.printf("FRONT LEFT TILTED\r\n");
+            break;
+        case TiltState::FRONT_RIGHT:
+            pc.printf("FRONT RIGHT TILTED\r\n");
+            break;
+        case TiltState::SIDE_LEFT:
+            pc.printf("SIDE LEFT TILTED\r\n");
+            break;
+        case TiltState::SIDE_RIGHT:
+            pc.printf("SIDE RIGHT TILTED\r\n");
+            break;
+        case TiltState::SAFE:
+            pc.printf("FUCK SAFE\r\n");
+            return;
+    }
 }

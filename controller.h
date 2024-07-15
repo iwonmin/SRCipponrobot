@@ -66,7 +66,12 @@ class Controller
         ClosetoLeftWall, CriticalLeftWall, ClosetoRightWall, CriticalRightWall,
         WallFront, WallBehind, ClosetoCenter, FartoCenter
     };
+        enum class TiltState
+    {
+        FRONT, FRONT_LEFT, FRONT_RIGHT, SIDE_LEFT, SIDE_RIGHT, SAFE
+    };
         bool StartFlag = false;
+
     //객체 생성시 실행되는 생성자 함수
     Controller();
 //-------------------Get & Set methods----------------------//
@@ -197,6 +202,8 @@ class Controller
     void OrientViewer(int);
 
     void WallViewer();
+
+    void ImuViewer();
 //--------------------Private variables--------------------------//
     private:
     //로봇 상태
@@ -205,6 +212,8 @@ class Controller
     enum ColorOrient Orient;
     //예상되는 위치
     enum Position CurrentPos;
+    //Imu 상태
+    enum TiltState tilt_state;
     //적 감지 여부
     volatile bool enemy = false;
 
