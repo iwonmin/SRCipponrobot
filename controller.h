@@ -13,7 +13,7 @@
 #define WALL_DISTANCE 70 //cm
 #define TIME_90DEGTURN 50 //ms, pwm == 0.5
 #define Time_10CMMOVE 20 //ms, pwm == 0.5
-#define IMU_THRESHOLD 4.f
+#define IMU_THRESHOLD 8.f
 #define ESCAPE_TIME 800 //ms
 #pragma endregion Preprocessor
 #pragma region external
@@ -32,7 +32,8 @@ extern GP2A psdb;
 extern GP2A psdrb;
 extern DigitalIn irfl;
 extern DigitalIn irfr;
-extern DigitalIn irc;
+extern DigitalIn irfc;
+extern DigitalIn irbc;
 extern DigitalIn irbl;
 extern DigitalIn irbr;
 extern class Controller controller;
@@ -237,7 +238,7 @@ class Controller
     //우측 바퀴 속력
     float speedR;
 
-    const float alpha_psd = 0.85f;
+    const float alpha_psd = 0.88f;
 
     uint16_t prev_distance[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
 
@@ -253,7 +254,7 @@ class Controller
 
     uint8_t FollowIndex = 0;
 
-    bool ir_val[5]; //irfl, irfr, irc, irbl, irbr //미리 선언되어야 함.
+    bool ir_val[6]; //irfl, irfr, irc, irbl, irbr //미리 선언되어야 함.
 
     uint8_t ir_total; 
 

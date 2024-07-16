@@ -16,7 +16,8 @@ GP2A psdb(PC_2, 30, 150, 60, 0);
 GP2A psdrb(PC_0, 7, 80, 24.6, -0.297);
 DigitalIn irfl(PC_4);
 DigitalIn irfr(PB_1);
-DigitalIn irc(PA_6);
+DigitalIn irfc(PA_6);
+DigitalIn irbc(PC_5);//new pin!!
 DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
 
@@ -390,13 +391,14 @@ void Controller::IrRefresh() {
     //IR = false 이면 색영역
     ir_val[0] = irfl.read();
     ir_val[1] = irfr.read();
-    ir_val[2] = irc.read();
-    ir_val[3] = irbl.read();
-    ir_val[4] = irbr.read();
-    ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4];
+    ir_val[2] = irfc.read();
+    ir_val[3] = irbc.read();
+    ir_val[4] = irbl.read();
+    ir_val[5] = irbr.read();
+    ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4] + ir_val[5];
     if (GetAttackState() && (ir_val[0] || ir_val[1]) ) Orient = ColorOrient::FRONT;
     //ir에서 피스톤질 모드::조금이라도 IR 있으면 일단 피하기->적 만나서 ATTACK 일때 색영역 Front 일때까지 밀면, 그때부터는 ir하나만걸려도 뒤로뺄예정.
-    if (ir_total < 3) ColorOrient();
+    if (ir_total <= 3) ColorOrient(); //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
     else Orient = ColorOrient::SAFE;
 }
 
@@ -404,25 +406,50 @@ void Controller::ColorOrient() {
     SetIrSafetyState(false);
     if (ir_total == 1) { 
         if (ir_val[0] == 1) {
-        Orient = ColorOrient::BACK_RIGHT;
-        } else if (ir_val[1] == 1) {
-        Orient = ColorOrient::BACK_LEFT;
-        } else if (ir_val[3] == 1) {
-        Orient = ColorOrient::FRONT_RIGHT;
-        } else if (ir_val[4] == 1) {
-        Orient = ColorOrient::FRONT_LEFT;
+            Orient = ColorOrient::BACK_RIGHT;
+        } else if (ir_val[1]) {
+            Orient = ColorOrient::BACK_LEFT;
+        } else if (ir_val[4]) {
+            Orient = ColorOrient::FRONT_RIGHT;
+        } else if (ir_val[5]) {
+            Orient = ColorOrient::FRONT_LEFT;
         } else {}
     } else if (ir_total == 2) {
-        if (ir_val[0] + ir_val[1] + ir_val[2] == 0) {
-        Orient = ColorOrient::FRONT;
-        } else if (ir_val[0] + ir_val[2] + ir_val[3] == 0) {
-        Orient = ColorOrient::TAN_LEFT;
-        } else if (ir_val[2] + ir_val[3] + ir_val[4] == 0) {
-        Orient = ColorOrient::BACK;
-        } else if (ir_val[1] + ir_val[2] + ir_val[4] == 0) {
-        Orient = ColorOrient::TAN_RIGHT;
-        } else {} 
-    } else {} // 5개에서 색영역 인식(Ir_Total == 0)
+        if (ir_val[4] && ir_val[5]) {
+            Orient = ColorOrient::FRONT;
+        } else if (ir_val[1] && ir_val[5]) {
+            Orient = ColorOrient::TAN_LEFT;
+        } else if (ir_val[0] && ir_val[1]) {
+            Orient = ColorOrient::BACK;
+        } else if (ir_val[0] && ir_val[4]) {
+            Orient = ColorOrient::TAN_RIGHT;
+        } 
+    } else if (ir_total == 3) {
+        if (ir_val[4] && ir_val[5]) {
+            Orient = ColorOrient::FRONT;
+        } else if (ir_val[1] && ir_val[5]) {
+            Orient = ColorOrient::TAN_LEFT;
+        } else if (ir_val[0] && ir_val[1]) {
+            Orient = ColorOrient::BACK;
+        } else if (ir_val[0] && ir_val[4]) {
+            Orient = ColorOrient::TAN_RIGHT;
+        } 
+    } else if (ir_total == 4) {
+        //2개씩만 인식 Front만 쓰지않을까? 영역은 주되 위험하지는 않은 상황
+        SetIrSafetyState(true);
+        if (ir_val[4] && ir_val[5]) {
+            Orient = ColorOrient::FRONT;
+        } else if (ir_val[1] && ir_val[5]) {
+            Orient = ColorOrient::TAN_LEFT;
+        } else if (ir_val[0] && ir_val[1]) {
+            Orient = ColorOrient::BACK;
+        } else if (ir_val[0] && ir_val[4]) {
+            Orient = ColorOrient::TAN_RIGHT;
+        } 
+    } else if (ir_total >= 5) {
+        SetIrSafetyState(true);
+        Orient = ColorOrient::SAFE;
+    } else {} //완전히 들어갔을 때, 딱히 뭐 안바꾸면 더들어가기 전이니까 ㄱㅊ지않을까?
 }
 enum Controller::ColorOrient Controller::GetOrient() { return Orient;}
 
@@ -632,13 +659,13 @@ void Controller::ImuRefresh() {
 }
 
 void Controller::ImuDetect()  {
-    if(GetEnemyState() && psd_val[1] < 15 && mpu9250.pitch > IMU_THRESHOLD) {
+    if(/*GetEnemyState() &&*/ psd_val[1] < 15 && mpu9250.pitch > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT;
-    } else if(GetEnemyState() && (psd_val[0] < 15 && psd_val[1] < 15) && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > IMU_THRESHOLD) {
+    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 15 && psd_val[1] < 15) && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_LEFT;
-    } else if((GetEnemyState() && psd_val[2] < 15 && psd_val[1] < 15) && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > IMU_THRESHOLD) {
+    } else if((/*GetEnemyState() && */ psd_val[2] < 15 && psd_val[1] < 15) && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_RIGHT;
     } else if(psd_val[0] < 15 && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > IMU_THRESHOLD) {
@@ -655,9 +682,9 @@ void Controller::ImuDetect()  {
             tilt_state = TiltState::SIDE_LEFT;
             Escape_Timer.reset();
         }*/
-    } else if(psd_val[2] < 15 && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > 4.f) {
+    } else if(psd_val[2] < 15 && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[2] < 15 && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > 4.f && Escape_Timer.read_ms() > ESCAPE_TIME) {
+        if(psd_val[2] < 15 && sqrt(mpu9250.pitch * mpu9250.pitch + mpu9250.roll * mpu9250.roll) > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
             tilt_state = TiltState::SIDE_RIGHT;
             Escape_Timer.reset();
@@ -701,7 +728,7 @@ void ImuThread() {
         controller.ImuRefresh();
         controller.ImuDetect();
         controller.ImuViewer();
-        ThisThread::sleep_for(5);
+        ThisThread::sleep_for(20);
     }
 }
 void PsdThread() {
@@ -710,7 +737,7 @@ void PsdThread() {
         controller.IrRefresh();
         controller.SetPosition();
         // controller.WallViewer();
-        ThisThread::sleep_for(5); //임의
+        ThisThread::sleep_for(20); //임의
     }
 }
 
@@ -778,7 +805,7 @@ void Controller::ImuViewer() {
             pc.printf("SIDE RIGHT TILTED\r\n");
             break;
         case TiltState::SAFE:
-            pc.printf("FUCK SAFE\r\n");
+            pc.printf("SAFE\r\n");
             return;
     }
 }
