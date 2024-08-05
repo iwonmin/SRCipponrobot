@@ -24,17 +24,17 @@ int main()
         switch (keyInput) 
         {
             case '1':
-            controller.startFlag = true;
+            controller.SetStartFlag(true);
             break;
             case '2':
-            controller.startFlag=false;
+            controller.SetStartFlag(false);
             controller.SetState(Controller::RoboState::START);
             break;
             case '3':
-            controller.isSafe = false;
+            //controller.isSafe = false;
             break;
             case '4':
-            controller.isSafe = true;
+            //controller.isSafe = true;
             break;
             case '5':
             controller.SetEnemyState(false);
@@ -43,16 +43,16 @@ int main()
             controller.SetEnemyState(true);
             break;
             case '7':
-            controller.yellow = false;
+            controller.SetYellow(false);
             break;
             case '8':
-            controller.yellow = true;
+            controller.SetYellow(true);
             break;
             case '9':
-            controller.isClose = false;
+            controller.SetClose(false);
             break;
             case '0':
-            controller.isClose = true;
+            controller.SetClose(true);
             break;
         }
         controller.EnemyDetect();
