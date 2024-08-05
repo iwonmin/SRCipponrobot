@@ -41,6 +41,7 @@ extern Thread Thread1;
 extern Thread Thread2;
 extern Serial pc;
 extern Serial hm10;
+extern Timer timer;
 #pragma endregion external
 class Controller
 {

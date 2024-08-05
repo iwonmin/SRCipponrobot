@@ -20,7 +20,7 @@ DigitalIn irfc(PA_6);
 DigitalIn irbc(PC_5);//new pin!!
 DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
-
+Timer timer;
 MPU9250 mpu9250(D14, D15);
 Controller controller;
 Thread Thread1;
@@ -37,7 +37,6 @@ Serial hm10(PC_10,PC_11,115200);
 // Raspberry Pi와의 통신 설정 (TX, RX, baud rate)
 Serial device(D8, D2, 9600);
 
-extern Timer timer;
 // 소수점 발견 여부를 추적하기 위한 변수
 bool decimalPointSeen = false;
 // 부호 정보를 추적하기 위한 변수

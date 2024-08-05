@@ -1,16 +1,10 @@
 #include "mbed.h"
 #include "controller.h"
-
-//상태 디버깅 용 타이머
-Timer timer;
-
-
 //디버그용 키보드 입력
 char c;
-
 int main()
 {
-    pc.printf("1234");
+    pc.printf("Serial check check");
     hm10.printf("Waiting for keyboard input\n");
     timer.start();
      while (true) {
