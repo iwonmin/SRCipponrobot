@@ -58,7 +58,9 @@ class Controller
         //공격
         ATTACK,
         //탈출
-        ESCAPE
+        ESCAPE,
+        //노랑
+        YELLOW
     };
 
         enum class ColorOrient
@@ -74,7 +76,7 @@ class Controller
     {
         FRONT, FRONT_LEFT, FRONT_RIGHT, SIDE_LEFT, SIDE_RIGHT, SAFE
     };
-        bool StartFlag = false;
+    bool StartFlag = false;
 
     //객체 생성시 실행되는 생성자 함수
     Controller();
@@ -127,6 +129,22 @@ class Controller
 
     //적과의 수평거리 변환
     void SetHD(int HD);
+
+    //yellowFlag반환
+    bool GetYellow();
+
+    //yellowFlag 설정
+    void SetYellow(bool yellow);
+
+    //근접여부 반환
+    bool GetIsClose();
+
+    //근접여부 설정정
+    void SetIsClose(bool isClose);
+
+    bool GetSafe();
+
+    void SetSafe(bool isSafe);
 //--------------------State Machine methods----------------------//
     //초기상태 시 실행 함수
     void Start();
@@ -143,6 +161,8 @@ class Controller
      //탈출상태 시 실행 함수
     void Escape();
 
+    //yellow상태 실행 함수
+    void Yellow();
     //주행 함수
     void Move(float sL, float sR);
 
@@ -281,6 +301,11 @@ class Controller
 
     Timer t; //for gyro integral;
 
+    bool yellow = false;
+
+    bool isClose = false;
+
+    bool isSafe = true;//임시용용
 };
 
 //-------------------------Thread----------------------------//
