@@ -8,7 +8,7 @@ Timer timer;
 Serial hm10(PC_10,PC_11,115200);
 
 //디버그용 키보드 입력
-char keyInput;
+char c;
 
 int main()
 {
@@ -16,12 +16,14 @@ int main()
     Controller controller;
     timer.start();
      while (true) {
-         if(hm10.readable())
-         {
-             keyInput = hm10.getc();
-             hm10.printf("input char = %c\n",keyInput);
-         }
-        switch (keyInput) 
+        if(hm10.readable())
+        {
+            c = hm10.getc();
+            hm10.printf("input char = %c\n",c);
+        }else{
+            hm10.printf("Serial is not readable");
+        }
+        switch (c) 
         {
             case '1':
             controller.SetStartFlag(true);
@@ -55,7 +57,7 @@ int main()
             controller.SetClose(true);
             break;
         }
-        controller.EnemyDetect();
+        //controller.EnemyDetect();
         switch(controller.GetState())
         {
             case Controller::RoboState::START:
