@@ -42,6 +42,9 @@ extern Thread Thread2;
 extern Serial pc;
 extern Serial hm10;
 extern Timer timer;
+
+extern char blInput;
+
 #pragma endregion external
 class Controller
 {
@@ -58,6 +61,7 @@ class Controller
         ATTACK,
         //탈출
         ESCAPE,
+
         YELLOW
     };
 
@@ -74,7 +78,7 @@ class Controller
     {
         FRONT, FRONT_LEFT, FRONT_RIGHT, SIDE_LEFT, SIDE_RIGHT, SAFE
     };
-        bool StartFlag = false;
+    bool StartFlag = false;
 
     //객체 생성시 실행되는 생성자 함수
     Controller();
@@ -128,23 +132,22 @@ class Controller
     //적과의 수평거리 변환
     void SetHD(int HD);
 
-    //시작플래그 체크
-    bool GetStartFlag();
-
-    //시작플래그 설정
-    void SetStartFlag(bool startFlag);
-
-    //근접여부 반환
-    bool GetClose();
-
-    //근접여부 설정
-    void SetClose(bool isClose);
-
-    //노랑플래그 반환
+    //yellowFlag반환
     bool GetYellow();
 
-    //노랑 플래그 설정
+    //yellowFlag 설정
     void SetYellow(bool yellow);
+
+    //근접여부 반환
+    bool GetIsClose();
+
+    //근접여부 설정정
+    void SetIsClose(bool isClose);
+
+    bool GetSafe();
+
+    void SetSafe(bool isSafe);
+
 //--------------------State Machine methods----------------------//
     //초기상태 시 실행 함수
     void Start();
@@ -161,9 +164,8 @@ class Controller
      //탈출상태 시 실행 함수
     void Escape();
 
-    //노랑상태 시 실행 함수
+    //yellow상태 실행 함수
     void Yellow();
-
 
     //주행 함수
     void Move(float sL, float sR);
@@ -308,6 +310,11 @@ class Controller
 
     Timer t; //for gyro integral;
 
+    bool yellow = false;
+
+    bool isClose = false;
+
+    bool isSafe = true;//임시용용
 };
 
 //-------------------------Thread----------------------------//

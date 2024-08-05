@@ -1,34 +1,37 @@
 #include "mbed.h"
 #include "controller.h"
-//디버그용 키보드 입력
-char c;
+
+
+Controller controller;
 int main()
 {
-    pc.printf("Serial check check");
-    hm10.printf("Waiting for keyboard input\n");
+    
+    //pc.printf("hello");
+    hm10.printf("Waiting for Keyboard input\n");
     timer.start();
-     while (true) {
+ while (true) 
+    {
         if(hm10.readable())
         {
-            c = hm10.getc();
-            hm10.printf("input char = %c\n",c);
-        }else{
-            hm10.printf("Serial is not readable");
+
+            blInput=hm10.getc();
+            hm10.printf("input char = %c\n",blInput);
         }
-        switch (c) 
+        switch(blInput)
         {
             case '1':
-            controller.SetStartFlag(true);
+            controller.StartFlag = true;
             break;
             case '2':
-            controller.SetStartFlag(false);
+            controller.StartFlag=false;
             controller.SetState(Controller::RoboState::START);
             break;
             case '3':
-            //controller.isSafe = false;
+            controller.SetSafe(false);
             break;
             case '4':
-            //controller.isSafe = true;
+            controller.SetSafe(true);
+
             break;
             case '5':
             controller.SetEnemyState(false);
@@ -43,13 +46,15 @@ int main()
             controller.SetYellow(true);
             break;
             case '9':
-            controller.SetClose(false);
+
+            controller.SetIsClose(false);
             break;
             case '0':
-            controller.SetClose(true);
+            controller.SetIsClose(true);
             break;
         }
-        //controller.EnemyDetect();
+        controller.EnemyDetect();
+
         switch(controller.GetState())
         {
             case Controller::RoboState::START:
