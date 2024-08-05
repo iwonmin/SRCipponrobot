@@ -1,6 +1,11 @@
 #include "mbed.h"
 #include "controller.h"
 
+//상태 디버깅 용 타이머
+Timer timer;
+
+//블루투스 통신
+Serial hm10(PC_10,PC_11,115200);
 int main()
 {
  while (true) {

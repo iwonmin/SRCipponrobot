@@ -30,6 +30,10 @@ Thread Thread2;
 #pragma region Serial Variables
 // PC와의 통신을 위한 Serial 객체 생성
 Serial pc(USBTX, USBRX, 115200);
+
+//블루투스 통신
+Serial hm11(PC_10,PC_11,115200);
+
 // Raspberry Pi와의 통신 설정 (TX, RX, baud rate)
 Serial device(D8, D2, 9600);
 // 소수점 발견 여부를 추적하기 위한 변수
