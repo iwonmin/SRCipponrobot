@@ -6,9 +6,55 @@ Timer timer;
 
 //블루투스 통신
 Serial hm10(PC_10,PC_11,115200);
+
+//디버그용 키보드 입력
+char keyInput;
+
 int main()
 {
- while (true) {
+    hm10.printf("Waiting for keyboard input\n");
+    Controller controller;
+    timer.start();
+     while (true) {
+         if(hm10.readable())
+         {
+             keyInput = hm10.getc();
+             hm10.printf("input char = %c\n",keyInput);
+         }
+        switch (keyInput) 
+        {
+            case '1':
+            controller.startFlag = true;
+            break;
+            case '2':
+            controller.startFlag=false;
+            controller.SetState(Controller::RoboState::START);
+            break;
+            case '3':
+            controller.isSafe = false;
+            break;
+            case '4':
+            controller.isSafe = true;
+            break;
+            case '5':
+            controller.SetEnemyState(false);
+            break;
+            case '6':
+            controller.SetEnemyState(true);
+            break;
+            case '7':
+            controller.yellow = false;
+            break;
+            case '8':
+            controller.yellow = true;
+            break;
+            case '9':
+            controller.isClose = false;
+            break;
+            case '0':
+            controller.isClose = true;
+            break;
+        }
         controller.EnemyDetect();
         switch(controller.GetState())
         {

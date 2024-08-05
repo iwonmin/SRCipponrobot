@@ -36,7 +36,7 @@ extern DigitalIn irfc;
 extern DigitalIn irbc;
 extern DigitalIn irbl;
 extern DigitalIn irbr;
-extern class Controller controller;
+//extern class Controller controller;
 extern Thread Thread1;
 extern Thread Thread2;
 extern Serial pc;
@@ -126,6 +126,24 @@ class Controller
 
     //적과의 수평거리 변환
     void SetHD(int HD);
+
+    //시작플래그 체크
+    bool GetStartFlag();
+
+    //시작플래그 설정
+    void SetStartFlag(bool startFlag);
+
+    //근접여부 반환
+    bool GetClose();
+
+    //근접여부 설정
+    void SetClose(bool isClose);
+
+    //노랑플래그 반환
+    bool GetYellow();
+
+    //노랑 플래그 설정
+    void SetYellow(bool yellow);
 //--------------------State Machine methods----------------------//
     //초기상태 시 실행 함수
     void Start();
@@ -141,7 +159,7 @@ class Controller
 
     //탈출상태 시 실행 함수
     void Escape();
-    
+
     //노랑상태 시 실행 함수
     void Yellow();
 
@@ -227,6 +245,11 @@ class Controller
 
     volatile bool attack = false;
     
+    volatile bool startFlag = false;
+
+    volatile bool yellow = false;
+
+    volatile bool isClose = false;
     //적과 벌어진 거리
     int enemy_horizontal_distance;
 

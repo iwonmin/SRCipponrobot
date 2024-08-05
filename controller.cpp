@@ -70,24 +70,24 @@ void Controller::SetSpeed(float speed) {
 void Controller::SetSpeed(float sL, float sR) {
   float speedL_i = GetSpeedL();
   float speedR_i = GetSpeedR();
-  int interval_L = (sL - speedL_i) / 0.1f;
-  int interval_R = (sR - speedR_i) / 0.1f;
-  for (int i = 0; i <= abs(interval_L); i++) {
-    if (interval_L >= 0) {
-      speedL = speedL_i + 0.1 * i;
-    } else {
-      speedL = speedL_i - 0.1 * i;
-    }
-  }
-  for (int i = 0; i <= abs(interval_R); i++) {
-    if (interval_R >= 0) {
-      speedR = speedR_i + 0.1 * i;
-    } else {
-      speedR = speedR_i - 0.1 * i;
-    }
-  }
-  // speedL = sL;
-  // speedR = sR;
+//   int interval_L = (sL - speedL_i) / 0.1f;
+//   int interval_R = (sR - speedR_i) / 0.1f;
+//   for (int i = 0; i <= abs(interval_L); i++) {
+//     if (interval_L >= 0) {
+//       speedL = speedL_i + 0.1 * i;
+//     } else {
+//       speedL = speedL_i - 0.1 * i;
+//     }
+//   }
+//   for (int i = 0; i <= abs(interval_R); i++) {
+//     if (interval_R >= 0) {
+//       speedR = speedR_i + 0.1 * i;
+//     } else {
+//       speedR = speedR_i - 0.1 * i;
+//     }
+//   }
+speedL = sL;
+speedR = sR;
 };
 //==================================flags startregion=================================//
 bool Controller::GetEnemyState() { return enemy; }
@@ -114,6 +114,18 @@ void Controller::SetWallSafetyState(bool WallSafetyState) { wallSafe = WallSafet
 int Controller::GetHD() { return enemy_horizontal_distance; }
 
 void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
+
+bool Controller::GetStartFlag(){return startFlag;}
+
+void Controller::SetStartFlag(bool sf){startFlag = sf;}
+
+bool Controller::GetClose(){return isClose;}
+
+void Controller::SetClose(bool ic){isClose = ic;}
+
+bool Controller::GetYellow() {return yellow;}
+
+void Controller::SetYellow(bool y){yellow = y;}
 
 void Controller::Move(float sL, float sR) {
   if (sL < 0)
