@@ -110,6 +110,43 @@ void Controller::SetWallSafetyState(bool WallSafetyState) { wallSafe = WallSafet
 int Controller::GetHD() { return enemy_horizontal_distance; }
 
 void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
+
+void Controller::Move(float sL, float sR) {
+  if (sL < 0)
+    DirL = 0;
+  else
+    DirL = 1;
+  if (sR < 0)
+    DirR = 0;
+  else
+    DirR = 1;
+
+  PwmL = abs(sL);
+  PwmR = abs(sR);
+};
+
+void Controller::EnemyDetect() {
+  if (device.readable()) {
+    char receivedChar = device.getc();
+    if (receivedChar == '*') {
+      SetEnemyState(false);
+    } else {
+      SetEnemyState(true);
+    }
+    if (receivedChar == '/') {
+      distanceBuffer[bufferIndex] = '\0';
+      SetHD(atoi(distanceBuffer));
+      pc.printf("Received Distance: %d\n", GetHD());
+      bufferIndex = 0; // 버퍼 초기화
+    } else {
+      distanceBuffer[bufferIndex] = receivedChar;
+      bufferIndex++;
+      if (bufferIndex >= sizeof(distanceBuffer) - 1) {
+        bufferIndex = 0; // 버퍼가 가득 찬 경우 초기화
+      }
+    }
+  }
+}
 //===================================FSM Function============================
 void Controller::Start() {
     if(StartFlag) {
@@ -173,45 +210,10 @@ void Controller::Escape() {
 };
 
 void Controller::Yellow(){
-    
+
 }
 //==========================================================================
-void Controller::Move(float sL, float sR) {
-  if (sL < 0)
-    DirL = 0;
-  else
-    DirL = 1;
-  if (sR < 0)
-    DirR = 0;
-  else
-    DirR = 1;
 
-  PwmL = abs(sL);
-  PwmR = abs(sR);
-};
-
-void Controller::EnemyDetect() {
-  if (device.readable()) {
-    char receivedChar = device.getc();
-    if (receivedChar == '*') {
-      SetEnemyState(false);
-    } else {
-      SetEnemyState(true);
-    }
-    if (receivedChar == '/') {
-      distanceBuffer[bufferIndex] = '\0';
-      SetHD(atoi(distanceBuffer));
-      pc.printf("Received Distance: %d\n", GetHD());
-      bufferIndex = 0; // 버퍼 초기화
-    } else {
-      distanceBuffer[bufferIndex] = receivedChar;
-      bufferIndex++;
-      if (bufferIndex >= sizeof(distanceBuffer) - 1) {
-        bufferIndex = 0; // 버퍼가 가득 찬 경우 초기화
-      }
-    }
-  }
-}
 
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
