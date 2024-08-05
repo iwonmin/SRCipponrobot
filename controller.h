@@ -36,7 +36,7 @@ extern DigitalIn irfc;
 extern DigitalIn irbc;
 extern DigitalIn irbl;
 extern DigitalIn irbr;
-//extern class Controller controller;
+extern class Controller controller;
 extern Thread Thread1;
 extern Thread Thread2;
 extern Serial pc;
