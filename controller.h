@@ -1,7 +1,7 @@
 #include "mbed.h"
 #include <string>
 #include <stdlib.h>
-#include "GP2A/GP2A.h"
+#include "GP2A.h"
 #include "rtos.h"
 #include "MPU9250.h"
 #pragma region Preprocessor
@@ -314,5 +314,3 @@ void ImuThread();
 void PsdThread();
 
 void Starter();
-
-//hello
