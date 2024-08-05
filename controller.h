@@ -55,7 +55,9 @@ class Controller
         //공격
         ATTACK,
         //탈출
-        ESCAPE
+        ESCAPE,
+        //노란영역
+        YELLOW
     };
 
         enum class ColorOrient
@@ -131,14 +133,17 @@ class Controller
     //대기상태 시 실행 함수
     void Idle();
 
-     //감지상태 시 실행 함수
+    //감지상태 시 실행 함수
     void Detect();
 
-     //공격상태 시 실행 함수
+    //공격상태 시 실행 함수
     void Attack();
 
-     //탈출상태 시 실행 함수
+    //탈출상태 시 실행 함수
     void Escape();
+    
+    //노랑상태 시 실행 함수
+    void Yellow();
 
     //주행 함수
     void Move(float sL, float sR);

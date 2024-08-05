@@ -110,7 +110,7 @@ void Controller::SetWallSafetyState(bool WallSafetyState) { wallSafe = WallSafet
 int Controller::GetHD() { return enemy_horizontal_distance; }
 
 void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
-
+//===================================FSM Function============================
 void Controller::Start() {
     if(StartFlag) {
     Thread1.start(ImuThread);
@@ -172,6 +172,10 @@ void Controller::Escape() {
     SetState(RoboState::IDLE);
 };
 
+void Controller::Yellow(){
+    
+}
+//==========================================================================
 void Controller::Move(float sL, float sR) {
   if (sL < 0)
     DirL = 0;
