@@ -40,6 +40,12 @@ bool isNegative = false;
 char distanceBuffer[32];
 
 int bufferIndex = 0;
+
+Serial hm10(PC_10,PC_11,115200);
+
+Timer timer;
+
+char blInput;
 #pragma endregion Serial Variables
 
 DigitalOut led1(LED1);

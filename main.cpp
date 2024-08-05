@@ -3,7 +3,17 @@
 
 int main()
 {
- while (true) {
+    pc.printf("hello");
+    hm10.printf("Waiting for Keyboard input\n");
+    timer.start();
+ while (true) 
+    {
+        if(hm10.readable())
+        {
+
+            blInput=hm10.getc();
+            hm10.printf("input char = %c\n",blInput);
+        }
         controller.EnemyDetect();
         switch(controller.GetState())
         {
