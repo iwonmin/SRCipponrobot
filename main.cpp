@@ -4,15 +4,13 @@
 //상태 디버깅 용 타이머
 Timer timer;
 
-//블루투스 통신
-Serial hm10(PC_10,PC_11,115200);
-Serial pc2(USBTX,USBRX,115200);
+
 //디버그용 키보드 입력
 char c;
 
 int main()
 {
-    pc2.printf("1234");
+    pc.printf("1234");
     hm10.printf("Waiting for keyboard input\n");
     timer.start();
      while (true) {
