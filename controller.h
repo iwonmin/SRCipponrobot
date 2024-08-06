@@ -89,11 +89,15 @@ class Controller
     //로봇의 상태를 변환
     void SetState(RoboState state);
     
-    //적 감지 여부 변환
-    void SetEnemyState(bool enemyState);
     //적 감지 여부 반환
     bool GetEnemyState();
+    
+    //적 감지 여부 변환
+    void SetEnemyState(bool enemyState);
 
+    bool GetStartFlag();
+
+    void SetStartFlag(bool sf);
     //적 감지 여부 변환
     void SetAttackState(bool attackState);
     //적 감지 여부 반환
@@ -255,7 +259,7 @@ class Controller
 
     volatile bool isClose = false;
     //적과 벌어진 거리
-    int enemy_horizontal_distance;
+    int enemy_horizontal_distance=-1;
 
     //위험 지역 여부
     volatile bool irSafe = true;
@@ -309,10 +313,6 @@ class Controller
     float accel_angle_x, accel_angle_y, mag_angle_z;
 
     Timer t; //for gyro integral;
-
-    bool yellow = false;
-
-    bool isClose = false;
 
     bool isSafe = true;//임시용용
 };
