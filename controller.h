@@ -259,7 +259,7 @@ class Controller
 
     volatile bool isClose = false;
     //적과 벌어진 거리
-    int enemy_horizontal_distance=-1;
+    int enemy_horizontal_distance= 1;
 
     //위험 지역 여부
     volatile bool irSafe = true;

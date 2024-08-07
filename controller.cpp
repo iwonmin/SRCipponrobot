@@ -1,4 +1,5 @@
 #include "controller.h"
+#include <cstdio>
 char buffer[8] = "";
 #pragma region variables
 InterruptIn btn(BUTTON1);
@@ -108,9 +109,9 @@ bool Controller::GetEnemyState() { return enemy; }
 
 void Controller::SetEnemyState(bool enemyState) { enemy = enemyState; }
 
-bool Controller::GetStartFlag() {return stateFlag;}
+bool Controller::GetStartFlag() {return StartFlag;}
 
-void Controller::SetStartFlag(bool sf){stateFlag=sf;}
+void Controller::SetStartFlag(bool sf){StartFlag=sf;}
 
 bool Controller::GetAttackState() { return attack; }
 
@@ -207,7 +208,9 @@ void Controller::Idle() {
         hm10.printf("State transisted to IDLE Mode\n");
         stateFlag=false;
     }
-    if (imuSafe && irSafe && wallSafe) {
+    //if (imuSafe && irSafe && wallSafe) {
+    if(GetSafe())
+    {
         {
             hm10.printf("Safety check Completed, Transist to DETECT Mode\n");
             stateFlag=true;
@@ -227,7 +230,9 @@ void Controller::Detect() {
         hm10.printf("State transisted to DETECT Mode\n");
         stateFlag=false;
     }
-    if (imuSafe && irSafe && wallSafe) {
+    //if (imuSafe && irSafe && wallSafe) {
+    if(GetSafe())
+    {
         if (GetEnemyState()) 
         {
             if(GetYellow()==false){
@@ -265,7 +270,9 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
         stateFlag=false;
     }
     if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
-    if (irSafe && imuSafe) {
+    //if (irSafe && imuSafe) {
+    if(GetSafe())
+    {
         if(GetEnemyState()==true){
             if(timer.read()>=2.0){
                 hm10.printf("Attacking enemy...\n");
@@ -293,24 +300,33 @@ void Controller::Escape() {
         hm10.printf("State transisted to ESCAPE Mode\n");
         stateFlag=false;
     }
-    if (!GetImuSafetyState()) {
-        ImuEscape(); 
-    } else if (!GetIrSafetyState()) {
-        IrEscape(Orient);
-    } else if (!GetWallSafetyState()) {
-        PsdWallEscape();
-    } 
-    SetState(RoboState::IDLE);
+    // if (!GetImuSafetyState()) {
+    //     ImuEscape(); 
+    // } else if (!GetIrSafetyState()) {
+    //     IrEscape(Orient);
+    // } else if (!GetWallSafetyState()) {
+    //     PsdWallEscape();
+    // } 
+    if(GetSafe())
+    {
+        hm10.printf("Escape completed, Transist to IDLE Mode\n");
+        SetState(RoboState::IDLE);
+    }else
+    {
+        if(timer.read()>=2.0){
+            hm10.printf("Escaping from risk...\n");
+            timer.reset();
+        }
+    }
 };
 
 void Controller::Yellow(){
-    if(stateFlag && yellow==false)
+    if(stateFlag && GetYellow()==false)
     {
         hm10.printf("State transisted to YELLOW Mode\n");
         stateFlag=false;
     }
-    
-    if(yellow==true)
+    if(GetYellow())
     {
         if(timer.read()>=2.0){
             hm10.printf("Waiting for enemy to approach close enough\n");
@@ -321,8 +337,12 @@ void Controller::Yellow(){
             SetState(RoboState::ATTACK);
         }
     }else{
-        if(timer.read()>=2.0){
-            hm10.printf("Moving to Yellow area\n");
+        if(GetHD()>0 && timer.read()>=2.0){
+            hm10.printf("Moving to left side Yellow area\n");
+            timer.reset();
+        }
+        if(GetHD()<0 && timer.read()>=2.0){
+            hm10.printf("Moving to right side Yellow area\n");
             timer.reset();
         }
     }
