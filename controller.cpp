@@ -328,6 +328,7 @@ void Controller::Yellow(){
     }
     if(GetYellow())
     {
+        SetSpeed(0);
         if(timer.read()>=2.0){
             hm10.printf("Waiting for enemy to approach close enough\n");
             timer.reset();
@@ -337,13 +338,19 @@ void Controller::Yellow(){
             SetState(RoboState::ATTACK);
         }
     }else{
-        if(GetHD()>0 && timer.read()>=2.0){
-            hm10.printf("Moving to left side Yellow area\n");
-            timer.reset();
+        if(GetHD()>0){ 
+            SetSpeed(0.8,0.3);
+            if(timer.read()>=2.0){
+                hm10.printf("Moving to left side Yellow area\n");
+                timer.reset();
+            }
         }
-        if(GetHD()<0 && timer.read()>=2.0){
-            hm10.printf("Moving to right side Yellow area\n");
-            timer.reset();
+        if(GetHD()<0){ 
+            SetSpeed(0.3,0.8);
+            if(timer.read()>=2.0){
+                hm10.printf("Moving to left side Yellow area\n");
+                timer.reset();
+            }
         }
     }
 }
