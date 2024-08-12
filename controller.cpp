@@ -20,9 +20,9 @@ DigitalIn irfc(PA_6);
 DigitalIn irbc(PC_5);//new pin!!
 DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
-Timer timer;
+
 MPU9250 mpu9250(D14, D15);
-// Controller controller;
+Controller controller;
 Thread Thread1;
 Thread Thread2;
 #pragma endregion variables
@@ -30,44 +30,26 @@ Thread Thread2;
 #pragma region Serial Variables
 // PC와의 통신을 위한 Serial 객체 생성
 Serial pc(USBTX, USBRX, 115200);
-
-//블루투스 통신
-Serial hm10(PC_10,PC_11,115200);
-
 // Raspberry Pi와의 통신 설정 (TX, RX, baud rate)
 Serial device(D8, D2, 9600);
-
 // 소수점 발견 여부를 추적하기 위한 변수
 bool decimalPointSeen = false;
 // 부호 정보를 추적하기 위한 변수
 bool isNegative = false;
 
-bool stateFlag = true;
 char distanceBuffer[32];
 
 int bufferIndex = 0;
-
-Serial hm10(PC_10,PC_11,115200);
-
-Timer timer;
-
-char blInput;
-
-bool stateFlag = true;
-
-
 #pragma endregion Serial Variables
 
 DigitalOut led1(LED1);
 
-
-Controller::Controller() 
-{ 
-    if(stateFlag){hm10.printf("Operating System, Transist to START Mode\n");}
+Controller::Controller() { 
     SetState(RoboState::START);
     btn.fall(&Starter);
-}
-
+    PwmL.period_us(66);
+    PwmR.period_us(66);
+  }
 
 Controller::RoboState Controller::GetState() { return robo_state; };
 
@@ -84,28 +66,24 @@ void Controller::SetSpeed(float speed) {
 void Controller::SetSpeed(float sL, float sR) {
   float speedL_i = GetSpeedL();
   float speedR_i = GetSpeedR();
-
-//   int interval_L = (sL - speedL_i) / 0.1f;
-//   int interval_R = (sR - speedR_i) / 0.1f;
-
-//   for (int i = 0; i <= abs(interval_L); i++) {
-//     if (interval_L >= 0) {
-//       speedL = speedL_i + 0.1 * i;
-//     } else {
-//       speedL = speedL_i - 0.1 * i;
-//     }
-//   }
-//   for (int i = 0; i <= abs(interval_R); i++) {
-//     if (interval_R >= 0) {
-//       speedR = speedR_i + 0.1 * i;
-//     } else {
-//       speedR = speedR_i - 0.1 * i;
-//     }
-//   }
-
-speedL = sL;
-speedR = sR;
-
+  int interval_L = (sL - speedL_i) / 0.1f;
+  int interval_R = (sR - speedR_i) / 0.1f;
+  for (int i = 0; i <= abs(interval_L); i++) {
+    if (interval_L >= 0) {
+      speedL = speedL_i + 0.1 * i;
+    } else {
+      speedL = speedL_i - 0.1 * i;
+    }
+  }
+  for (int i = 0; i <= abs(interval_R); i++) {
+    if (interval_R >= 0) {
+      speedR = speedR_i + 0.1 * i;
+    } else {
+      speedR = speedR_i - 0.1 * i;
+    }
+  }
+  // speedL = sL;
+  // speedR = sR;
 };
 //==================================flags startregion=================================//
 bool Controller::GetEnemyState() { return enemy; }
@@ -127,182 +105,72 @@ void Controller::SetImuSafetyState(bool ImuSafetyState) { imuSafe = ImuSafetySta
 bool Controller::GetWallSafetyState() { return wallSafe; };
 
 void Controller::SetWallSafetyState(bool WallSafetyState) { wallSafe = WallSafetyState; }
+//==================================flags endregion=================================//
 
 int Controller::GetHD() { return enemy_horizontal_distance; }
 
 void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
 
-
-bool Controller::GetYellow() {return yellow;}
-
-void Controller::SetYellow(bool y){yellow = y;}
-
-bool Controller::GetIsClose(){return isClose;}
-
-void Controller::SetIsClose(bool ic){isClose = ic;}
-
-bool Controller::GetSafe(){return isSafe;}
-
-void Controller::SetSafe(bool s){isSafe = s;}
-//==================================flags endregion=================================//
 void Controller::Start() {
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to START, waiting for startFlag\n");
-        stateFlag=false;
-    }
-    if(StartFlag) {        
-    PwmL.period_us(66);
-    PwmR.period_us(66);
+    if(StartFlag) {
     Thread1.start(ImuThread);
     Thread1.set_priority(osPriorityHigh);
     Thread2.start(PsdThread);
     Thread2.set_priority(osPriorityAboveNormal);
-    hm10.printf("Initial condition setting completed, Transist to IDLE Mode\n");
-    stateFlag=true;
     SetState(RoboState::IDLE);
     }
 };
 
 void Controller::Idle() {
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to IDLE Mode\n");
-        stateFlag=false;
-    }
-    //if (imuSafe && irSafe && wallSafe) {
-    if(isSafe){
-        if(GetYellow()==false)
-        {
-            hm10.printf("YELLOW is available, Transist to YELLOW Mode\n");
-            stateFlag=true;
-            SetState(RoboState::YELLOW);
-        }else
-        {
-            hm10.printf("Safety check Completed, Transist to DETECT Mode\n");
-            stateFlag=true;
-            SetState(RoboState::DETECT);       
-        }
-    } else {
-        hm10.printf("Risk detected, Transist to ESCAPE Mode\n");
-        stateFlag=true;
-        SetState(RoboState::ESCAPE);
-    }
+  if (imuSafe && irSafe && wallSafe) {
+    SetState(RoboState::DETECT);
+  } else {
+    SetState(RoboState::ESCAPE);
+  }
 };
 
 void Controller::Detect() {
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to DETECT Mode\n");
-        stateFlag=false;
-    }
-    //if (imuSafe && irSafe && wallSafe) {
-    if(isSafe){
+    if (imuSafe && irSafe && wallSafe) {
         if (GetEnemyState()) {
-            hm10.printf("Enemy detected, Transist to ATTACK Mode\n");
-            stateFlag=true;
-            SetSpeed(0);
-            SetState(RoboState::ATTACK);
-        } else if (!GetEnemyState() && GetHD() > 0 && timer.read()>=2.0) {
-            led1 = 0;
-            hm10.printf("Detecting enemy on left\n");
-            timer.reset();
-            SetSpeed(-0.5, 0.5);
-        } else if (!GetEnemyState() && GetHD() < 0 && timer.read()>=2.0) {
-            led1 = 0;
-            hm10.printf("Detecting enemy on right\n");
-            timer.reset();
-            SetSpeed(0.5, -0.5);
+        SetSpeed(0);
+        SetState(RoboState::ATTACK);
+        } else if (!GetEnemyState() && GetHD() > 0) {
+        led1 = 0;
+        SetSpeed(-0.5, 0.5);
+        } else if (!GetEnemyState() && GetHD() < 0) {
+        led1 = 0;
+        SetSpeed(0.5, -0.5);
         }
     } else {
-        hm10.printf("Risk detected, Transist to ESCAPE state Mode\n");
-        stateFlag=true;
-        SetState(RoboState::ESCAPE);
+        SetState(RoboState::IDLE);
     }
 };
 
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to ATTACK Mode\n");
-        stateFlag=false;
-    }
     if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
-    //if (irSafe && imuSafe) {
-    if(isSafe){
+    if (irSafe && imuSafe) {
         led1 = 1;
         SetSpeed(MAXSPEED);
         if (!GetEnemyState()) {
-        hm10.printf("Missed enemy, Transist to DETECT Mode\n");
-        SetState(RoboState::DETECT);
-        stateFlag = true;
+        SetState(RoboState::IDLE);
         SetAttackState(false);
-        }else{
-            if(timer.read()>=2.0){
-            hm10.printf("Attacking enemy...\n");
-            timer.reset();
-            };    
         }
     } else {
-        hm10.printf("Risk detected, Transist to ESCAPE Mode\n");
-        stateFlag=true;
-        SetState(RoboState::ESCAPE);
+        SetState(RoboState::IDLE);
     }
 };
 
 void Controller::Escape() {
     //if (!GetIrSafetyState() && GetEnemyState()) EnemyPushPull();
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to ESCAPE Mode\n");
-        stateFlag=false;
-    }
-    if(isSafe)
-    {
-        hm10.printf("Successfully Escaped, Transist to IDLE Mode\n");
-        SetState(RoboState::IDLE);
-        stateFlag=true;
-    }else if(isSafe ==false && timer.read()>=2.0)
-    {
-        hm10.printf("Escaping from risk...\n");
-        timer.reset();
-    }
-    // if (!GetImuSafetyState()) {
-    //     ImuEscape(); 
-    // } else if (!GetIrSafetyState()) {
-    //     IrEscape(Orient);
-    // } else if (!GetWallSafetyState()) {
-    //     PsdWallEscape();
-    // } 
-    // SetState(RoboState::IDLE);
+    if (!GetImuSafetyState()) {
+        ImuEscape(); 
+    } else if (!GetIrSafetyState()) {
+        IrEscape(Orient);
+    } else if (!GetWallSafetyState()) {
+        PsdWallEscape();
+    } 
+    SetState(RoboState::IDLE);
 };
-
-
-void Controller::Yellow()
-{
-    if(stateFlag && yellow==false)
-    {
-        hm10.printf("State transisted to YELLOW Mode\n");
-        stateFlag=false;
-    }
-    
-    if(yellow==true)
-    {
-        if(timer.read()>=2.0){
-            hm10.printf("Waiting for enemy to approach close enough\n");
-            timer.reset();
-        }        
-        if(GetEnemyState()==true && isClose==true){
-            hm10.printf("Enemy is close enough, Transist to ATTACK Mode\n");
-            SetState(RoboState::ATTACK);
-        }
-    }else{
-        if(timer.read()>=2.0){
-            hm10.printf("Moving to Yellow area\n");
-            timer.reset();
-        }
-    }
-}
 
 void Controller::Move(float sL, float sR) {
   if (sL < 0)
@@ -340,151 +208,6 @@ void Controller::EnemyDetect() {
     }
   }
 }
-//===================================FSM Function============================
-void Controller::Start() {
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to START, waiting for startFlag\n");
-        stateFlag=false;
-    }
-    if(GetStartFlag()) {
-        hm10.printf("Initial condition setting completed, Transist to IDLE Mode\n");
-        stateFlag=true;
-        Thread1.start(ImuThread);
-        Thread1.set_priority(osPriorityHigh);
-        Thread2.start(PsdThread);
-        Thread2.set_priority(osPriorityAboveNormal);
-        PwmL.period_us(66);
-        PwmR.period_us(66);
-        SetState(RoboState::IDLE);
-    }
-};
-
-void Controller::Idle() {
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to IDLE Mode\n");
-        stateFlag=false;
-    }
-    if (imuSafe && irSafe && wallSafe) {
-        if(GetYellow()==false){
-            hm10.printf("YELLOW is available, Transist to YELLOW Mode\n");
-            stateFlag=true;
-            SetState(RoboState::YELLOW);
-        }else{
-            hm10.printf("Safety check Completed, Transist to DETECT Mode\n");
-            stateFlag=true;
-            SetState(RoboState::DETECT);  
-        }
-    } else 
-    {
-        hm10.printf("Risk detected, Transist to ESCAPE Mode\n");
-        stateFlag=true;
-        SetState(RoboState::ESCAPE);
-    }
-};
-
-void Controller::Detect() {
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to DETECT Mode\n");
-        stateFlag=false;
-    }
-    if (imuSafe && irSafe && wallSafe) {
-        if (GetEnemyState()) {
-            hm10.printf("Enemy detected, Transist to ATTACK Mode\n");
-            stateFlag=true;
-            SetSpeed(0);
-            SetState(RoboState::ATTACK);
-            } else if (!GetEnemyState() && GetHD() > 0 && timer.read()>=2.0) {
-            led1 = 0;
-            hm10.printf("Detecting enemy on left side...\n");
-            timer.reset();
-            SetSpeed(-0.5, 0.5);
-            } else if (!GetEnemyState() && GetHD() < 0 && timer.read()>=2.0) {
-            led1 = 0;
-            hm10.printf("Detecting enemy on right side...\n");
-            timer.reset();
-            SetSpeed(0.5, -0.5);
-        }
-    } else {
-        hm10.printf("Risk detected, Transist to ESCAPE state Mode\n");
-        stateFlag=true;
-        SetState(RoboState::ESCAPE);
-    }
-};
-
-void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to ATTACK Mode\n");
-        stateFlag=false;
-    }
-    if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
-    if (irSafe && imuSafe) {
-        if(GetEnemyState()==true){
-            if(timer.read()>=2.0){
-                hm10.printf("Attacking enemy...\n");
-                timer.reset();
-            };        
-            led1 = 1;
-            SetSpeed(MAXSPEED);
-        }else{
-            hm10.printf("Missed enemy, Transist to DETECT Mode\n");
-            SetState(RoboState::DETECT);
-            SetAttackState(false);
-            stateFlag = true;
-        }
-    } else {
-        hm10.printf("Risk detected, Transist to ESCAPE Mode\n");
-        stateFlag=true;
-        SetState(RoboState::ESCAPE);
-    }
-};
-
-void Controller::Escape() {
-    //if (!GetIrSafetyState() && GetEnemyState()) EnemyPushPull();
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to ESCAPE Mode\n");
-        stateFlag=false;
-    }
-    if (!GetImuSafetyState()) {
-        ImuEscape(); 
-    } else if (!GetIrSafetyState()) {
-        IrEscape(Orient);
-    } else if (!GetWallSafetyState()) {
-        PsdWallEscape();
-    } 
-    SetState(RoboState::IDLE);
-};
-
-void Controller::Yellow(){
-    if(stateFlag && yellow==false)
-    {
-        hm10.printf("State transisted to YELLOW Mode\n");
-        stateFlag=false;
-    }
-    
-    if(yellow==true)
-    {
-        if(timer.read()>=2.0){
-            hm10.printf("Waiting for enemy to approach close enough\n");
-            timer.reset();
-        }        
-        if(GetEnemyState()==true && isClose==true){
-            hm10.printf("Enemy is close enough, Transist to ATTACK Mode\n");
-            SetState(RoboState::ATTACK);
-        }
-    }else{
-        if(timer.read()>=2.0){
-            hm10.printf("Moving to Yellow area\n");
-            timer.reset();
-        }
-    }
-}
-//==========================================================================
-
 
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
