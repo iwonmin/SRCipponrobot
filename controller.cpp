@@ -245,15 +245,15 @@ void Controller::Detect() {
                 SetSpeed(0);
                 SetState(RoboState::ATTACK);
             }
-        } else if (!GetEnemyState() && GetHD() > 0 && timer.read()>=2.0) {
+        } else if (!GetEnemyState() && GetHD() > 0) {
             led1 = 0;
-            hm10.printf("Detecting enemy on left side...\n");
-            timer.reset();
+            //hm10.printf("Detecting enemy on left side...\n");
+            //timer.reset();
             SetSpeed(-0.5, 0.5);
-        } else if (!GetEnemyState() && GetHD() < 0 && timer.read()>=2.0) {
+        } else if (!GetEnemyState() && GetHD() < 0) {
             led1 = 0;
-            hm10.printf("Detecting enemy on right side...\n");
-            timer.reset();
+            // hm10.printf("Detecting enemy on right side...\n");
+            // timer.reset();
             SetSpeed(0.5, -0.5);
         }
     } else {
@@ -274,10 +274,10 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
     if(GetSafe())
     {
         if(GetEnemyState()==true){
-            if(timer.read()>=2.0){
-                hm10.printf("Attacking enemy...\n");
-                timer.reset();
-            };        
+            // if(timer.read()>=2.0){
+            //     hm10.printf("Attacking enemy...\n");
+            //     timer.reset();
+            // };        
             led1 = 1;
             SetSpeed(MAXSPEED);
         }else{
@@ -313,10 +313,10 @@ void Controller::Escape() {
         SetState(RoboState::IDLE);
     }else
     {
-        if(timer.read()>=2.0){
-            hm10.printf("Escaping from risk...\n");
-            timer.reset();
-        }
+        // if(timer.read()>=2.0){
+        //     hm10.printf("Escaping from risk...\n");
+        //     timer.reset();
+        // }
     }
 };
 
@@ -338,10 +338,10 @@ void Controller::Yellow(){
     if(GetYellow())
     {
         SetSpeed(0);
-        if(timer.read()>=2.0){
-            hm10.printf("Waiting for enemy to approach close enough\n");
-            timer.reset();
-        }        
+        // if(timer.read()>=2.0){
+        //     hm10.printf("Waiting for enemy to approach close enough\n");
+        //     timer.reset();
+        // }        
         if(GetEnemyState()==true && GetIsClose()==true){
             hm10.printf("Enemy is close enough, Transist to ATTACK Mode\n");
             SetState(RoboState::ATTACK);
