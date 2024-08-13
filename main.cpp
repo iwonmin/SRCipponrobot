@@ -24,6 +24,5 @@ int main()
             break;
         }
         controller.Move(controller.GetSpeedL(),controller.GetSpeedR());
-        
     }
 }

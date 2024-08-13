@@ -12,14 +12,14 @@ GP2A psdrf(PA_1, 7, 80, 24.6, -0.297);
 GP2A psdlc(PA_4, 30, 150, 60, 0);
 GP2A psdrc(PC_1, 30, 150, 60, 0);
 GP2A psdlb(PC_3, 7, 80, 24.6, -0.297);
-GP2A psdb(PC_2, 30, 150, 60, 0);
+GP2A psdb(PA_5, 30, 150, 60, 0); //원래 PC_2
 GP2A psdrb(PC_0, 7, 80, 24.6, -0.297);
 DigitalIn irfl(PC_4);
 DigitalIn irfr(PB_1);
 DigitalIn irfc(PA_6);
 DigitalIn irbc(PC_5);//new pin!!
 DigitalIn irbl(PA_7);
-DigitalIn irbr(PA_5);
+DigitalIn irbr(PC_2); //원래 pA_5
 
 MPU9250 mpu9250(D14, D15);
 Controller controller;
@@ -124,7 +124,7 @@ void Controller::Start() {
 void Controller::Idle() {
   if (imuSafe && irSafe && wallSafe) {
     SetState(RoboState::DETECT);
-  } else {
+  } else if(!imuSafe || !irSafe || !wallSafe) {
     SetState(RoboState::ESCAPE);
   }
 };
@@ -150,7 +150,7 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
     if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
     if (irSafe && imuSafe) {
         led1 = 1;
-        SetSpeed(MAXSPEED);
+        SetSpeed(0.5,0.5);
         if (!GetEnemyState()) {
         SetState(RoboState::IDLE);
         SetAttackState(false);
@@ -185,7 +185,7 @@ void Controller::Move(float sL, float sR) {
   PwmL = abs(sL);
   PwmR = abs(sR);
 };
-
+/*
 void Controller::EnemyDetect() {
   if (device.readable()) {
     char receivedChar = device.getc();
@@ -208,7 +208,13 @@ void Controller::EnemyDetect() {
     }
   }
 }
-
+*/
+void Controller::EnemyDetect() {
+    if(psd_val[1] < 30) {
+        SetEnemyState(true);
+        SetHD(0);
+    } else { SetEnemyState(false); SetHD(20.f);}
+}
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
   filtered_distance[i] = now_distance[i] * alpha_psd + (1 - alpha_psd) * prev_distance[i];
@@ -231,7 +237,7 @@ void Controller::PsdRefresh() {
   psd_val[5] = PsdDistance(psdlb, 5);
   psd_val[6] = PsdDistance(psdb, 6);
   psd_val[7] = PsdDistance(psdrb, 7);
-  PsdWallDetect();
+//   PsdWallDetect();
 }
 
 void Controller::PsdDetect() { //아직 안돌려봄
@@ -396,14 +402,13 @@ void Controller::IrRefresh() {
     ir_val[4] = irbl.read();
     ir_val[5] = irbr.read();
     ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4] + ir_val[5];
-    if (GetAttackState() && (ir_val[0] || ir_val[1]) ) Orient = ColorOrient::FRONT;
+    if (GetAttackState() && (!ir_val[0] && !ir_val[1]) ) Orient = ColorOrient::FRONT;
     //ir에서 피스톤질 모드::조금이라도 IR 있으면 일단 피하기->적 만나서 ATTACK 일때 색영역 Front 일때까지 밀면, 그때부터는 ir하나만걸려도 뒤로뺄예정.
-    if (ir_total <= 3) ColorOrient(); //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
-    else Orient = ColorOrient::SAFE;
+    if (ir_total <= 3) { ColorOrient(); SetIrSafetyState(false);} //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
+    else { Orient = ColorOrient::SAFE; SetIrSafetyState(true);}
 }
 
 void Controller::ColorOrient() {
-    SetIrSafetyState(false);
     if (ir_total == 1) { 
         if (ir_val[0] == 1) {
             Orient = ColorOrient::BACK_RIGHT;
@@ -516,7 +521,6 @@ void Controller::IrEscape(enum ColorOrient orient) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
   } else {}
-    SetIrSafetyState(true);
 }
 /*
 void Controller::IrEscapeWhenImuUnsafe() {
@@ -658,7 +662,7 @@ void Controller::ImuRefresh() {
 }
 
 void Controller::ImuDetect()  {
-    if(GetEnemyState() && psd_val[1] < 15 && mpu9250.pitch > IMU_THRESHOLD) {
+    if(GetEnemyState() && mpu9250.pitch > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT;
     } else if(/*GetEnemyState() &&*/ (psd_val[0] < 15 && psd_val[1] < 15) && mpu9250.pitch > IMU_THRESHOLD) {
@@ -695,7 +699,7 @@ void Controller::ImuDetect()  {
             tilt_state = TiltState::SIDE_RIGHT;
             Escape_Timer.reset();
         }
-    } else { SetImuSafetyState(true); tilt_state = TiltState::SAFE;}
+    } else if (mpu9250.pitch < IMU_THRESHOLD){ SetImuSafetyState(true); tilt_state = TiltState::SAFE;}
     if(Escape_Timer.read_ms() > 10000) Escape_Timer.reset();
 }
 void Controller::ImuEscape() {
@@ -725,8 +729,8 @@ void ImuThread() {
     controller.SetupImu();
     while(1) {
         controller.ImuRefresh();
-        controller.ImuDetect();
-        pc.printf("%.2f %.2f %.2f\r\n",mpu9250.roll,mpu9250.pitch,mpu9250.yaw);
+        // controller.ImuDetect();
+        // pc.printf("%.2f %.2f %.2f\r\n",mpu9250.roll,mpu9250.pitch,mpu9250.yaw);
         ThisThread::sleep_for(10);
     }
 }
@@ -734,6 +738,10 @@ void PsdThread() {
     while(1) {
         controller.PsdRefresh();
         controller.IrRefresh();
+        pc.printf("%.2f     ",psdf.getDistance());
+        pc.printf("%d   ",controller.GetState());
+        controller.OrientViewer((int)controller.GetOrient());
+        // pc.printf("%d, %d, %d, %d, %d, %d \r\n",irfl.read(), irfr.read(), irfc.read(), irbc.read(), irbl.read(), irbr.read());
         // controller.SetPosition();
         // controller.WallViewer();
         ThisThread::sleep_for(20); //임의
@@ -749,7 +757,7 @@ void Starter() {
 //Enemy Detected -> Idle -> Attack
 
 //---------------임시------------------//
-void OrientViewer(int orient) {
+void Controller::OrientViewer(int orient) {
     if(orient == 0) {
         pc.printf("FRONT\r\n");
     } else if(orient == 1) {
