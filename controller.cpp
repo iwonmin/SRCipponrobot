@@ -326,6 +326,15 @@ void Controller::Yellow(){
         hm10.printf("State transisted to YELLOW Mode\n");
         stateFlag=false;
     }
+    /* 경기장 중심방향 정렬, 보라원 반경까지 전진 센서값 or timer측정값
+    if(yellowTimer.read() < rtcTime)
+    {
+        SetSpeed(@,@);
+    }else if(yellotTimer.read()>rtcTime && yellowTimer.read()<mfTime)
+    {
+        SetSpeed(*);
+    }
+    */
     if(GetYellow())
     {
         SetSpeed(0);
@@ -333,7 +342,7 @@ void Controller::Yellow(){
             hm10.printf("Waiting for enemy to approach close enough\n");
             timer.reset();
         }        
-        if(GetEnemyState()==true && isClose==true){
+        if(GetEnemyState()==true && GetIsClose()==true){
             hm10.printf("Enemy is close enough, Transist to ATTACK Mode\n");
             SetState(RoboState::ATTACK);
         }
