@@ -7,19 +7,19 @@ DigitalOut DirR(PB_6);
 PwmOut PwmL(PB_4);
 PwmOut PwmR(PB_5);
 GP2A psdlf(PA_0, 7, 80, 24.6, -0.297);
-GP2A psdf(PB_0, 7, 80, 24.6, -0.297);
+GP2A psdf(PB_0, 30, 150, 60, 0);
 GP2A psdrf(PA_1, 7, 80, 24.6, -0.297);
 GP2A psdlc(PA_4, 30, 150, 60, 0);
 GP2A psdrc(PC_1, 30, 150, 60, 0);
 GP2A psdlb(PC_3, 7, 80, 24.6, -0.297);
-GP2A psdb(PA_5, 30, 150, 60, 0); //원래 PC_2
+GP2A psdb(PC_2, 30, 150, 60, 0);
 GP2A psdrb(PC_0, 7, 80, 24.6, -0.297);
 DigitalIn irfl(PC_4);
 DigitalIn irfr(PB_1);
 DigitalIn irfc(PA_6);
 DigitalIn irbc(PC_5);//new pin!!
 DigitalIn irbl(PA_7);
-DigitalIn irbr(PC_2); //원래 pA_5
+DigitalIn irbr(PA_5, PullUp);
 
 MPU9250 mpu9250(D14, D15);
 Controller controller;
@@ -42,7 +42,6 @@ char distanceBuffer[32];
 int bufferIndex = 0;
 #pragma endregion Serial Variables
 
-DigitalOut led1(LED1);
 
 Controller::Controller() { 
     SetState(RoboState::START);
@@ -135,10 +134,8 @@ void Controller::Detect() {
         SetSpeed(0);
         SetState(RoboState::ATTACK);
         } else if (!GetEnemyState() && GetHD() > 0) {
-        led1 = 0;
         SetSpeed(-0.5, 0.5);
         } else if (!GetEnemyState() && GetHD() < 0) {
-        led1 = 0;
         SetSpeed(0.5, -0.5);
         }
     } else {
@@ -149,8 +146,7 @@ void Controller::Detect() {
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
     if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
     if (irSafe && imuSafe) {
-        led1 = 1;
-        SetSpeed(0.5,0.5);
+        SetSpeed(1.0);
         if (!GetEnemyState()) {
         SetState(RoboState::IDLE);
         SetAttackState(false);
@@ -163,11 +159,11 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
 void Controller::Escape() {
     //if (!GetIrSafetyState() && GetEnemyState()) EnemyPushPull();
     if (!GetImuSafetyState()) {
-        ImuEscape(); 
+        // ImuEscape(); 
     } else if (!GetIrSafetyState()) {
         IrEscape(Orient);
     } else if (!GetWallSafetyState()) {
-        PsdWallEscape();
+        // PsdWallEscape();
     } 
     SetState(RoboState::IDLE);
 };
@@ -209,11 +205,12 @@ void Controller::EnemyDetect() {
   }
 }
 */
-void Controller::EnemyDetect() {
-    if(psd_val[1] < 30) {
-        SetEnemyState(true);
-        SetHD(0);
-    } else { SetEnemyState(false); SetHD(20.f);}
+void Controller::EnemyDetect() {//실험용 짭
+    // if(psd_val[1] <= 35) {
+    //     SetEnemyState(true);
+    //     SetHD(0);
+    // } else { SetEnemyState(false); SetHD(20.f);}
+    SetEnemyState(true);
 }
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
@@ -348,31 +345,31 @@ void Controller::PsdDetect() { //아직 안돌려봄
 void Controller::PsdWallDetect() {
     if (psd_val[0] <= 20 && psd_val[2] <= 20 && !GetEnemyState()) {
         FrontCollision = true; 
-        wallSafe = false;
+        SetWallSafetyState(false);
     } else if ((psd_val[0]+psd_val[2])/2 > 20) {
         FrontCollision = false;
-        wallSafe = true;
+        SetWallSafetyState(true);
     }
     if (psd_val[5] <= 20 && psd_val[7] <= 20) {
         BackCollision = true;
-        wallSafe = false;
+        SetWallSafetyState(false);
     } else if ((psd_val[5]+psd_val[7])/2 > 20) {
         BackCollision = false;
-        wallSafe = true;
+        SetWallSafetyState(true);
     }
     if (psd_val[0] <= 20 && psd_val[5] <= 20) {
         LeftCollision = true;
-        wallSafe = false;
+        SetWallSafetyState(false);
     } else if ((psd_val[0]+psd_val[5])/2 > 20) {
         LeftCollision = false;
-        wallSafe = true;
+        SetWallSafetyState(true);
     }
     if (psd_val[2] <= 20 && psd_val[7] <= 20) {
         RightCollision = true;
-        wallSafe = false;
+        SetWallSafetyState(false);
     } else if ((psd_val[2]+psd_val[7])/2 > 20) {
         RightCollision = false;
-        wallSafe = true;
+        SetWallSafetyState(true);
     }
 }
 void Controller::PsdWallEscape() {
@@ -402,10 +399,15 @@ void Controller::IrRefresh() {
     ir_val[4] = irbl.read();
     ir_val[5] = irbr.read();
     ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4] + ir_val[5];
-    if (GetAttackState() && (!ir_val[0] && !ir_val[1]) ) Orient = ColorOrient::FRONT;
-    //ir에서 피스톤질 모드::조금이라도 IR 있으면 일단 피하기->적 만나서 ATTACK 일때 색영역 Front 일때까지 밀면, 그때부터는 ir하나만걸려도 뒤로뺄예정.
-    if (ir_total <= 3) { ColorOrient(); SetIrSafetyState(false);} //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
-    else { Orient = ColorOrient::SAFE; SetIrSafetyState(true);}
+    // if (GetAttackState() && (ir_val[0] + ir_val[1]) == 0) {
+        // Orient = ColorOrient::FRONT;
+    // }
+    // else {
+        //ir에서 피스톤질 모드::조금이라도 IR 있으면 일단 피하기->적 만나서 ATTACK 일때 색영역 Front 일때까지 밀면, 그때부터는 ir하나만걸려도 뒤로뺄예정.
+        if (ir_total <= 3) { ColorOrient(); SetIrSafetyState(false);} //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
+        else { Orient = ColorOrient::SAFE; SetIrSafetyState(true);}
+    // }
+
 }
 
 void Controller::ColorOrient() {
@@ -614,11 +616,11 @@ void Controller::SetupImu() {
   // Calibrate gyro and accelerometers, load biases in bias registers
 
   mpu9250.initMPU9250();
-  mpu9250.initAK8963(mpu9250.magCalibration);
+//   mpu9250.initAK8963(mpu9250.magCalibration);
 
   mpu9250.getAres(); // Get accelerometer sensitivity
   mpu9250.getGres(); // Get gyro sensitivity
-  mpu9250.getMres(); // Get magnetometer sensitivity
+//   mpu9250.getMres(); // Get magnetometer sensitivity
   t.start();
 }
 
@@ -637,38 +639,38 @@ void Controller::ImuRefresh() {
         // Calculate the gyro value into actual degrees per second
         mpu9250.gx = (float)mpu9250.gyroCount[0]*mpu9250.gRes - mpu9250.gyroBias[0];  // get actual gyro value, this depends on scale being set
         mpu9250.gy = (float)mpu9250.gyroCount[1]*mpu9250.gRes - mpu9250.gyroBias[1];  
-        mpu9250.gz = (float)mpu9250.gyroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
+        // mpu9250.gz = (float)mpu9250.gyroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
         // Read the x/y/z adc values   
         // // Calculate the magnetometer values in milliGauss
         // // Include factory calibration per data sheet and user environmental corrections
         mpu9250.readMagData(mpu9250.magCount);
         mpu9250.mx = (float)mpu9250.magCount[0]*mpu9250.mRes*mpu9250.magCalibration[0] - mpu9250.magbias[0];  // get actual magnetometer value, this depends on scale being set
         mpu9250.my = (float)mpu9250.magCount[1]*mpu9250.mRes*mpu9250.magCalibration[1] - mpu9250.magbias[1];  
-        mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
+        // mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
     }
     mpu9250.deltat = t.read_us()/1000000.0f;
     accel_angle_x = atan2(mpu9250.ay, sqrt(mpu9250.ax * mpu9250.ax + mpu9250.az * mpu9250.az)) * (180.0f / PI); 
     accel_angle_y = atan2(mpu9250.ax, sqrt(mpu9250.ay * mpu9250.ay + mpu9250.az * mpu9250.az)) * (180.0f / PI);
     // mag_angle_z  = atan2(mpu9250.my*cos(mpu9250.pitch*PI/180.0f) - mpu9250.mz*sin(mpu9250.pitch*PI/180.0f), mpu9250.mx*cos(mpu9250.roll*PI/180.0f)+mpu9250.my*sin(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)+mpu9250.mz*cos(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)) * (180.0f / PI);
-    mag_angle_z = atan2(mpu9250.my, mpu9250.mx) * (180.0f / PI);
+    // mag_angle_z = atan2(mpu9250.my, mpu9250.mx) * (180.0f / PI);
     //gyro값 넣기
     gyro_angle_x = mpu9250.roll + mpu9250.gx * mpu9250.deltat;
     gyro_angle_y = mpu9250.pitch + mpu9250.gy * mpu9250.deltat;
-    gyro_angle_z = mpu9250.yaw + mpu9250.gz * mpu9250.deltat;
+    // gyro_angle_z = mpu9250.yaw + mpu9250.gz * mpu9250.deltat;
     //alpha를 이용한 보정(상보)
     mpu9250.roll = alpha_imu * gyro_angle_x + (1.0-alpha_imu) * accel_angle_x;
     mpu9250.pitch = alpha_imu * gyro_angle_y + (1.0-alpha_imu) * accel_angle_y;
-    mpu9250.yaw = 0.95 * gyro_angle_z + (1.0-0.95) * mag_angle_z;
+    // mpu9250.yaw = 0.95 * gyro_angle_z + (1.0-0.95) * mag_angle_z;
 }
 
 void Controller::ImuDetect()  {
     if(GetEnemyState() && mpu9250.pitch > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT;
-    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 15 && psd_val[1] < 15) && mpu9250.pitch > IMU_THRESHOLD) {
+    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 15) && mpu9250.pitch > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_LEFT;
-    } else if((/*GetEnemyState() && */ psd_val[2] < 15 && psd_val[1] < 15) && mpu9250.pitch > IMU_THRESHOLD) {
+    } else if((/*GetEnemyState() && */ psd_val[2] < 15) && mpu9250.pitch > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_RIGHT;
     } else if(psd_val[0] < 15 && mpu9250.roll > IMU_THRESHOLD) {
@@ -729,19 +731,20 @@ void ImuThread() {
     controller.SetupImu();
     while(1) {
         controller.ImuRefresh();
-        // controller.ImuDetect();
-        // pc.printf("%.2f %.2f %.2f\r\n",mpu9250.roll,mpu9250.pitch,mpu9250.yaw);
+        controller.ImuDetect();
+        pc.printf("%.2f,%.2f,",mpu9250.roll,mpu9250.pitch);
+        controller.ImuViewer();
         ThisThread::sleep_for(10);
     }
 }
 void PsdThread() {
     while(1) {
         controller.PsdRefresh();
-        controller.IrRefresh();
-        pc.printf("%.2f     ",psdf.getDistance());
-        pc.printf("%d   ",controller.GetState());
-        controller.OrientViewer((int)controller.GetOrient());
+        // controller.IrRefresh();
+        // pc.printf("%d, %d, %d, %d, %d, %d, %d, %d\r\n",controller.psd_val[0],controller.psd_val[1],controller.psd_val[2],controller.psd_val[3],controller.psd_val[4],controller.psd_val[5],controller.psd_val[6],controller.psd_val[7]);
         // pc.printf("%d, %d, %d, %d, %d, %d \r\n",irfl.read(), irfr.read(), irfc.read(), irbc.read(), irbl.read(), irbr.read());
+        // pc.printf("%d, %d, %d, %d, %d   ",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
+        // controller.OrientViewer((int)controller.GetOrient());
         // controller.SetPosition();
         // controller.WallViewer();
         ThisThread::sleep_for(20); //임의
@@ -793,26 +796,30 @@ void Controller::WallViewer() {
 }
 
 void Controller::ImuViewer() {
-    if(GetImuSafetyState()) pc.printf("SAFE!   ");
-    else if(!GetImuSafetyState()) pc.printf("UNSAFE!   ");
     switch (tilt_state) {
         case TiltState::FRONT:
-            pc.printf("FRONT TILTED\r\n");
+            pc.printf("FRONT\r\n");
+            // pc.printf("1\r\n");
             break;
         case TiltState::FRONT_LEFT:
-            pc.printf("FRONT LEFT TILTED\r\n");
+            pc.printf("FRONT_LEFT\r\n");
+            // pc.printf("2\r\n");
             break;
         case TiltState::FRONT_RIGHT:
-            pc.printf("FRONT RIGHT TILTED\r\n");
+            pc.printf("FRONT_RIGHT\r\n");
+            // pc.printf("3\r\n");
             break;
         case TiltState::SIDE_LEFT:
-            pc.printf("SIDE LEFT TILTED\r\n");
+            pc.printf("SIDE_LEFT\r\n");
+            // pc.printf("4\r\n");
             break;
         case TiltState::SIDE_RIGHT:
-            pc.printf("SIDE RIGHT TILTED\r\n");
+            pc.printf("SIDE_RIGHT\r\n");
+            // pc.printf("5\r\n");
             break;
         case TiltState::SAFE:
             pc.printf("SAFE\r\n");
+            // pc.printf("0\r\n");
             return;
     }
 }
