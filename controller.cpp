@@ -1,5 +1,4 @@
 #include "controller.h"
-#include <cstdio>
 char buffer[8] = "";
 #pragma region variables
 InterruptIn btn(BUTTON1);
@@ -239,7 +238,7 @@ void Controller::PsdRefresh() {
   psd_val[5] = PsdDistance(psdlb, 5);
   psd_val[6] = PsdDistance(psdb, 6);
   psd_val[7] = PsdDistance(psdrb, 7);
-//   PsdWallDetect();
+  PsdWallDetect();
 }
 /*
 void Controller::PsdDetect() { //아직 안돌려봄
@@ -348,31 +347,31 @@ void Controller::PsdDetect() { //아직 안돌려봄
 }
 */
 void Controller::PsdWallDetect() {
-    if (psd_val[0] <= 20 && psd_val[2] <= 20 && !GetEnemyState()) {
+    if (psd_val[0] <= 10 && psd_val[2] <= 10 && !GetEnemyState()) {
         FrontCollision = true; 
         SetWallSafetyState(false);
-    } else if ((psd_val[0]+psd_val[2])/2 > 20) {
+    } else if ((psd_val[0]+psd_val[2])/2 > 10) {
         FrontCollision = false;
         SetWallSafetyState(true);
     }
-    if (psd_val[5] <= 20 && psd_val[7] <= 20) {
+    if (psd_val[5] <= 10 && psd_val[7] <= 10) {
         BackCollision = true;
         SetWallSafetyState(false);
-    } else if ((psd_val[5]+psd_val[7])/2 > 20) {
+    } else if ((psd_val[5]+psd_val[7])/2 > 10) {
         BackCollision = false;
         SetWallSafetyState(true);
     }
-    if (psd_val[0] <= 20 && psd_val[5] <= 20) {
+    if (psd_val[0] <= 10 && psd_val[5] <= 10) {
         LeftCollision = true;
         SetWallSafetyState(false);
-    } else if ((psd_val[0]+psd_val[5])/2 > 20) {
+    } else if ((psd_val[0]+psd_val[5])/2 > 10) {
         LeftCollision = false;
         SetWallSafetyState(true);
     }
-    if (psd_val[2] <= 20 && psd_val[7] <= 20) {
+    if (psd_val[2] <= 10 && psd_val[7] <= 10) {
         RightCollision = true;
         SetWallSafetyState(false);
-    } else if ((psd_val[2]+psd_val[7])/2 > 20) {
+    } else if ((psd_val[2]+psd_val[7])/2 > 10) {
         RightCollision = false;
         SetWallSafetyState(true);
     }
@@ -667,15 +666,15 @@ void Controller::ImuDetect()  {
     if(GetEnemyState() && mpu9250.pitch > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT;
-    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 15) && mpu9250.pitch > IMU_THRESHOLD) {
+    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 9) && mpu9250.pitch > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_LEFT;
-    } else if((/*GetEnemyState() && */ psd_val[2] < 15) && mpu9250.pitch > IMU_THRESHOLD) {
+    } else if((/*GetEnemyState() && */ psd_val[2] < 9) && mpu9250.pitch > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_RIGHT;
-    } else if(psd_val[0] < 15 && mpu9250.roll > IMU_THRESHOLD) {
+    } else if(psd_val[0] < 9 && mpu9250.roll > IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[0] < 15 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
+        if(psd_val[0] < 9 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
             tilt_state = TiltState::SIDE_LEFT;
             Escape_Timer.reset();
@@ -687,7 +686,7 @@ void Controller::ImuDetect()  {
             tilt_state = TiltState::SIDE_LEFT;
             Escape_Timer.reset();
         }
-    } else if(psd_val[2] < 15 && mpu9250.roll > IMU_THRESHOLD) {
+    } else if(psd_val[2] < 9 && mpu9250.roll > IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[2] < 15 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
@@ -734,7 +733,7 @@ void ImuThread() {
         controller.ImuDetect();
         // pc.printf("%.2f,%.2f,",mpu9250.roll,mpu9250.pitch);
         controller.ImuViewer();
-        ThisThread::sleep_for(10);
+        ThisThread::sleep_for(20);
     }
 }
 void PsdThread() {
