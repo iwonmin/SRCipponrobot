@@ -1,18 +1,13 @@
-gyro
-    [확정]gyro로 인한 자세변화 감지(RoboState -> Escape)
-    [생각중]가속도 감지로 힘싸움중에 밀려서 ir에 들어갔음에도 이동명령은 내렸지만 못움직이는데 이거를 확인할 방법??
+2024/08/18
+Line 159 - void Controller::Escape()
+    - 초기 계획은 플래그가 동시에 켜져있을 때 함수에서 선언된대로 탈출 플래그 우선순위가 Imu -> Ir -> Psd 순이었지만, Imu가 예상보다 너무 많이 튀어서 psd와 융합하였지만 psd가 작동이 안되는 관계로 Ir -> Imu -> Psd 순서로 사용, 또한 실제 구동시 ColorOrient::Front 상태가 가장 많이 뜨는데, 이 때 탈출구동이 후진(PWM -0.5, -0.5) 이므로 가장 보수적이라고 판단. 그러므로 순서는 다음과 같이 작성됨 : Ir -> Imu -> Psd
+    - 추후에 우선순위 재변동할 필요 있으므로 if문 조건함수와 그에 따른 Escape 함수만 바꾸기.
 
-SetSpeed
-    타이머 attach 하여 함수 호출시 입력받은 속도,속도,시간으로 control?
+Line 228 - void Controller::PsdRefresh()
+    - psd 센서 작업중이므로 PsdRefresh()에서 PsdWallDetect() 비활성화 -> wallsafe 플래그 항상 true
 
-(7.10)SEXXXXXXXXXXXXXXXXXX
-1. 규정상 바뀐 사각형 색 영역에 앉아서 대기하기 = ??
-2. 뒤쪽 바퀴로 벽 타고 올라가서 낮은자세잡기 = while문으로 구현했는데 흐음..
-3. 중앙 색영역에 상대 넣었을때 왔다갔다 가동범위 늘리기(ir 앞쪽에서만 감지되도 바로 빼기, 기존은 3개 감지하기) = partially done
-4. 더 나은 IMU Criterion
+[ㅈ버그]Line 408 - void Controller::ColorOrient()
+    - 로봇 밑판이 생각보다 낮아서 색영역에 앞부분만 발을 조금만 담가도 중앙 IR이 인식되버려서(검정영역 근거리 이슈) Color합이 3이라 깊게 들어간 FRONT 또는 FRONT_LEFT 로 뜨는데 구동상에 차이는 없어서 일단 둠 -> 알고리즘 크게 변경할 예정 있음
 
-(7.12)또 회의
-1. BURROW 상태 추가
-2. PSD로 영처 없을때 적 확인하기?
-3. IMU 바꾸기
-4. WallDetection 추가
+Line 725 - Imuthread()
+    - psd 센서 작업중이므로 SIDE_TILT 작동 안될 것으로 보임. 필요시 비활성화

@@ -8,7 +8,7 @@ DigitalOut DirR(PB_6);
 PwmOut PwmL(PB_4);
 PwmOut PwmR(PB_5);
 GP2A psdlf(PA_0, 7, 80, 24.6, -0.297);
-GP2A psdf(PB_0, 7, 80, 24.6, -0.297);
+GP2A psdf(PB_0, 30, 150, 60, 0);
 GP2A psdrf(PA_1, 7, 80, 24.6, -0.297);
 GP2A psdlc(PA_4, 30, 150, 60, 0);
 GP2A psdrc(PC_1, 30, 150, 60, 0);
@@ -21,9 +21,9 @@ DigitalIn irfc(PA_6);
 DigitalIn irbc(PC_5);//new pin!!
 DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
-Timer timer;
+
 MPU9250 mpu9250(D14, D15);
-// Controller controller;
+Controller controller;
 Thread Thread1;
 Thread Thread2;
 #pragma endregion variables
@@ -31,40 +31,25 @@ Thread Thread2;
 #pragma region Serial Variables
 // PC와의 통신을 위한 Serial 객체 생성
 Serial pc(USBTX, USBRX, 115200);
-
-//블루투스 통신
-Serial hm10(PC_10,PC_11,115200);
-
 // Raspberry Pi와의 통신 설정 (TX, RX, baud rate)
 Serial device(D8, D2, 9600);
-
 // 소수점 발견 여부를 추적하기 위한 변수
 bool decimalPointSeen = false;
 // 부호 정보를 추적하기 위한 변수
 bool isNegative = false;
 
-bool stateFlag = true;
 char distanceBuffer[32];
 
 int bufferIndex = 0;
-
-
-char blInput;
-
-
-
 #pragma endregion Serial Variables
 
-DigitalOut led1(LED1);
 
-
-Controller::Controller() 
-{ 
-    if(stateFlag){hm10.printf("Operating System, Transist to START Mode\n");}
+Controller::Controller() { 
     SetState(RoboState::START);
     btn.fall(&Starter);
-}
-
+    PwmL.period_us(66);
+    PwmR.period_us(66);
+  }
 
 Controller::RoboState Controller::GetState() { return robo_state; };
 
@@ -81,28 +66,24 @@ void Controller::SetSpeed(float speed) {
 void Controller::SetSpeed(float sL, float sR) {
   float speedL_i = GetSpeedL();
   float speedR_i = GetSpeedR();
-
-//   int interval_L = (sL - speedL_i) / 0.1f;
-//   int interval_R = (sR - speedR_i) / 0.1f;
-
-//   for (int i = 0; i <= abs(interval_L); i++) {
-//     if (interval_L >= 0) {
-//       speedL = speedL_i + 0.1 * i;
-//     } else {
-//       speedL = speedL_i - 0.1 * i;
-//     }
-//   }
-//   for (int i = 0; i <= abs(interval_R); i++) {
-//     if (interval_R >= 0) {
-//       speedR = speedR_i + 0.1 * i;
-//     } else {
-//       speedR = speedR_i - 0.1 * i;
-//     }
-//   }
-
-speedL = sL;
-speedR = sR;
-
+  int interval_L = (sL - speedL_i) / 0.1f;
+  int interval_R = (sR - speedR_i) / 0.1f;
+  for (int i = 0; i <= abs(interval_L); i++) {
+    if (interval_L >= 0) {
+      speedL = speedL_i + 0.1 * i;
+    } else {
+      speedL = speedL_i - 0.1 * i;
+    }
+  }
+  for (int i = 0; i <= abs(interval_R); i++) {
+    if (interval_R >= 0) {
+      speedR = speedR_i + 0.1 * i;
+    } else {
+      speedR = speedR_i - 0.1 * i;
+    }
+  }
+  // speedL = sL;
+  // speedR = sR;
 };
 //==================================flags startregion=================================//
 bool Controller::GetEnemyState() { return enemy; }
@@ -128,24 +109,69 @@ void Controller::SetImuSafetyState(bool ImuSafetyState) { imuSafe = ImuSafetySta
 bool Controller::GetWallSafetyState() { return wallSafe; };
 
 void Controller::SetWallSafetyState(bool WallSafetyState) { wallSafe = WallSafetyState; }
+//==================================flags endregion=================================//
 
 int Controller::GetHD() { return enemy_horizontal_distance; }
 
 void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
 
+void Controller::Start() {
+    if(StartFlag) {
+    Thread1.start(ImuThread);
+    Thread1.set_priority(osPriorityHigh);
+    Thread2.start(PsdThread);
+    Thread2.set_priority(osPriorityAboveNormal);
+    SetState(RoboState::IDLE);
+    }
+};
 
-bool Controller::GetYellow() {return yellow;}
+void Controller::Idle() {
+  if (imuSafe && irSafe && wallSafe) {
+    SetState(RoboState::DETECT);
+  } else if(!imuSafe || !irSafe || !wallSafe) {
+    SetState(RoboState::ESCAPE);
+  }
+};
 
-void Controller::SetYellow(bool y){yellow = y;}
+void Controller::Detect() {
+    if (imuSafe && irSafe && wallSafe) {
+        if (GetEnemyState()) {
+        SetSpeed(0);
+        SetState(RoboState::ATTACK);
+        } else if (!GetEnemyState() && GetHD() > 0) {
+        SetSpeed(-0.5, 0.5);
+        } else if (!GetEnemyState() && GetHD() < 0) {
+        SetSpeed(0.5, -0.5);
+        }
+    } else {
+        SetState(RoboState::IDLE);
+    }
+};
 
-bool Controller::GetIsClose(){return isClose;}
+void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
+    if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
+    if (irSafe && imuSafe) {
+        SetSpeed(1.0);
+        if (!GetEnemyState()) {
+        SetState(RoboState::IDLE);
+        SetAttackState(false);
+        }
+    } else {
+        SetState(RoboState::IDLE);
+    }
+};
 
-void Controller::SetIsClose(bool ic){isClose = ic;}
+void Controller::Escape() {
+    if (!GetIrSafetyState()) {
+        IrEscape(Orient); 
+    } else if (!GetImuSafetyState()) {
+        ImuEscape();
+    } else if (!GetWallSafetyState()) {
+        PsdWallEscape();
+    } 
+    SetState(RoboState::IDLE);
+};
 
-bool Controller::GetSafe(){return isSafe;}
-
-void Controller::SetSafe(bool s){isSafe = s;}
-//==================================flags endregion=================================//
 void Controller::Move(float sL, float sR) {
   if (sL < 0)
     DirL = 0;
@@ -182,190 +208,15 @@ void Controller::EnemyDetect() {
     }
   }
 }
-//===================================FSM Function============================
-void Controller::Start() {
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to START, waiting for startFlag\n");
-        stateFlag=false;
-    }
-    if(GetStartFlag()) {
-        Thread1.start(ImuThread);
-        Thread1.set_priority(osPriorityHigh);
-        Thread2.start(PsdThread);
-        Thread2.set_priority(osPriorityAboveNormal);
-        PwmL.period_us(66);
-        PwmR.period_us(66);
-        hm10.printf("Initial condition setting completed, Transist to IDLE Mode\n");
-        stateFlag=true;
-        SetState(RoboState::IDLE);
-    }
-};
 
-void Controller::Idle() {
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to IDLE Mode\n");
-        stateFlag=false;
-    }
-    //if (imuSafe && irSafe && wallSafe) {
-    if(GetSafe())
-    {
-        {
-            hm10.printf("Safety check Completed, Transist to DETECT Mode\n");
-            stateFlag=true;
-            SetState(RoboState::DETECT);  
-        }
-    } else 
-    {
-        hm10.printf("Risk detected, Transist to ESCAPE Mode\n");
-        stateFlag=true;
-        SetState(RoboState::ESCAPE);
-    }
-};
-
-void Controller::Detect() {
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to DETECT Mode\n");
-        stateFlag=false;
-    }
-    //if (imuSafe && irSafe && wallSafe) {
-    if(GetSafe())
-    {
-        if (GetEnemyState()) 
-        {
-            if(GetYellow()==false){
-                hm10.printf("YELLOW is available, Transist to YELLOW Mode\n");
-                stateFlag=true;
-                SetState(RoboState::YELLOW);
-            }else{
-                hm10.printf("Enemy detected, Transist to ATTACK Mode\n");
-                stateFlag=true;
-                SetSpeed(0);
-                SetState(RoboState::ATTACK);
-            }
-        } else if (!GetEnemyState() && GetHD() > 0) {
-            led1 = 0;
-            //hm10.printf("Detecting enemy on left side...\n");
-            //timer.reset();
-            SetSpeed(-0.5, 0.5);
-        } else if (!GetEnemyState() && GetHD() < 0) {
-            led1 = 0;
-            // hm10.printf("Detecting enemy on right side...\n");
-            // timer.reset();
-            SetSpeed(0.5, -0.5);
-        }
-    } else {
-        hm10.printf("Risk detected, Transist to ESCAPE state Mode\n");
-        stateFlag=true;
-        SetState(RoboState::ESCAPE);
-    }
-};
-
-void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to ATTACK Mode\n");
-        stateFlag=false;
-    }
-    if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
-    //if (irSafe && imuSafe) {
-    if(GetSafe())
-    {
-        if(GetEnemyState()==true){
-            // if(timer.read()>=2.0){
-            //     hm10.printf("Attacking enemy...\n");
-            //     timer.reset();
-            // };        
-            led1 = 1;
-            SetSpeed(MAXSPEED);
-        }else{
-            hm10.printf("Missed enemy, Transist to DETECT Mode\n");
-            SetState(RoboState::DETECT);
-            SetAttackState(false);
-            stateFlag = true;
-        }
-    } else {
-        hm10.printf("Risk detected, Transist to ESCAPE Mode\n");
-        stateFlag=true;
-        SetState(RoboState::ESCAPE);
-    }
-};
-
-void Controller::Escape() {
-    //if (!GetIrSafetyState() && GetEnemyState()) EnemyPushPull();
-    if(stateFlag)
-    {
-        hm10.printf("State transisted to ESCAPE Mode\n");
-        stateFlag=false;
-    }
-    // if (!GetImuSafetyState()) {
-    //     ImuEscape(); 
-    // } else if (!GetIrSafetyState()) {
-    //     IrEscape(Orient);
-    // } else if (!GetWallSafetyState()) {
-    //     PsdWallEscape();
-    // } 
-    if(GetSafe())
-    {
-        hm10.printf("Escape completed, Transist to IDLE Mode\n");
-        SetState(RoboState::IDLE);
-    }else
-    {
-        // if(timer.read()>=2.0){
-        //     hm10.printf("Escaping from risk...\n");
-        //     timer.reset();
-        // }
-    }
-};
-
-void Controller::Yellow(){
-    if(stateFlag && GetYellow()==false)
-    {
-        hm10.printf("State transisted to YELLOW Mode\n");
-        stateFlag=false;
-    }
-    /* 경기장 중심방향 정렬, 보라원 반경까지 전진 센서값 or timer측정값
-    if(yellowTimer.read() < rtcTime)
-    {
-        SetSpeed(@,@);
-    }else if(yellotTimer.read()>rtcTime && yellowTimer.read()<mfTime)
-    {
-        SetSpeed(*);
-    }
-    */
-    if(GetYellow())
-    {
-        SetSpeed(0);
-        // if(timer.read()>=2.0){
-        //     hm10.printf("Waiting for enemy to approach close enough\n");
-        //     timer.reset();
-        // }        
-        if(GetEnemyState()==true && GetIsClose()==true){
-            hm10.printf("Enemy is close enough, Transist to ATTACK Mode\n");
-            SetState(RoboState::ATTACK);
-        }
-    }else{
-        if(GetHD()>0){ 
-            SetSpeed(0.8,0.3);
-            if(timer.read()>=2.0){
-                hm10.printf("Moving to left side Yellow area\n");
-                timer.reset();
-            }
-        }
-        if(GetHD()<0){ 
-            SetSpeed(0.3,0.8);
-            if(timer.read()>=2.0){
-                hm10.printf("Moving to left side Yellow area\n");
-                timer.reset();
-            }
-        }
-    }
-}
-//==========================================================================
-
-
+/*
+void Controller::EnemyDetect() {//실험용 짭
+    // if(psd_val[1] <= 35) {
+    //     SetEnemyState(true);
+    //     SetHD(0);
+    // } else { SetEnemyState(false); SetHD(20.f);}
+    SetEnemyState(true);
+}*/
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
   filtered_distance[i] = now_distance[i] * alpha_psd + (1 - alpha_psd) * prev_distance[i];
@@ -388,9 +239,9 @@ void Controller::PsdRefresh() {
   psd_val[5] = PsdDistance(psdlb, 5);
   psd_val[6] = PsdDistance(psdb, 6);
   psd_val[7] = PsdDistance(psdrb, 7);
-  PsdWallDetect();
+//   PsdWallDetect();
 }
-
+/*
 void Controller::PsdDetect() { //아직 안돌려봄
     if (FollowIndex == 0){
         MinValue = psd_val[6];
@@ -495,35 +346,35 @@ void Controller::PsdDetect() { //아직 안돌려봄
         }        
     }
 }
-
+*/
 void Controller::PsdWallDetect() {
     if (psd_val[0] <= 20 && psd_val[2] <= 20 && !GetEnemyState()) {
         FrontCollision = true; 
-        wallSafe = false;
+        SetWallSafetyState(false);
     } else if ((psd_val[0]+psd_val[2])/2 > 20) {
         FrontCollision = false;
-        wallSafe = true;
+        SetWallSafetyState(true);
     }
     if (psd_val[5] <= 20 && psd_val[7] <= 20) {
         BackCollision = true;
-        wallSafe = false;
+        SetWallSafetyState(false);
     } else if ((psd_val[5]+psd_val[7])/2 > 20) {
         BackCollision = false;
-        wallSafe = true;
+        SetWallSafetyState(true);
     }
     if (psd_val[0] <= 20 && psd_val[5] <= 20) {
         LeftCollision = true;
-        wallSafe = false;
+        SetWallSafetyState(false);
     } else if ((psd_val[0]+psd_val[5])/2 > 20) {
         LeftCollision = false;
-        wallSafe = true;
+        SetWallSafetyState(true);
     }
     if (psd_val[2] <= 20 && psd_val[7] <= 20) {
         RightCollision = true;
-        wallSafe = false;
+        SetWallSafetyState(false);
     } else if ((psd_val[2]+psd_val[7])/2 > 20) {
         RightCollision = false;
-        wallSafe = true;
+        SetWallSafetyState(true);
     }
 }
 void Controller::PsdWallEscape() {
@@ -553,14 +404,13 @@ void Controller::IrRefresh() {
     ir_val[4] = irbl.read();
     ir_val[5] = irbr.read();
     ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4] + ir_val[5];
-    if (GetAttackState() && (ir_val[0] || ir_val[1]) ) Orient = ColorOrient::FRONT;
-    //ir에서 피스톤질 모드::조금이라도 IR 있으면 일단 피하기->적 만나서 ATTACK 일때 색영역 Front 일때까지 밀면, 그때부터는 ir하나만걸려도 뒤로뺄예정.
-    if (ir_total <= 3) ColorOrient(); //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
-    else Orient = ColorOrient::SAFE;
+        //ir에서 피스톤질 모드::조금이라도 IR 있으면 일단 피하기->적 만나서 ATTACK 일때 색영역 Front 일때까지 밀면, 그때부터는 ir하나만걸려도 뒤로뺄예정.
+    if (ir_total <= 3) { ColorOrient(); SetIrSafetyState(false);} //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
+    else { Orient = ColorOrient::SAFE; SetIrSafetyState(true);}
+
 }
 
 void Controller::ColorOrient() {
-    SetIrSafetyState(false);
     if (ir_total == 1) { 
         if (ir_val[0] == 1) {
             Orient = ColorOrient::BACK_RIGHT;
@@ -673,7 +523,6 @@ void Controller::IrEscape(enum ColorOrient orient) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
   } else {}
-    SetIrSafetyState(true);
 }
 /*
 void Controller::IrEscapeWhenImuUnsafe() {
@@ -767,11 +616,11 @@ void Controller::SetupImu() {
   // Calibrate gyro and accelerometers, load biases in bias registers
 
   mpu9250.initMPU9250();
-  mpu9250.initAK8963(mpu9250.magCalibration);
+//   mpu9250.initAK8963(mpu9250.magCalibration);
 
   mpu9250.getAres(); // Get accelerometer sensitivity
   mpu9250.getGres(); // Get gyro sensitivity
-  mpu9250.getMres(); // Get magnetometer sensitivity
+//   mpu9250.getMres(); // Get magnetometer sensitivity
   t.start();
 }
 
@@ -790,38 +639,38 @@ void Controller::ImuRefresh() {
         // Calculate the gyro value into actual degrees per second
         mpu9250.gx = (float)mpu9250.gyroCount[0]*mpu9250.gRes - mpu9250.gyroBias[0];  // get actual gyro value, this depends on scale being set
         mpu9250.gy = (float)mpu9250.gyroCount[1]*mpu9250.gRes - mpu9250.gyroBias[1];  
-        mpu9250.gz = (float)mpu9250.gyroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
+        // mpu9250.gz = (float)mpu9250.gyroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
         // Read the x/y/z adc values   
         // // Calculate the magnetometer values in milliGauss
         // // Include factory calibration per data sheet and user environmental corrections
         mpu9250.readMagData(mpu9250.magCount);
         mpu9250.mx = (float)mpu9250.magCount[0]*mpu9250.mRes*mpu9250.magCalibration[0] - mpu9250.magbias[0];  // get actual magnetometer value, this depends on scale being set
         mpu9250.my = (float)mpu9250.magCount[1]*mpu9250.mRes*mpu9250.magCalibration[1] - mpu9250.magbias[1];  
-        mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
+        // mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
     }
     mpu9250.deltat = t.read_us()/1000000.0f;
     accel_angle_x = atan2(mpu9250.ay, sqrt(mpu9250.ax * mpu9250.ax + mpu9250.az * mpu9250.az)) * (180.0f / PI); 
     accel_angle_y = atan2(mpu9250.ax, sqrt(mpu9250.ay * mpu9250.ay + mpu9250.az * mpu9250.az)) * (180.0f / PI);
     // mag_angle_z  = atan2(mpu9250.my*cos(mpu9250.pitch*PI/180.0f) - mpu9250.mz*sin(mpu9250.pitch*PI/180.0f), mpu9250.mx*cos(mpu9250.roll*PI/180.0f)+mpu9250.my*sin(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)+mpu9250.mz*cos(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)) * (180.0f / PI);
-    mag_angle_z = atan2(mpu9250.my, mpu9250.mx) * (180.0f / PI);
+    // mag_angle_z = atan2(mpu9250.my, mpu9250.mx) * (180.0f / PI);
     //gyro값 넣기
     gyro_angle_x = mpu9250.roll + mpu9250.gx * mpu9250.deltat;
     gyro_angle_y = mpu9250.pitch + mpu9250.gy * mpu9250.deltat;
-    gyro_angle_z = mpu9250.yaw + mpu9250.gz * mpu9250.deltat;
+    // gyro_angle_z = mpu9250.yaw + mpu9250.gz * mpu9250.deltat;
     //alpha를 이용한 보정(상보)
     mpu9250.roll = alpha_imu * gyro_angle_x + (1.0-alpha_imu) * accel_angle_x;
     mpu9250.pitch = alpha_imu * gyro_angle_y + (1.0-alpha_imu) * accel_angle_y;
-    mpu9250.yaw = 0.95 * gyro_angle_z + (1.0-0.95) * mag_angle_z;
+    // mpu9250.yaw = 0.95 * gyro_angle_z + (1.0-0.95) * mag_angle_z;
 }
 
 void Controller::ImuDetect()  {
-    if(GetEnemyState() && psd_val[1] < 15 && mpu9250.pitch > IMU_THRESHOLD) {
+    if(GetEnemyState() && mpu9250.pitch > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT;
-    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 15 && psd_val[1] < 15) && mpu9250.pitch > IMU_THRESHOLD) {
+    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 15) && mpu9250.pitch > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_LEFT;
-    } else if((/*GetEnemyState() && */ psd_val[2] < 15 && psd_val[1] < 15) && mpu9250.pitch > IMU_THRESHOLD) {
+    } else if((/*GetEnemyState() && */ psd_val[2] < 15) && mpu9250.pitch > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_RIGHT;
     } else if(psd_val[0] < 15 && mpu9250.roll > IMU_THRESHOLD) {
@@ -852,7 +701,7 @@ void Controller::ImuDetect()  {
             tilt_state = TiltState::SIDE_RIGHT;
             Escape_Timer.reset();
         }
-    } else { SetImuSafetyState(true); tilt_state = TiltState::SAFE;}
+    } else if (mpu9250.pitch < IMU_THRESHOLD){ SetImuSafetyState(true); tilt_state = TiltState::SAFE;}
     if(Escape_Timer.read_ms() > 10000) Escape_Timer.reset();
 }
 void Controller::ImuEscape() {
@@ -883,7 +732,8 @@ void ImuThread() {
     while(1) {
         controller.ImuRefresh();
         controller.ImuDetect();
-        pc.printf("%.2f %.2f %.2f\r\n",mpu9250.roll,mpu9250.pitch,mpu9250.yaw);
+        // pc.printf("%.2f,%.2f,",mpu9250.roll,mpu9250.pitch);
+        controller.ImuViewer();
         ThisThread::sleep_for(10);
     }
 }
@@ -891,6 +741,10 @@ void PsdThread() {
     while(1) {
         controller.PsdRefresh();
         controller.IrRefresh();
+        // pc.printf("%d, %d, %d, %d, %d, %d, %d, %d\r\n",controller.psd_val[0],controller.psd_val[1],controller.psd_val[2],controller.psd_val[3],controller.psd_val[4],controller.psd_val[5],controller.psd_val[6],controller.psd_val[7]);
+        // pc.printf("%d, %d, %d, %d, %d, %d \r\n",irfl.read(), irfr.read(), irfc.read(), irbc.read(), irbl.read(), irbr.read());
+        // pc.printf("%d, %d, %d, %d, %d   ",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
+        // controller.OrientViewer((int)controller.GetOrient());
         // controller.SetPosition();
         // controller.WallViewer();
         ThisThread::sleep_for(20); //임의
@@ -906,7 +760,7 @@ void Starter() {
 //Enemy Detected -> Idle -> Attack
 
 //---------------임시------------------//
-void OrientViewer(int orient) {
+void Controller::OrientViewer(int orient) {
     if(orient == 0) {
         pc.printf("FRONT\r\n");
     } else if(orient == 1) {
@@ -942,26 +796,30 @@ void Controller::WallViewer() {
 }
 
 void Controller::ImuViewer() {
-    if(GetImuSafetyState()) pc.printf("SAFE!   ");
-    else if(!GetImuSafetyState()) pc.printf("UNSAFE!   ");
     switch (tilt_state) {
         case TiltState::FRONT:
-            pc.printf("FRONT TILTED\r\n");
+            pc.printf("FRONT\r\n");
+            // pc.printf("1\r\n");
             break;
         case TiltState::FRONT_LEFT:
-            pc.printf("FRONT LEFT TILTED\r\n");
+            pc.printf("FRONT_LEFT\r\n");
+            // pc.printf("2\r\n");
             break;
         case TiltState::FRONT_RIGHT:
-            pc.printf("FRONT RIGHT TILTED\r\n");
+            pc.printf("FRONT_RIGHT\r\n");
+            // pc.printf("3\r\n");
             break;
         case TiltState::SIDE_LEFT:
-            pc.printf("SIDE LEFT TILTED\r\n");
+            pc.printf("SIDE_LEFT\r\n");
+            // pc.printf("4\r\n");
             break;
         case TiltState::SIDE_RIGHT:
-            pc.printf("SIDE RIGHT TILTED\r\n");
+            pc.printf("SIDE_RIGHT\r\n");
+            // pc.printf("5\r\n");
             break;
         case TiltState::SAFE:
             pc.printf("SAFE\r\n");
+            // pc.printf("0\r\n");
             return;
     }
 }
