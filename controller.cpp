@@ -19,7 +19,7 @@ DigitalIn irfr(PB_1);
 DigitalIn irfc(PA_6);
 DigitalIn irbc(PC_5);//new pin!!
 DigitalIn irbl(PA_7);
-DigitalIn irbr(PA_5, PullUp);
+DigitalIn irbr(PA_5);
 
 MPU9250 mpu9250(D14, D15);
 Controller controller;
@@ -157,13 +157,12 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
 };
 
 void Controller::Escape() {
-    //if (!GetIrSafetyState() && GetEnemyState()) EnemyPushPull();
-    if (!GetImuSafetyState()) {
-        // ImuEscape(); 
-    } else if (!GetIrSafetyState()) {
-        IrEscape(Orient);
+    if (!GetIrSafetyState()) {
+        IrEscape(Orient); 
+    } else if (!GetImuSafetyState()) {
+        ImuEscape();
     } else if (!GetWallSafetyState()) {
-        // PsdWallEscape();
+        PsdWallEscape();
     } 
     SetState(RoboState::IDLE);
 };
@@ -181,7 +180,7 @@ void Controller::Move(float sL, float sR) {
   PwmL = abs(sL);
   PwmR = abs(sR);
 };
-/*
+
 void Controller::EnemyDetect() {
   if (device.readable()) {
     char receivedChar = device.getc();
@@ -204,14 +203,15 @@ void Controller::EnemyDetect() {
     }
   }
 }
-*/
+
+/*
 void Controller::EnemyDetect() {//실험용 짭
     // if(psd_val[1] <= 35) {
     //     SetEnemyState(true);
     //     SetHD(0);
     // } else { SetEnemyState(false); SetHD(20.f);}
     SetEnemyState(true);
-}
+}*/
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
   filtered_distance[i] = now_distance[i] * alpha_psd + (1 - alpha_psd) * prev_distance[i];
@@ -236,7 +236,7 @@ void Controller::PsdRefresh() {
   psd_val[7] = PsdDistance(psdrb, 7);
 //   PsdWallDetect();
 }
-
+/*
 void Controller::PsdDetect() { //아직 안돌려봄
     if (FollowIndex == 0){
         MinValue = psd_val[6];
@@ -341,7 +341,7 @@ void Controller::PsdDetect() { //아직 안돌려봄
         }        
     }
 }
-
+*/
 void Controller::PsdWallDetect() {
     if (psd_val[0] <= 20 && psd_val[2] <= 20 && !GetEnemyState()) {
         FrontCollision = true; 
@@ -399,14 +399,9 @@ void Controller::IrRefresh() {
     ir_val[4] = irbl.read();
     ir_val[5] = irbr.read();
     ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4] + ir_val[5];
-    // if (GetAttackState() && (ir_val[0] + ir_val[1]) == 0) {
-        // Orient = ColorOrient::FRONT;
-    // }
-    // else {
         //ir에서 피스톤질 모드::조금이라도 IR 있으면 일단 피하기->적 만나서 ATTACK 일때 색영역 Front 일때까지 밀면, 그때부터는 ir하나만걸려도 뒤로뺄예정.
-        if (ir_total <= 3) { ColorOrient(); SetIrSafetyState(false);} //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
-        else { Orient = ColorOrient::SAFE; SetIrSafetyState(true);}
-    // }
+    if (ir_total <= 3) { ColorOrient(); SetIrSafetyState(false);} //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
+    else { Orient = ColorOrient::SAFE; SetIrSafetyState(true);}
 
 }
 
@@ -732,7 +727,7 @@ void ImuThread() {
     while(1) {
         controller.ImuRefresh();
         controller.ImuDetect();
-        pc.printf("%.2f,%.2f,",mpu9250.roll,mpu9250.pitch);
+        // pc.printf("%.2f,%.2f,",mpu9250.roll,mpu9250.pitch);
         controller.ImuViewer();
         ThisThread::sleep_for(10);
     }
@@ -740,7 +735,7 @@ void ImuThread() {
 void PsdThread() {
     while(1) {
         controller.PsdRefresh();
-        // controller.IrRefresh();
+        controller.IrRefresh();
         // pc.printf("%d, %d, %d, %d, %d, %d, %d, %d\r\n",controller.psd_val[0],controller.psd_val[1],controller.psd_val[2],controller.psd_val[3],controller.psd_val[4],controller.psd_val[5],controller.psd_val[6],controller.psd_val[7]);
         // pc.printf("%d, %d, %d, %d, %d, %d \r\n",irfl.read(), irfr.read(), irfc.read(), irbc.read(), irbl.read(), irbr.read());
         // pc.printf("%d, %d, %d, %d, %d   ",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
