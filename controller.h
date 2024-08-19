@@ -1,4 +1,5 @@
 #include "mbed.h"
+#include <cstdint>
 #include <string>
 #include <stdlib.h>
 #include "GP2A.h"
@@ -166,13 +167,16 @@ class Controller
 
     void IrRefresh();
     
+    void IrRefresh_new();
+
     void EnemyPushPull();
 
-    void IrEscape(ColorOrient orient);
+    void IrEscape();
 
     // void IrEscapeWhenImuUnsafe();
 
     void ColorOrient();
+    void ColorOrient_new();
 
     enum ColorOrient GetOrient();
     //----------------------적 찾기 & 위치파악 & 적 괴롭히기 전략-------------------------//
@@ -273,14 +277,23 @@ class Controller
 
     bool RightCollision;
 
-    const float alpha_imu = 0.91f;
+    const float alpha_imu = 0.93f;
 
     float gyro_angle_x, gyro_angle_y, gyro_angle_z;
 
     float accel_angle_x, accel_angle_y, mag_angle_z;
-
+    
     Timer t; //for gyro integral;
+    //-------------------------------Stable Z-axis Accel Detector-------------------------------//
+    const float MaxStableZAccel = 1.2f;
+    
+    const float MinStableZAccel = 0.8f;
 
+    const uint16_t SettlingTime = 300; //ms
+    
+    bool isZAccelSettled = false;
+    
+    Timer SettleTimer;
 };
 
 //-------------------------Thread----------------------------//
