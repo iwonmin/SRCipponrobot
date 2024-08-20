@@ -115,6 +115,7 @@ int Controller::GetHD() { return enemy_horizontal_distance; }
 void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
 
 void Controller::Start() {
+    //pc.printf("Start\n");
     if(StartFlag) {
     PwmL.period_us(66);
     PwmR.period_us(66);
@@ -730,6 +731,7 @@ void Controller::ImuEscape() {
 }
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
+    pc.printf("IMU Thread running\n");
     controller.SetupImu();
     while(1) {
         controller.ImuRefresh();
@@ -740,6 +742,7 @@ void ImuThread() {
     }
 }
 void PsdThread() {
+    pc.printf("PSD Thread running\n");
     while(1) {
         controller.PsdRefresh();
         controller.IrRefresh();
@@ -780,7 +783,7 @@ void Controller::OrientViewer(int orient) {
     } else if(orient == 7) {
         pc.printf("BACK_RIGHT\r\n");
     } else if(orient == 8) {
-        pc.printf("SAFE\r\n");
+        //pc.printf("SAFE\r\n");
     }
 }
 
@@ -820,7 +823,7 @@ void Controller::ImuViewer() {
             // pc.printf("5\r\n");
             break;
         case TiltState::SAFE:
-            pc.printf("SAFE\r\n");
+            // pc.printf("SAFE\r\n");
             // pc.printf("0\r\n");
             return;
     }
@@ -844,6 +847,6 @@ void gyroFunction()
         controller.SetCurrentYaw(imu.getYaw());
         //gyroMutex.unlock();
         pc.printf("Current Yaw : %.2f\r\n",controller.GetCurrentYaw());
-        ThisThread::sleep_for(100);
+        ThisThread::sleep_for(10);
     }
 }

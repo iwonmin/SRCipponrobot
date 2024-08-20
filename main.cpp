@@ -3,6 +3,7 @@
 
 int main()
 {
+    pc.printf("main started\n");
  while (true) {
         controller.EnemyDetect();
         switch(controller.GetState())
