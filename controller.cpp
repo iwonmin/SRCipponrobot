@@ -114,6 +114,15 @@ int Controller::GetHD() { return enemy_horizontal_distance; }
 
 void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
 
+float Controller::GetYA(){return yellowAngle;}
+
+void Controller::SetYA(float YA){yellowAngle = YA;}
+
+int Controller::GetYHD(){return yellow_horizontal_distance;}
+
+void Controller::SetYHD(int YHD){yellow_horizontal_distance = YHD;}
+
+
 void Controller::Start() {
     //pc.printf("Start\n");
     if(StartFlag) {
@@ -197,17 +206,66 @@ void Controller::EnemyDetect() {
     } else {
       SetEnemyState(true);
     }
-    if (receivedChar == '/') {
-      distanceBuffer[bufferIndex] = '\0';
-      SetHD(atoi(distanceBuffer));
-      pc.printf("Received Distance: %d\n", GetHD());
-      bufferIndex = 0; // 버퍼 초기화
-    } else {
-      distanceBuffer[bufferIndex] = receivedChar;
-      bufferIndex++;
-      if (bufferIndex >= sizeof(distanceBuffer) - 1) {
-        bufferIndex = 0; // 버퍼가 가득 찬 경우 초기화
-      }
+    // if (receivedChar == '/') {
+    //   distanceBuffer[bufferIndex] = '\0';
+    //   SetHD(atoi(distanceBuffer));
+    //   pc.printf("Received Distance: %d\n", GetHD());
+    //   bufferIndex = 0; // 버퍼 초기화
+    // } else {
+    //   distanceBuffer[bufferIndex] = receivedChar;
+    //   bufferIndex++;
+    //   if (bufferIndex >= sizeof(distanceBuffer) - 1) {
+    //     bufferIndex = 0; // 버퍼가 가득 찬 경우 초기화
+    //   }
+    // }
+    if(receivedChar=='\n')
+    {
+        distanceBuffer[bufferIndex]='\0';
+        char *comma_ptr1=strchr(distanceBuffer,',');//첫번째 콤마 위치
+        char *comma_ptr2=NULL;
+        if(comma_ptr1 !=NULL)
+        {
+            *comma_ptr1='\0';//첫 번째 콤마 위치를 문자열 종료로 설정
+            char* data1=distanceBuffer;//첫 번째 데이터
+
+            if(*data1 != '*') SetHD(atoi(data1));
+            comma_ptr2 = strchr(comma_ptr1+1,',');//두번째 콤마 위치
+            
+            if(comma_ptr2!=NULL)
+            {
+                *comma_ptr2 ='\0';//두 번째 콤마 위치를 문자열 종료로 설정
+                char* data2=comma_ptr1+1;//두번째 데이터
+                if(*data2!='*')
+                {
+                    SetYHD(atoi(data2));
+                } else
+                {
+                    SetYHD(404);
+                }                   
+                char* data3=comma_ptr2+1;//세번째 데이터
+                if(*data3!='*')
+                {
+                    SetYA(atof(data3));
+                }else
+                {
+                    SetYA(404);
+                } 
+                    
+                //데이터 출력
+                //pc.printf("Data1: %s, Data2: %s, Data3: %s\r\n", data1, data2, data3);
+                //pc.printf("GHD: %d, YHD: %d, YA: %.2f\r\n",GetHD(),GetYHD(),GetYA());
+            }else{
+                pc.printf("Error: Only two data fields found!\r\n");
+            }
+        }else{
+            pc.printf("Error: Only one data field found!\r\n");
+        }
+        bufferIndex =0; //인덱스 초기화
+    }else{
+        //버퍼가 가득 차지 않았을 경우에만 저장
+        if(bufferIndex<sizeof(distanceBuffer)-1){
+            distanceBuffer[bufferIndex++]=receivedChar;//버퍼에 데이터 저장
+        }
     }
   }
 }

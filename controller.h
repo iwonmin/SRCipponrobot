@@ -126,17 +126,28 @@ class Controller
     //양쪽 바퀴 다른 속도 설정
     void SetSpeed(float sL, float sR);
 
+    //현재 yaw값 반환
     float GetCurrentYaw();
-
+    
+    //현재 yaw값 설정
     void SetCurrentYaw(float yaw);
 
-    
+    //현재 노란영역 수평각도 반환
+    float GetYA();
+    //현재 노란 영역 수평 각도 설정
+    void SetYA(float yellowAngle);
+    //현재 노란 영역 중앙으로부터 거리 반환
+    int GetYHD();
+    //현재 노란 영역 중앙으로부터 거리 설정정
+    void SetYHD(int yellow_horizontal_distance);
     
     //적과의 수평거리 반환 함수
     int GetHD();
 
     //적과의 수평거리 변환
     void SetHD(int HD);
+
+
 //--------------------State Machine methods----------------------//
     //초기상태 시 실행 함수
     void Start();
@@ -157,7 +168,6 @@ class Controller
     void Move(float sL, float sR);
 
     void EnemyDetect();
-
     //-----------------------psd--------------------//
     uint16_t PsdDistance(GP2A, uint8_t);
 
@@ -237,6 +247,10 @@ class Controller
     
     //적과 벌어진 거리
     int enemy_horizontal_distance= 1;
+
+    float yellowAngle;
+
+    int yellow_horizontal_distance;
 
     //위험 지역 여부
     volatile bool irSafe = true;
