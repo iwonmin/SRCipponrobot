@@ -4,6 +4,7 @@
 #include "GP2A.h"
 #include "rtos.h"
 #include "MPU9250.h"
+#include "EBIMU.h"
 #pragma region Preprocessor
 #define MAXSPEED 0.5
 #define ESCAPESPEED -0.5
@@ -123,6 +124,12 @@ class Controller
 
     //양쪽 바퀴 다른 속도 설정
     void SetSpeed(float sL, float sR);
+
+    float GetCurrentYaw();
+
+    void SetCurrentYaw(float yaw);
+
+    void gyroFunction();
     
     //적과의 수평거리 반환 함수
     int GetHD();
@@ -243,6 +250,8 @@ class Controller
     //우측 바퀴 속력
     float speedR;
 
+    float currentYaw;
+
     const float alpha_psd = 0.9f;
 
     uint16_t prev_distance[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
@@ -289,3 +298,4 @@ void ImuThread();
 void PsdThread();
 
 void Starter();
+

@@ -20,11 +20,12 @@ DigitalIn irfc(PA_6);
 DigitalIn irbc(PC_5);//new pin!!
 DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
-
+EBIMU imu(PC_12,PD_2,115200);
 MPU9250 mpu9250(D14, D15);
 Controller controller;
 Thread Thread1;
 Thread Thread2;
+Thread Thread3;
 #pragma endregion variables
 
 #pragma region Serial Variables
@@ -46,8 +47,7 @@ int bufferIndex = 0;
 Controller::Controller() { 
     SetState(RoboState::START);
     btn.fall(&Starter);
-    PwmL.period_us(66);
-    PwmR.period_us(66);
+    
   }
 
 Controller::RoboState Controller::GetState() { return robo_state; };
@@ -116,10 +116,13 @@ void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
 
 void Controller::Start() {
     if(StartFlag) {
+    PwmL.period_us(66);
+    PwmR.period_us(66);
     Thread1.start(ImuThread);
     Thread1.set_priority(osPriorityHigh);
     Thread2.start(PsdThread);
     Thread2.set_priority(osPriorityAboveNormal);
+    Thread3.start(gyroFunction);
     SetState(RoboState::IDLE);
     }
 };
@@ -820,5 +823,27 @@ void Controller::ImuViewer() {
             pc.printf("SAFE\r\n");
             // pc.printf("0\r\n");
             return;
+    }
+}
+float Controller::GetCurrentYaw()
+{
+    return currentYaw;
+}
+
+void Controller::SetCurrentYaw(float yaw)
+{
+    currentYaw = yaw;
+}
+void Controller::gyroFunction()
+{
+    pc.printf("gyroThread running\n");    
+    while(1)
+    {
+        imu.parse();
+        //gyroMutex.lock();
+        SetCurrentYaw(imu.getYaw());
+        //gyroMutex.unlock();
+        pc.printf("Current Yaw : %.2f\r\n",currentYaw);
+        ThisThread::sleep_for(100);
     }
 }
