@@ -114,6 +114,10 @@ int Controller::GetHD() { return enemy_horizontal_distance; }
 
 void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
 
+bool Controller::GetYellow(){return yellow;}
+
+void Controller::SetYellow(bool y){yellow = y;}
+
 float Controller::GetYA(){return yellowAngle;}
 
 void Controller::SetYA(float YA){yellowAngle = YA;}
@@ -147,16 +151,27 @@ void Controller::Idle() {
 
 void Controller::Detect() {
     if (imuSafe && irSafe && wallSafe) {
-        if (GetEnemyState()) {
-        SetSpeed(0);
-        SetState(RoboState::ATTACK);
-        } else if (!GetEnemyState() && GetHD() > 0) {
-        SetSpeed(-0.5, 0.5);
-        } else if (!GetEnemyState() && GetHD() < 0) {
-        SetSpeed(0.5, -0.5);
+        if(!GetYellow()){
+            if(GetCurrentYaw()>=-90){
+                SetSpeed(-0.5,0.5);
+            }if(GetCurrentYaw()<-90)
+            {
+                SetSpeed(0);
+                SetState(RoboState::YELLOW);
+            }
+        }
+        else if(GetYellow()){
+            if(GetEnemyState()) {
+            SetSpeed(0);
+            SetState(RoboState::ATTACK);
+            } else if (!GetEnemyState() && GetHD() > 0) {
+            SetSpeed(-0.5, 0.5);
+            } else if (!GetEnemyState() && GetHD() < 0) {
+            SetSpeed(0.5, -0.5);
+            }
         }
     } else {
-        SetState(RoboState::IDLE);
+        SetState(RoboState::ESCAPE);
     }
 };
 
@@ -173,6 +188,45 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
     }
 };
 
+void Controller::Yellow()
+{
+    if(GetHD()>=0)
+    {
+        if(GetCurrentYaw()>=-130)
+        {
+            SetSpeed(-0.5,0.5);
+        }else if(GetCurrentYaw()<=-140)
+        {
+            SetSpeed(0.5,-0.5);
+        }else if(GetCurrentYaw()<-130 && GetCurrentYaw()>-140)
+        {
+            if(GetOrient()!=ColorOrient::FRONT)
+            {
+                SetSpeed(0.5);
+            }else
+            {
+                SetSpeed(0);
+            }
+        }
+    }else if(GetHD()<0){
+        if(GetCurrentYaw()>=-40)
+        {
+            SetSpeed(0.5,-0.5);
+        }else if(GetCurrentYaw()<=-50)
+        {
+            SetSpeed(-0.5,0.5);
+        }else if(GetCurrentYaw()<-40 && GetCurrentYaw()>-50)
+        {
+            if(GetOrient()!=ColorOrient::FRONT)
+            {
+                SetSpeed(0.5);
+            }else
+            {
+                SetSpeed(0);
+            }
+        }
+    }
+}
 void Controller::Escape() {
     if (!GetIrSafetyState()) {
         IrEscape(Orient); 

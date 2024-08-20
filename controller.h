@@ -57,7 +57,9 @@ class Controller
         //공격
         ATTACK,
         //탈출
-        ESCAPE
+        ESCAPE,
+        //노랑
+        YELLOW
     };
 
         enum class ColorOrient
@@ -132,6 +134,10 @@ class Controller
     //현재 yaw값 설정
     void SetCurrentYaw(float yaw);
 
+    //노랑플래그 반환
+    bool GetYellow();
+    //노랑플래그 설정
+    void SetYellow(bool yellow);
     //현재 노란영역 수평각도 반환
     float GetYA();
     //현재 노란 영역 수평 각도 설정
@@ -163,6 +169,8 @@ class Controller
 
      //탈출상태 시 실행 함수
     void Escape();
+    //노랑상태 시 실행 함수
+    void Yellow();
 
     //주행 함수
     void Move(float sL, float sR);
@@ -246,10 +254,13 @@ class Controller
     volatile bool attack = false;
     
     //적과 벌어진 거리
-    int enemy_horizontal_distance= 1;
+    int enemy_horizontal_distance = 1;
 
+    //노란 영역 진입 플래그
+    bool yellow= false;
+    //노란영역 평행 각도
     float yellowAngle;
-
+    //노란 영역 중앙까지 거리리
     int yellow_horizontal_distance;
 
     //위험 지역 여부

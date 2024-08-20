@@ -23,6 +23,8 @@ int main()
             case Controller::RoboState::ESCAPE:
             controller.Escape();
             break;
+            case Controller::RoboState::YELLOW:
+            controller.Yellow();
         }
         controller.Move(controller.GetSpeedL(),controller.GetSpeedR());
     }
