@@ -834,16 +834,16 @@ void Controller::SetCurrentYaw(float yaw)
 {
     currentYaw = yaw;
 }
-void Controller::gyroFunction()
+void gyroFunction()
 {
     pc.printf("gyroThread running\n");    
     while(1)
     {
         imu.parse();
         //gyroMutex.lock();
-        SetCurrentYaw(imu.getYaw());
+        controller.SetCurrentYaw(imu.getYaw());
         //gyroMutex.unlock();
-        pc.printf("Current Yaw : %.2f\r\n",currentYaw);
+        pc.printf("Current Yaw : %.2f\r\n",controller.GetCurrentYaw());
         ThisThread::sleep_for(100);
     }
 }

@@ -40,6 +40,7 @@ extern DigitalIn irbr;
 extern class Controller controller;
 extern Thread Thread1;
 extern Thread Thread2;
+extern Thread Thread3;
 extern Serial pc;
 #pragma endregion external
 class Controller
@@ -129,7 +130,7 @@ class Controller
 
     void SetCurrentYaw(float yaw);
 
-    void gyroFunction();
+    
     
     //적과의 수평거리 반환 함수
     int GetHD();
@@ -299,3 +300,4 @@ void PsdThread();
 
 void Starter();
 
+void gyroFunction();
