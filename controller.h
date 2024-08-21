@@ -153,6 +153,7 @@ class Controller
     //적과의 수평거리 변환
     void SetHD(int HD);
 
+    float PID(float setpoint, float measured_value, float Kpro, float Kint, float Kder);
 
 //--------------------State Machine methods----------------------//
     //초기상태 시 실행 함수
@@ -316,6 +317,9 @@ class Controller
 
     Timer t; //for gyro integral;
 
+    float previous_error =0;
+    
+    float integral = 0;
 };
 
 //-------------------------Thread----------------------------//

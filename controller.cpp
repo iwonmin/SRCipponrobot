@@ -194,35 +194,45 @@ void Controller::Yellow()
     {
         if(GetCurrentYaw()>=-130)
         {
-            SetSpeed(-0.5,0.5);
+            SetSpeed(-0.3,0.3);
         }else if(GetCurrentYaw()<=-140)
         {
-            SetSpeed(0.5,-0.5);
+            SetSpeed(0.3,-0.3);
         }else if(GetCurrentYaw()<-130 && GetCurrentYaw()>-140)
         {
             if(GetOrient()!=ColorOrient::FRONT)
             {
-                SetSpeed(0.5);
+                SetSpeed(0.3);
             }else
             {
                 SetSpeed(0);
+                if(GetEnemyState() && psd_val[1]<10)
+                {
+                    SetYellow(true);
+                    SetState(RoboState::ATTACK);
+                }
             }
         }
     }else if(GetHD()<0){
         if(GetCurrentYaw()>=-40)
         {
-            SetSpeed(0.5,-0.5);
+            SetSpeed(0.3,-0.3);
         }else if(GetCurrentYaw()<=-50)
         {
-            SetSpeed(-0.5,0.5);
+            SetSpeed(-0.3,0.3);
         }else if(GetCurrentYaw()<-40 && GetCurrentYaw()>-50)
         {
             if(GetOrient()!=ColorOrient::FRONT)
             {
-                SetSpeed(0.5);
+                SetSpeed(0.3);
             }else
             {
                 SetSpeed(0);
+                if(GetEnemyState() && psd_val[1]<10)
+                {
+                    SetYellow(true);
+                    SetState(RoboState::ATTACK);
+                }
             }
         }
     }
@@ -238,6 +248,14 @@ void Controller::Escape() {
     SetState(RoboState::IDLE);
 };
 
+float Controller::PID(float setpoint, float measured_value, float Kpro, float Kint, float Kder)
+{
+    float error = setpoint-measured_value;
+    integral+=error;
+    float derivative = error-previous_error;
+    previous_error=error;
+    return Kpro*error+Kint*integral+Kder*derivative;
+}
 void Controller::Move(float sL, float sR) {
   if (sL < 0)
     DirL = 0;
