@@ -1,4 +1,5 @@
 #include "mbed.h"
+#include <cstdint>
 #include <string>
 #include <stdlib.h>
 #include "GP2A.h"
@@ -14,7 +15,7 @@
 #define WALL_DISTANCE 70 //cm
 #define TIME_90DEGTURN 50 //ms, pwm == 0.5
 #define Time_10CMMOVE 20 //ms, pwm == 0.5
-#define IMU_THRESHOLD 8.f
+#define IMU_THRESHOLD 4.f
 #define ESCAPE_TIME 500 //ms
 #pragma endregion Preprocessor
 #pragma region external
@@ -192,13 +193,17 @@ class Controller
 
     void IrRefresh();
     
+    void IrRefresh_new();
+
     void EnemyPushPull();
 
-    void IrEscape(ColorOrient orient);
+    void IrEscape();
 
     // void IrEscapeWhenImuUnsafe();
 
     void ColorOrient();
+    
+    void ColorOrient_new();
 
     enum ColorOrient GetOrient();
     //----------------------적 찾기 & 위치파악 & 적 괴롭히기 전략-------------------------//
@@ -222,11 +227,11 @@ class Controller
     */
 
     //-----------------------MPU9250-----------------------------//
-    void SetupImu();
+    void SetupImu_MPU9250();
     
-    void ImuRefresh();
+    void ImuRefresh_MPU9250();
 
-    void ImuDetect();
+    void ImuDetect_MPU9250();
     
     void ImuEscape();
 
@@ -308,14 +313,23 @@ class Controller
 
     bool RightCollision;
 
-    const float alpha_imu = 0.91f;
+    const float alpha_imu = 0.93f;
 
     float gyro_angle_x, gyro_angle_y, gyro_angle_z;
 
     float accel_angle_x, accel_angle_y, mag_angle_z;
-
+    
     Timer t; //for gyro integral;
+    //-------------------------------Stable Z-axis Accel Detector-------------------------------//
+    const float MaxStableZAccel = 1.2f;
+    
+    const float MinStableZAccel = 0.8f;
 
+    const uint16_t SettlingTime = 300; //ms
+    
+    bool isZAccelSettled = false;
+    
+    Timer SettleTimer;
 };
 
 //-------------------------Thread----------------------------//

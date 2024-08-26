@@ -27,5 +27,6 @@ int main()
             controller.Yellow();
         }
         controller.Move(controller.GetSpeedL(),controller.GetSpeedR());
+        wait_us(10000);
     }
 }

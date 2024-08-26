@@ -229,7 +229,7 @@ void Controller::Yellow()
 }
 void Controller::Escape() {
     if (!GetIrSafetyState()) {
-        IrEscape(Orient); 
+        IrEscape(); 
     } else if (!GetImuSafetyState()) {
         ImuEscape();
     } else if (!GetWallSafetyState()) {
@@ -251,7 +251,7 @@ void Controller::Move(float sL, float sR) {
   PwmL = abs(sL);
   PwmR = abs(sR);
 };
-
+/*
 void Controller::EnemyDetect() {
   if (device.readable()) {
     char receivedChar = device.getc();
@@ -323,15 +323,15 @@ void Controller::EnemyDetect() {
     }
   }
 }
+*/
 
-/*
 void Controller::EnemyDetect() {//실험용 짭
     // if(psd_val[1] <= 35) {
     //     SetEnemyState(true);
     //     SetHD(0);
     // } else { SetEnemyState(false); SetHD(20.f);}
-    SetEnemyState(true);
-}*/
+    // SetEnemyState(true);
+}
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
   filtered_distance[i] = now_distance[i] * alpha_psd + (1 - alpha_psd) * prev_distance[i];
@@ -522,7 +522,6 @@ void Controller::IrRefresh() {
         //ir에서 피스톤질 모드::조금이라도 IR 있으면 일단 피하기->적 만나서 ATTACK 일때 색영역 Front 일때까지 밀면, 그때부터는 ir하나만걸려도 뒤로뺄예정.
     if (ir_total <= 3) { ColorOrient(); SetIrSafetyState(false);} //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
     else { Orient = ColorOrient::SAFE; SetIrSafetyState(true);}
-
 }
 
 void Controller::ColorOrient() {
@@ -574,6 +573,114 @@ void Controller::ColorOrient() {
     } else {} //완전히 들어갔을 때, 적 찾다가 알아서 나갈것이므로 일단 비움
 }
 enum Controller::ColorOrient Controller::GetOrient() { return Orient;}
+
+void Controller::IrRefresh_new() {
+    ir_val[0] = irfl.read();
+    ir_val[1] = irfr.read();
+    ir_val[2] = irfc.read();
+    ir_val[3] = irbc.read();
+    ir_val[4] = irbl.read();
+    ir_val[5] = irbr.read();
+    ColorOrient_new();
+}
+
+void Controller::ColorOrient_new() {
+    //0 b (irfl) (irfr) (irfc) (irbc) (irbl) (irbr) || gyumin == 1, white == 0;
+    switch((ir_val[0] << 5) | (ir_val[1] << 4) | (ir_val[2] << 3) | (ir_val[3] << 2) | (ir_val[4] << 1) | ir_val[5]) {
+        case 0b001111:
+            Orient = ColorOrient::FRONT;
+            SetIrSafetyState(true);
+        case 0b001011:
+            Orient = ColorOrient::FRONT;
+            SetIrSafetyState(false);
+        case 0b000011:
+            Orient = ColorOrient::FRONT;
+            SetIrSafetyState(false);
+        case 0b110100:
+            Orient = ColorOrient::BACK;
+            SetIrSafetyState(false);
+        case 0b110000:
+            Orient = ColorOrient::BACK;
+            SetIrSafetyState(false);
+        case 0b011001:
+            Orient = ColorOrient::TAN_LEFT;
+            SetIrSafetyState(true);
+        case 0b010101:
+            Orient = ColorOrient::TAN_LEFT;
+            SetIrSafetyState(true);
+        case 0b010001:
+            Orient = ColorOrient::TAN_LEFT;
+            SetIrSafetyState(true);
+        case 0b101010:
+            Orient = ColorOrient::TAN_RIGHT;
+            SetIrSafetyState(true);
+        case 0b100110:
+            Orient = ColorOrient::TAN_RIGHT;
+            SetIrSafetyState(true);
+        case 0b100010:
+            Orient = ColorOrient::TAN_RIGHT;
+            SetIrSafetyState(true);
+        case 0b000101:
+            Orient = ColorOrient::FRONT_LEFT;
+            SetIrSafetyState(false);
+        case 0b001001:
+            Orient = ColorOrient::FRONT_LEFT;
+            SetIrSafetyState(false);
+        case 0b000001:
+            Orient = ColorOrient::FRONT_LEFT;
+            SetIrSafetyState(false);
+        case 0b000110:
+            Orient = ColorOrient::FRONT_RIGHT;
+            SetIrSafetyState(false);
+        case 0b001010:
+            Orient = ColorOrient::FRONT_RIGHT;
+            SetIrSafetyState(false);
+        case 0b000010:
+            Orient = ColorOrient::FRONT_RIGHT;
+            SetIrSafetyState(false);
+        case 0b011000:
+            Orient = ColorOrient::BACK_LEFT;
+            SetIrSafetyState(false);
+        case 0b010100:
+            Orient = ColorOrient::BACK_LEFT;
+            SetIrSafetyState(false);
+        case 0b010000:
+            Orient = ColorOrient::BACK_LEFT;
+            SetIrSafetyState(false);
+        case 0b101000:
+            Orient = ColorOrient::BACK_RIGHT;
+            SetIrSafetyState(false);
+        case 0b100100:
+            Orient = ColorOrient::BACK_RIGHT;
+            SetIrSafetyState(false);
+        case 0b100000:
+            Orient = ColorOrient::BACK_RIGHT;
+            SetIrSafetyState(false);
+        //완전히 들어가버린 색영역.. Criterion 선정 기준은 로봇은 항상 적을 찾으려고 노력할 것이므로, 적이 없어 벽을 보고 있다면(FrontCollision) 상태일때는 빠져나가기만 한다면 일단                  //다시 적 추적할 것. 그러므로 LEFT/RIGHT Collision도 걍 BACK으로 선정. 빨간 색영역에서는 Collision이 없을 것이며 그냥 후진하고, 파란색 색영역에서는 LEFT/RIGHT Collision이  뜨기 위해서는 
+        //FRONT/BACK collision이 동반되므로, 정말 특별한 상황 아니면 쓸일 없을듯하다.
+        case 0b000000: 
+            if(FrontCollision) {
+                Orient = ColorOrient::FRONT;
+                SetIrSafetyState(false);
+            } else if(BackCollision) {
+                Orient = ColorOrient::BACK;
+                SetIrSafetyState(false);
+            } else if(LeftCollision) {
+                Orient = ColorOrient::BACK_LEFT;
+                SetIrSafetyState(false);
+            } else if(RightCollision) {
+                Orient = ColorOrient::BACK_RIGHT;
+                SetIrSafetyState(false);
+            } else {
+                Orient = ColorOrient::FRONT;
+                SetIrSafetyState(false);
+            }
+        default:
+            Orient = ColorOrient::SAFE;
+            SetIrSafetyState(true);
+        break;
+    }
+}
 /*
 Controller::Position Controller::GetPosition() { return CurrentPos; }
 //Position::@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함.
@@ -613,28 +720,28 @@ void Controller::SetPosition() {
   }
 }
 */
-void Controller::IrEscape(enum ColorOrient orient) {
-  if (orient == ColorOrient::SAFE) {
+void Controller::IrEscape() {
+  if (Orient == ColorOrient::SAFE) {
     return;
-  } else if (orient == ColorOrient::FRONT) {
+  } else if (Orient == ColorOrient::FRONT) {
     SetSpeed(-0.5, -0.5);
-  } else if (orient == ColorOrient::TAN_LEFT) {
+  } else if (Orient == ColorOrient::TAN_LEFT) {
     // SetSpeed(0.5, -0.5);
-  } else if (orient == ColorOrient::TAN_RIGHT) {
+  } else if (Orient == ColorOrient::TAN_RIGHT) {
     // SetSpeed(-0.5, 0.5);
-  } else if (orient == ColorOrient::BACK) {
+  } else if (Orient == ColorOrient::BACK) {
     // 180, turn, recheck, and move
     SetSpeed(0.5, 0.5);
-  } else if (orient == ColorOrient::FRONT_LEFT) {
+  } else if (Orient == ColorOrient::FRONT_LEFT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
-  } else if (orient == ColorOrient::FRONT_RIGHT) {
+  } else if (Orient == ColorOrient::FRONT_RIGHT) {
     // back, and turn
     SetSpeed(0.5, -0.5);
-  } else if (orient == ColorOrient::BACK_LEFT) {
+  } else if (Orient == ColorOrient::BACK_LEFT) {
     // back, and turn
     SetSpeed(0.5, -0.5);
-  } else if (orient == ColorOrient::BACK_LEFT) {
+  } else if (Orient == ColorOrient::BACK_LEFT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
   } else {}
@@ -678,7 +785,7 @@ void Controller::WallTwerk() {
         if(GetEnemyState()) {
             SetState(RoboState::ATTACK);
             return;
-        controller.ImuRefresh();
+        controller.ImuRefresh_MPU9250();
         }
     }
 }
@@ -719,27 +826,22 @@ void Controller::BehindWall() {
   }
 }
 */
-void Controller::SetupImu() {
+void Controller::SetupImu_MPU9250() {
   uint8_t whoami = mpu9250.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250); // Read WHO_AM_I register for MPU-9250
-  // pc.printf("I AM 0x%x\t", whoami); pc.printf("I SHOULD BE 0x71\n\r");
-
+    // pc.printf("I AM 0x%x\t", whoami); pc.printf("I SHOULD BE 0x71\n\r");
   mpu9250.resetMPU9250(); // Reset registers to default in preparation for
-                          // device calibration
+    // device calibration
   mpu9250.MPU9250SelfTest(mpu9250.SelfTest); // Start by performing self test and reporting values
-
   mpu9250.calibrateMPU9250(mpu9250.gyroBias, mpu9250.accelBias);
   // Calibrate gyro and accelerometers, load biases in bias registers
-
   mpu9250.initMPU9250();
 //   mpu9250.initAK8963(mpu9250.magCalibration);
-
   mpu9250.getAres(); // Get accelerometer sensitivity
   mpu9250.getGres(); // Get gyro sensitivity
 //   mpu9250.getMres(); // Get magnetometer sensitivity
   t.start();
 }
-
-void Controller::ImuRefresh() {
+void Controller::ImuRefresh_MPU9250() {
     // If intPin goes high, all data registers have new data
     t.reset();
     if(mpu9250.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
@@ -754,7 +856,7 @@ void Controller::ImuRefresh() {
         // Calculate the gyro value into actual degrees per second
         mpu9250.gx = (float)mpu9250.gyroCount[0]*mpu9250.gRes - mpu9250.gyroBias[0];  // get actual gyro value, this depends on scale being set
         mpu9250.gy = (float)mpu9250.gyroCount[1]*mpu9250.gRes - mpu9250.gyroBias[1];  
-        // mpu9250.gz = (float)mpu9250.gyroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
+        // mpu9250.gz = (float)mpu9250.g+yroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
         // Read the x/y/z adc values   
         // // Calculate the magnetometer values in milliGauss
         // // Include factory calibration per data sheet and user environmental corrections
@@ -778,38 +880,47 @@ void Controller::ImuRefresh() {
     // mpu9250.yaw = 0.95 * gyro_angle_z + (1.0-0.95) * mag_angle_z;
 }
 
-void Controller::ImuDetect()  {
-    if(GetEnemyState() && mpu9250.pitch > IMU_THRESHOLD) {
+void Controller::ImuDetect_MPU9250()  {
+    if (mpu9250.az >= MinStableZAccel && mpu9250.az <= MaxStableZAccel) {
+        if (SettleTimer.read_ms() == 0) {
+            SettleTimer.start();
+        } else if (SettleTimer.read_ms() >= SettlingTime) { isZAccelSettled = true; }
+    } else {
+        isZAccelSettled = false;
+        SettleTimer.stop();
+        SettleTimer.reset();
+    }
+    if(GetEnemyState() && mpu9250.pitch < -IMU_THRESHOLD && isZAccelSettled) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT;
-    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 9) && mpu9250.pitch > IMU_THRESHOLD) {
+    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 9) && mpu9250.pitch < -IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_LEFT;
-    } else if((/*GetEnemyState() && */ psd_val[2] < 9) && mpu9250.pitch > IMU_THRESHOLD) {
+    } else if((/*GetEnemyState() && */ psd_val[2] < 9) && mpu9250.pitch <- IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_RIGHT;
-    } else if(psd_val[0] < 9 && mpu9250.roll > IMU_THRESHOLD) {
+    } else if(psd_val[0] < 9 && mpu9250.roll < -IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[0] < 9 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
             tilt_state = TiltState::SIDE_LEFT;
             Escape_Timer.reset();
         }
-    } else if(psd_val[3] <= 30 && mpu9250.roll < -IMU_THRESHOLD) {
+    } else if(psd_val[3] <= 30 && mpu9250.roll > IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[3] <= 30 && mpu9250.roll < -IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
             tilt_state = TiltState::SIDE_LEFT;
             Escape_Timer.reset();
         }
-    } else if(psd_val[2] < 9 && mpu9250.roll > IMU_THRESHOLD) {
+    } else if(psd_val[2] < 9 && mpu9250.roll < -IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[2] < 15 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
             tilt_state = TiltState::SIDE_RIGHT;
             Escape_Timer.reset();
         }
-    } else if(psd_val[4] <= 30 && mpu9250.roll > IMU_THRESHOLD) {
+    } else if(psd_val[4] <= 30 && mpu9250.roll < -IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[4] <= 30 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
@@ -823,7 +934,7 @@ void Controller::ImuEscape() {
     switch (tilt_state) {
         case TiltState::FRONT:
             SetSpeed(1.0,1.0);
-            if(BackCollision) WallTwerk();//벽_타기_함수(); 또는 벽_타기 State, 여유가 없다면 backcollision 대신 긴 PSD의 거리 재기
+            // if(BackCollision) WallTwerk();//벽_타기_함수(); 또는 벽_타기 State, 여유가 없다면 backcollision 대신 긴 PSD의 거리 재기
             break;
         case TiltState::FRONT_LEFT:
             SetSpeed(0.5,1.0);
@@ -844,12 +955,12 @@ void Controller::ImuEscape() {
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
     pc.printf("IMU Thread running\n");
-    controller.SetupImu();
+    // controller.SetupImu_MPU9250();
     while(1) {
-        controller.ImuRefresh();
-        controller.ImuDetect();
-        // pc.printf("%.2f,%.2f,",mpu9250.roll,mpu9250.pitch);
-        controller.ImuViewer();
+        controller.ImuRefresh_MPU9250();
+        controller.ImuDetect_MPU9250();
+        // pc.printf("%.2f,%.2f,",mpu9250.pitch,mpu9250.az);
+        // controller.ImuViewer();
         ThisThread::sleep_for(20);
     }
 }
@@ -857,11 +968,11 @@ void PsdThread() {
     pc.printf("PSD Thread running\n");
     while(1) {
         controller.PsdRefresh();
-        controller.IrRefresh();
+        // controller.IrRefresh();
         // pc.printf("%d, %d, %d, %d, %d, %d, %d, %d\r\n",controller.psd_val[0],controller.psd_val[1],controller.psd_val[2],controller.psd_val[3],controller.psd_val[4],controller.psd_val[5],controller.psd_val[6],controller.psd_val[7]);
         // pc.printf("%d, %d, %d, %d, %d, %d \r\n",irfl.read(), irfr.read(), irfc.read(), irbc.read(), irbl.read(), irbr.read());
-        // pc.printf("%d, %d, %d, %d, %d   ",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
-        // controller.OrientViewer((int)controller.GetOrient());
+        pc.printf("%d, %d, %d, %d, %d",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
+        controller.OrientViewer((int)controller.GetOrient());
         // controller.SetPosition();
         // controller.WallViewer();
         ThisThread::sleep_for(20); //임의
