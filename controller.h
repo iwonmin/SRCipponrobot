@@ -158,6 +158,8 @@ class Controller
     //적과의 수평거리 변환
     void SetHD(int HD);
 
+    float NormalizeYaw(float angle);
+
 
 //--------------------State Machine methods----------------------//
     //초기상태 시 실행 함수
@@ -245,7 +247,7 @@ class Controller
 
     Timer Escape_Timer;
 
-    float roll, pitch, yaw, currentyaw, prevyaw, normalize_yaw;
+    float roll, pitch, yaw, currentyaw, prevyaw, normalized_yaw;
 
     float ax, ay, az;
     //------------------------Tester's Choice-------------------//

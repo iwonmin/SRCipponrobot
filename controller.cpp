@@ -39,6 +39,7 @@ bool isNegative = false;
 
 char distanceBuffer[32];
 
+float initialYaw=0.0;
 int bufferIndex = 0;
 #pragma endregion Serial Variables
 
@@ -138,8 +139,8 @@ void Controller::Start() {
     PwmR.period_us(66);
     Thread1.start(ImuThread);
     Thread1.set_priority(osPriorityHigh);
-    Thread2.start(PsdThread);
-    Thread2.set_priority(osPriorityAboveNormal);
+    // Thread2.start(PsdThread);
+    //Thread2.set_priority(osPriorityAboveNormal);
     SetState(RoboState::IDLE);
     }
 };
@@ -156,7 +157,7 @@ void Controller::Detect() {
     if (imuSafe && irSafe && wallSafe) {
         if(!GetYellow()){
             if(GetCurrentYaw()>=-90){
-                SetSpeed(-0.5,0.5);
+                SetSpeed(-0.1,0.1);
             }if(GetCurrentYaw()<-90)
             {
                 SetSpeed(0);
@@ -197,15 +198,15 @@ void Controller::Yellow()
     {
         if(GetCurrentYaw()>=-130)
         {
-            SetSpeed(-0.5,0.5);
+            SetSpeed(-0.1,0.1);
         }else if(GetCurrentYaw()<=-140)
         {
-            SetSpeed(0.5,-0.5);
+            SetSpeed(0.1,-0.1);
         }else if(GetCurrentYaw()<-130 && GetCurrentYaw()>-140)
         {
             if(GetOrient()!=ColorOrient::FRONT)
             {
-                SetSpeed(0.5);
+                SetSpeed(0.1);
             }else
             {
                 SetSpeed(0);
@@ -214,15 +215,15 @@ void Controller::Yellow()
     }else if(GetHD()<0){
         if(GetCurrentYaw()>=-40)
         {
-            SetSpeed(0.5,-0.5);
+            SetSpeed(-0.1,0.1);
         }else if(GetCurrentYaw()<=-50)
         {
-            SetSpeed(-0.5,0.5);
+            SetSpeed(0.1,-0.1);
         }else if(GetCurrentYaw()<-40 && GetCurrentYaw()>-50)
         {
             if(GetOrient()!=ColorOrient::FRONT)
             {
-                SetSpeed(0.5);
+                SetSpeed(0.1);
             }else
             {
                 SetSpeed(0);
@@ -312,10 +313,10 @@ void Controller::EnemyDetect() {
                 //pc.printf("Data1: %s, Data2: %s, Data3: %s\r\n", data1, data2, data3);
                 //pc.printf("GHD: %d, YHD: %d, YA: %.2f\r\n",GetHD(),GetYHD(),GetYA());
             }else{
-                pc.printf("Error: Only two data fields found!\r\n");
+                //pc.printf("Error: Only two data fields found!\r\n");
             }
         }else{
-            pc.printf("Error: Only one data field found!\r\n");
+            //pc.printf("Error: Only one data field found!\r\n");
         }
         bufferIndex =0; //인덱스 초기화
     }else{
@@ -954,6 +955,14 @@ void Controller::ImuEscape() {
             return;
     }
 }
+bool isInitialized = false;
+
+float Controller::NormalizeYaw(float angle)
+{
+    if(angle>180) angle -=360;
+    if(angle<-180) angle +=360;
+    return angle;
+}
 void Controller::ImuChartoData() {
 
     char* start = strchr(data, '*');
@@ -970,7 +979,13 @@ void Controller::ImuChartoData() {
 
                 token = strtok(NULL, ",");
                 if (token != NULL) {
-                    yaw = atof(token); 
+                    float rawYaw = atof(token); 
+                     if (!isInitialized) {
+                        // 최초 초기화 시 yaw 값을 0으로 설정
+                        initialYaw = rawYaw;
+                        isInitialized = true; // 초기화 완료 표시
+                    }
+                    yaw = NormalizeYaw(rawYaw - initialYaw); // 기준 yaw 값을 초기화한 값으로 설정하고 정규화
 /* 가속도 출력 비활성화.
                     token = strtok(NULL, ",");
                     if (token != NULL) {
@@ -1010,9 +1025,9 @@ void ImuThread() {
     while(1) {
         controller.ImuParse();
         controller.currentyaw = controller.yaw;
-        controller.normalize_yaw += controller.currentyaw - controller.prevyaw;
-        pc.printf("%.1f, %.1f, %.1f\r\n",controller.roll, controller.pitch, controller.normalize_yaw);
-        controller.prevyaw = controller.currentyaw;
+        //controller.normalized_yaw += controller.currentyaw - controller.prevyaw;
+        pc.printf("%.1f, %.1f, %.1f\r\n",controller.roll, controller.pitch, controller.currentyaw);
+        //controller.prevyaw = controller.currentyaw;
         ThisThread::sleep_for(1);
     }
 }
