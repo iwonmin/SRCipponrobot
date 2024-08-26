@@ -7,6 +7,8 @@ class EBIMU
     public:
     EBIMU(PinName tx, PinName rx, int baud);
     void parse();//데이터 파싱을 위한 함수
+    float getRoll(); // Roll 값을 반환하는 함수
+    float getPitch(); // Pitch 값을 반환하는 함수
     float getYaw();//Yaw 값을 반환하는 함수
     void initialze();// 초기화 함수
 

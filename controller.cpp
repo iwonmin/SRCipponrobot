@@ -20,7 +20,7 @@ DigitalIn irfc(PA_6);
 DigitalIn irbc(PC_5);//new pin!!
 DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
-EBIMU imu(PC_12,PD_2,115200);
+EBIMU imu(PB_10,PC_5,115200);
 MPU9250 mpu9250(D14, D15);
 Controller controller;
 Thread Thread1;
@@ -132,10 +132,10 @@ void Controller::Start() {
     if(StartFlag) {
     PwmL.period_us(66);
     PwmR.period_us(66);
-    Thread1.start(ImuThread);
-    Thread1.set_priority(osPriorityHigh);
-    Thread2.start(PsdThread);
-    Thread2.set_priority(osPriorityAboveNormal);
+    //Thread1.start(ImuThread);
+    // Thread1.set_priority(osPriorityHigh);
+    //Thread2.start(PsdThread);
+    // Thread2.set_priority(osPriorityAboveNormal);
     Thread3.start(gyroFunction);
     SetState(RoboState::IDLE);
     }
@@ -958,6 +958,28 @@ void Controller::ImuViewer() {
             return;
     }
 }
+
+float Controller:: GetRoll()
+{
+    return ebroll;
+}
+
+void Controller:: SetRoll(float roll)
+{
+    ebroll=roll;
+    
+}
+
+float Controller::GetPitch()
+{
+    return ebpitch;
+}
+
+void Controller::SetPitch(float pitch)
+{
+    ebpitch=pitch;
+    
+}
 float Controller::GetCurrentYaw()
 {
     return currentYaw;
@@ -974,9 +996,15 @@ void gyroFunction()
     {
         imu.parse();
         //gyroMutex.lock();
+        controller.SetRoll(imu.getRoll());
+        controller.SetPitch(imu.getPitch());
         controller.SetCurrentYaw(imu.getYaw());
         //gyroMutex.unlock();
-        pc.printf("Current Yaw : %.2f\r\n",controller.GetCurrentYaw());
+        //pc.printf("Roll: %.2f\n",controller.GetRoll());
+        // pc.printf("Pitch: %.2f\n",controller.GetPitch());
+        // pc.printf("Yaw: %.2f\n",controller.GetCurrentYaw());
+        pc.printf("Roll: %.2f, Pitch: %.2f, Pitch: %.2f\r\n",controller.GetRoll(), controller.GetPitch(), controller.GetCurrentYaw());
+        //pc.printf("Current Yaw : %.2f\r\n",controller.GetCurrentYaw());
         ThisThread::sleep_for(10);
     }
 }

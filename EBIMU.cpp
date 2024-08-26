@@ -10,7 +10,15 @@ float EBIMU::normalizeYaw(float angle) {
     while (angle < -180) angle += 360;
     return angle;
 }
+float EBIMU::getRoll()
+{
+    return roll;
+}
 
+float EBIMU::getPitch()
+{
+    return pitch;
+}
 // yaw 값을 업데이트하고 반환하는 함수
 float EBIMU::getYaw() {
     return yaw; // 현재 yaw 값을 반환

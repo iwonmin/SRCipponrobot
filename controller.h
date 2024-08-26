@@ -128,6 +128,13 @@ class Controller
     //양쪽 바퀴 다른 속도 설정
     void SetSpeed(float sL, float sR);
 
+    float GetRoll();
+
+    void SetRoll(float roll);
+
+    float GetPitch();
+
+    void SetPitch(float pitch);
     //현재 yaw값 반환
     float GetCurrentYaw();
     
@@ -277,7 +284,7 @@ class Controller
     //우측 바퀴 속력
     float speedR;
 
-    float currentYaw;
+    float ebroll, ebpitch, currentYaw;
 
     const float alpha_psd = 0.9f;
 
