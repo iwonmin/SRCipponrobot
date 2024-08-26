@@ -251,7 +251,7 @@ void Controller::Move(float sL, float sR) {
   PwmL = abs(sL);
   PwmR = abs(sR);
 };
-/*
+
 void Controller::EnemyDetect() {
   if (device.readable()) {
     char receivedChar = device.getc();
@@ -323,15 +323,9 @@ void Controller::EnemyDetect() {
     }
   }
 }
-*/
 
-void Controller::EnemyDetect() {//실험용 짭
-    // if(psd_val[1] <= 35) {
-    //     SetEnemyState(true);
-    //     SetHD(0);
-    // } else { SetEnemyState(false); SetHD(20.f);}
-    // SetEnemyState(true);
-}
+
+
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
   filtered_distance[i] = now_distance[i] * alpha_psd + (1 - alpha_psd) * prev_distance[i];
@@ -841,6 +835,7 @@ void Controller::SetupImu_MPU9250() {
 //   mpu9250.getMres(); // Get magnetometer sensitivity
   t.start();
 }
+
 void Controller::ImuRefresh_MPU9250() {
     // If intPin goes high, all data registers have new data
     t.reset();
@@ -982,10 +977,6 @@ void PsdThread() {
 void Starter() {
     controller.StartFlag = true;
 }
-//Interrupt to Idle
-//Imu ThresHold -> Idle -> Escape
-//Enemy Lost -> Idle -> Detect
-//Enemy Detected -> Idle -> Attack
 
 //---------------임시------------------//
 void Controller::OrientViewer(int orient) {
