@@ -986,7 +986,7 @@ void Controller::ImuChartoData() {
                         isInitialized = true; // 초기화 완료 표시
                     }
                     yaw = NormalizeYaw(rawYaw - initialYaw); // 기준 yaw 값을 초기화한 값으로 설정하고 정규화
-/* 가속도 출력 비활성화.
+
                     token = strtok(NULL, ",");
                     if (token != NULL) {
                         ax = atof(token);
@@ -1001,7 +1001,7 @@ void Controller::ImuChartoData() {
                         
                             }
                         }                       
-                    }   */                  
+                    }                     
                 }
             }
         }
@@ -1009,30 +1009,19 @@ void Controller::ImuChartoData() {
 }
 
 void Controller::ImuParse() {
-    for(int i=0;i<64;i++) {
-        char a = ebimu.getc();
-        if(a == 0x0A) {
-            ImuChartoData();
-        } else data[i] = a;
-    }
+    ebimu.printf("*");
+    ebimu.scanf("%s",data);
+    controller.ImuChartoData();
 }
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
-    controller.ImuParse();
-    controller.prevyaw = controller.yaw;
-    controller.currentyaw = controller.yaw;
-    ThisThread::sleep_for(10);
     while(1) {
         controller.ImuParse();
-        controller.currentyaw = controller.yaw;
-        //controller.normalized_yaw += controller.currentyaw - controller.prevyaw;
-        pc.printf("%.1f, %.1f, %.1f\r\n",controller.roll, controller.pitch, controller.currentyaw);
-        //controller.prevyaw = controller.currentyaw;
-        ThisThread::sleep_for(1);
+        pc.printf("%.1f, %.1f, %.1f, %.1f\r\n",controller.roll, controller.pitch, controller.yaw, controller.az);
+        ThisThread::sleep_for(20);
     }
 }
 void PsdThread() {
-    pc.printf("PSD Thread running\n");
     while(1) {
         controller.PsdRefresh();
         // controller.IrRefresh();
