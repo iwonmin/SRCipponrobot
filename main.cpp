@@ -24,5 +24,6 @@ int main()
             break;
         }
         controller.Move(controller.GetSpeedL(),controller.GetSpeedR());
+        wait_us(10000);
     }
 }

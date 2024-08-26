@@ -184,7 +184,7 @@ void Controller::Move(float sL, float sR) {
   PwmL = abs(sL);
   PwmR = abs(sR);
 };
-
+/*
 void Controller::EnemyDetect() {
   if (device.readable()) {
     char receivedChar = device.getc();
@@ -207,15 +207,15 @@ void Controller::EnemyDetect() {
     }
   }
 }
+*/
 
-/*
 void Controller::EnemyDetect() {//실험용 짭
     // if(psd_val[1] <= 35) {
     //     SetEnemyState(true);
     //     SetHD(0);
     // } else { SetEnemyState(false); SetHD(20.f);}
-    SetEnemyState(true);
-}*/
+    // SetEnemyState(true);
+}
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
   filtered_distance[i] = now_distance[i] * alpha_psd + (1 - alpha_psd) * prev_distance[i];
@@ -740,7 +740,7 @@ void Controller::ImuRefresh() {
         // Calculate the gyro value into actual degrees per second
         mpu9250.gx = (float)mpu9250.gyroCount[0]*mpu9250.gRes - mpu9250.gyroBias[0];  // get actual gyro value, this depends on scale being set
         mpu9250.gy = (float)mpu9250.gyroCount[1]*mpu9250.gRes - mpu9250.gyroBias[1];  
-        // mpu9250.gz = (float)mpu9250.gyroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
+        // mpu9250.gz = (float)mpu9250.g+yroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
         // Read the x/y/z adc values   
         // // Calculate the magnetometer values in milliGauss
         // // Include factory calibration per data sheet and user environmental corrections
@@ -774,37 +774,37 @@ void Controller::ImuDetect()  {
         SettleTimer.stop();
         SettleTimer.reset();
     }
-    if(GetEnemyState() && mpu9250.pitch > IMU_THRESHOLD && isZAccelSettled) {
+    if(GetEnemyState() && mpu9250.pitch < -IMU_THRESHOLD && isZAccelSettled) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT;
-    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 9) && mpu9250.pitch > IMU_THRESHOLD) {
+    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 9) && mpu9250.pitch < -IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_LEFT;
-    } else if((/*GetEnemyState() && */ psd_val[2] < 9) && mpu9250.pitch > IMU_THRESHOLD) {
+    } else if((/*GetEnemyState() && */ psd_val[2] < 9) && mpu9250.pitch <- IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_RIGHT;
-    } else if(psd_val[0] < 9 && mpu9250.roll > IMU_THRESHOLD) {
+    } else if(psd_val[0] < 9 && mpu9250.roll < -IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[0] < 9 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
             tilt_state = TiltState::SIDE_LEFT;
             Escape_Timer.reset();
         }
-    } else if(psd_val[3] <= 30 && mpu9250.roll < -IMU_THRESHOLD) {
+    } else if(psd_val[3] <= 30 && mpu9250.roll > IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[3] <= 30 && mpu9250.roll < -IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
             tilt_state = TiltState::SIDE_LEFT;
             Escape_Timer.reset();
         }
-    } else if(psd_val[2] < 9 && mpu9250.roll > IMU_THRESHOLD) {
+    } else if(psd_val[2] < 9 && mpu9250.roll < -IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[2] < 15 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
             tilt_state = TiltState::SIDE_RIGHT;
             Escape_Timer.reset();
         }
-    } else if(psd_val[4] <= 30 && mpu9250.roll > IMU_THRESHOLD) {
+    } else if(psd_val[4] <= 30 && mpu9250.roll < -IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[4] <= 30 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
@@ -838,11 +838,11 @@ void Controller::ImuEscape() {
 }
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
-    controller.SetupImu();
+    // controller.SetupImu();
     while(1) {
         controller.ImuRefresh();
         controller.ImuDetect();
-        pc.printf("%.2f,%.2f\r\n",mpu9250.pitch,mpu9250.az);
+        // pc.printf("%.2f,%.2f,",mpu9250.pitch,mpu9250.az);
         // controller.ImuViewer();
         ThisThread::sleep_for(20);
     }
@@ -850,11 +850,11 @@ void ImuThread() {
 void PsdThread() {
     while(1) {
         controller.PsdRefresh();
-        controller.IrRefresh();
+        // controller.IrRefresh();
         // pc.printf("%d, %d, %d, %d, %d, %d, %d, %d\r\n",controller.psd_val[0],controller.psd_val[1],controller.psd_val[2],controller.psd_val[3],controller.psd_val[4],controller.psd_val[5],controller.psd_val[6],controller.psd_val[7]);
         // pc.printf("%d, %d, %d, %d, %d, %d \r\n",irfl.read(), irfr.read(), irfc.read(), irbc.read(), irbl.read(), irbr.read());
-        // pc.printf("%d, %d, %d, %d, %d   ",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
-        // controller.OrientViewer((int)controller.GetOrient());
+        pc.printf("%d, %d, %d, %d, %d",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
+        controller.OrientViewer((int)controller.GetOrient());
         // controller.SetPosition();
         // controller.WallViewer();
         ThisThread::sleep_for(20); //임의

@@ -14,7 +14,7 @@
 #define WALL_DISTANCE 70 //cm
 #define TIME_90DEGTURN 50 //ms, pwm == 0.5
 #define Time_10CMMOVE 20 //ms, pwm == 0.5
-#define IMU_THRESHOLD 8.f
+#define IMU_THRESHOLD 4.f
 #define ESCAPE_TIME 500 //ms
 #pragma endregion Preprocessor
 #pragma region external
@@ -176,6 +176,7 @@ class Controller
     // void IrEscapeWhenImuUnsafe();
 
     void ColorOrient();
+    
     void ColorOrient_new();
 
     enum ColorOrient GetOrient();
