@@ -201,11 +201,11 @@ class Controller
     */
 
     //-----------------------MPU9250-----------------------------//
-    void SetupImu();
+    void SetupImu_MPU9250();
     
-    void ImuRefresh();
+    void ImuRefresh_MPU9250();
 
-    void ImuDetect();
+    void ImuDetect_MPU9250();
     
     void ImuEscape();
 

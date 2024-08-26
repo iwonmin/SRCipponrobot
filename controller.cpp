@@ -669,7 +669,7 @@ void Controller::WallTwerk() {
         if(GetEnemyState()) {
             SetState(RoboState::ATTACK);
             return;
-        controller.ImuRefresh();
+        controller.ImuRefresh_MPU9250();
         }
     }
 }
@@ -710,7 +710,7 @@ void Controller::BehindWall() {
   }
 }
 */
-void Controller::SetupImu() {
+void Controller::SetupImu_MPU9250() {
   uint8_t whoami = mpu9250.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250); // Read WHO_AM_I register for MPU-9250
     // pc.printf("I AM 0x%x\t", whoami); pc.printf("I SHOULD BE 0x71\n\r");
   mpu9250.resetMPU9250(); // Reset registers to default in preparation for
@@ -725,7 +725,7 @@ void Controller::SetupImu() {
 //   mpu9250.getMres(); // Get magnetometer sensitivity
   t.start();
 }
-void Controller::ImuRefresh() {
+void Controller::ImuRefresh_MPU9250() {
     // If intPin goes high, all data registers have new data
     t.reset();
     if(mpu9250.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
@@ -764,7 +764,7 @@ void Controller::ImuRefresh() {
     // mpu9250.yaw = 0.95 * gyro_angle_z + (1.0-0.95) * mag_angle_z;
 }
 
-void Controller::ImuDetect()  {
+void Controller::ImuDetect_MPU9250()  {
     if (mpu9250.az >= MinStableZAccel && mpu9250.az <= MaxStableZAccel) {
         if (SettleTimer.read_ms() == 0) {
             SettleTimer.start();
@@ -838,10 +838,10 @@ void Controller::ImuEscape() {
 }
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
-    // controller.SetupImu();
+    // controller.SetupImu_MPU9250();
     while(1) {
-        controller.ImuRefresh();
-        controller.ImuDetect();
+        controller.ImuRefresh_MPU9250();
+        controller.ImuDetect_MPU9250();
         // pc.printf("%.2f,%.2f,",mpu9250.pitch,mpu9250.az);
         // controller.ImuViewer();
         ThisThread::sleep_for(20);
