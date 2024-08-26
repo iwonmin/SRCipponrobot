@@ -43,6 +43,7 @@ extern Thread Thread1;
 extern Thread Thread2;
 extern Thread Thread3;
 extern Serial pc;
+extern Serial ebimu;
 #pragma endregion external
 class Controller
 {
@@ -84,7 +85,10 @@ class Controller
 //-------------------Get & Set methods----------------------//
     //현재 로봇의 상태 반환
     RoboState GetState();
-
+    
+    void CheckStartTime();
+    
+    uint64_t GetStartTime();
     //로봇의 상태를 변환
     void SetState(RoboState state);
     
@@ -226,17 +230,24 @@ class Controller
     void BehindWall();
     */
 
-    //-----------------------MPU9250-----------------------------//
+    //-----------------------MPU9250, IMU-----------------------------//
     void SetupImu_MPU9250();
     
     void ImuRefresh_MPU9250();
 
     void ImuDetect_MPU9250();
+
+    void ImuParse();
+
+    void ImuChartoData();
     
     void ImuEscape();
 
     Timer Escape_Timer;
 
+    float roll, pitch, yaw, currentyaw, prevyaw, normalize_yaw;
+
+    float ax, ay, az;
     //------------------------Tester's Choice-------------------//
     void OrientViewer(int);
 
@@ -245,6 +256,8 @@ class Controller
     void ImuViewer();
 //--------------------Private variables--------------------------//
     private:
+    //시간 세기
+    uint64_t StartTime = 0;
     //로봇 상태
     RoboState robo_state;
     //색 영역 위치
@@ -262,7 +275,7 @@ class Controller
     int enemy_horizontal_distance = 1;
 
     //노란 영역 진입 플래그
-    bool yellow= false;
+    bool yellow = false;
     //노란영역 평행 각도
     float yellowAngle;
     //노란 영역 중앙까지 거리리
@@ -318,7 +331,9 @@ class Controller
     float gyro_angle_x, gyro_angle_y, gyro_angle_z;
 
     float accel_angle_x, accel_angle_y, mag_angle_z;
-    
+    //-------------------------------EBIMU-------------------------------//
+    char data[64] = "";
+
     Timer t; //for gyro integral;
     //-------------------------------Stable Z-axis Accel Detector-------------------------------//
     const float MaxStableZAccel = 1.2f;
@@ -338,5 +353,3 @@ void ImuThread();
 void PsdThread();
 
 void Starter();
-
-void gyroFunction();

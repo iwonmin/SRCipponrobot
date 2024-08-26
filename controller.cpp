@@ -17,15 +17,14 @@ GP2A psdrb(PC_0, 7, 80, 24.6, -0.297);
 DigitalIn irfl(PC_4);
 DigitalIn irfr(PB_1);
 DigitalIn irfc(PA_6);
-DigitalIn irbc(PC_5);//new pin!!
+DigitalIn irbc(PA_8);//new pin!!
 DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
-EBIMU imu(PC_12,PD_2,115200);
-MPU9250 mpu9250(D14, D15);
+Serial ebimu(PB_10,PC_5,115200);
+// MPU9250 mpu9250(D14, D15);
 Controller controller;
 Thread Thread1;
 Thread Thread2;
-Thread Thread3;
 #pragma endregion variables
 
 #pragma region Serial Variables
@@ -47,8 +46,7 @@ int bufferIndex = 0;
 Controller::Controller() { 
     SetState(RoboState::START);
     btn.fall(&Starter);
-    
-  }
+}
 
 Controller::RoboState Controller::GetState() { return robo_state; };
 
@@ -126,7 +124,13 @@ int Controller::GetYHD(){return yellow_horizontal_distance;}
 
 void Controller::SetYHD(int YHD){yellow_horizontal_distance = YHD;}
 
+void Controller::CheckStartTime() {
+    StartTime = Kernel::get_ms_count();
+}
 
+uint64_t Controller::GetStartTime() {
+    return StartTime;
+}
 void Controller::Start() {
     //pc.printf("Start\n");
     if(StartFlag) {
@@ -136,7 +140,6 @@ void Controller::Start() {
     Thread1.set_priority(osPriorityHigh);
     Thread2.start(PsdThread);
     Thread2.set_priority(osPriorityAboveNormal);
-    Thread3.start(gyroFunction);
     SetState(RoboState::IDLE);
     }
 };
@@ -759,6 +762,7 @@ void Controller::IrEscapeWhenImuUnsafe() {
 */
 
 //Imu Thread에서 새로운 Sub-Thread 실행, 여기서 IMU 값 새로 받아와야함
+/*
 void Controller::WallTwerk() {
     bool FinishMove = false;
     bool Orient = false;
@@ -783,6 +787,7 @@ void Controller::WallTwerk() {
         }
     }
 }
+*/
 /*
 void Controller::CenterSpin() {//굳이??싶은 함수
   SetSpeed(0.5, -0.5); //빙글빙글
@@ -820,6 +825,7 @@ void Controller::BehindWall() {
   }
 }
 */
+/*
 void Controller::SetupImu_MPU9250() {
   uint8_t whoami = mpu9250.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250); // Read WHO_AM_I register for MPU-9250
     // pc.printf("I AM 0x%x\t", whoami); pc.printf("I SHOULD BE 0x71\n\r");
@@ -888,10 +894,10 @@ void Controller::ImuDetect_MPU9250()  {
     if(GetEnemyState() && mpu9250.pitch < -IMU_THRESHOLD && isZAccelSettled) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT;
-    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 9) && mpu9250.pitch < -IMU_THRESHOLD) {
+    } else if(GetEnemyState() && (psd_val[0] < 9) && mpu9250.pitch < -IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_LEFT;
-    } else if((/*GetEnemyState() && */ psd_val[2] < 9) && mpu9250.pitch <- IMU_THRESHOLD) {
+    } else if((GetEnemyState() &&  psd_val[2] < 9) && mpu9250.pitch <- IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_RIGHT;
     } else if(psd_val[0] < 9 && mpu9250.roll < -IMU_THRESHOLD) {
@@ -925,6 +931,7 @@ void Controller::ImuDetect_MPU9250()  {
     } else if (mpu9250.pitch < IMU_THRESHOLD){ SetImuSafetyState(true); tilt_state = TiltState::SAFE;}
     if(Escape_Timer.read_ms() > 10000) Escape_Timer.reset();
 }
+*/
 void Controller::ImuEscape() {
     switch (tilt_state) {
         case TiltState::FRONT:
@@ -947,16 +954,66 @@ void Controller::ImuEscape() {
             return;
     }
 }
+void Controller::ImuChartoData() {
+
+    char* start = strchr(data, '*');
+    if (start != NULL) {
+        start++;
+
+        char* token = strtok(start, ",");
+        if (token != NULL) {
+            roll = atof(token); 
+
+            token = strtok(NULL, ",");
+            if (token != NULL) {
+                pitch = atof(token); 
+
+                token = strtok(NULL, ",");
+                if (token != NULL) {
+                    yaw = atof(token); 
+/* 가속도 출력 비활성화.
+                    token = strtok(NULL, ",");
+                    if (token != NULL) {
+                        ax = atof(token);
+
+                        token = strtok(NULL, ",");
+                        if (token != NULL) {
+                            ay = atof(token);
+
+                            token = strtok(NULL, ",");
+                            if (token != NULL) {
+                                az = atof(token);
+                        
+                            }
+                        }                       
+                    }   */                  
+                }
+            }
+        }
+    }
+}
+
+void Controller::ImuParse() {
+    for(int i=0;i<64;i++) {
+        char a = ebimu.getc();
+        if(a == 0x0A) {
+            ImuChartoData();
+        } else data[i] = a;
+    }
+}
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
-    pc.printf("IMU Thread running\n");
-    // controller.SetupImu_MPU9250();
+    controller.ImuParse();
+    controller.prevyaw = controller.yaw;
+    controller.currentyaw = controller.yaw;
+    ThisThread::sleep_for(10);
     while(1) {
-        controller.ImuRefresh_MPU9250();
-        controller.ImuDetect_MPU9250();
-        // pc.printf("%.2f,%.2f,",mpu9250.pitch,mpu9250.az);
-        // controller.ImuViewer();
-        ThisThread::sleep_for(20);
+        controller.ImuParse();
+        controller.currentyaw = controller.yaw;
+        controller.normalize_yaw += controller.currentyaw - controller.prevyaw;
+        pc.printf("%.1f, %.1f, %.1f\r\n",controller.roll, controller.pitch, controller.normalize_yaw);
+        controller.prevyaw = controller.currentyaw;
+        ThisThread::sleep_for(1);
     }
 }
 void PsdThread() {
@@ -966,8 +1023,8 @@ void PsdThread() {
         // controller.IrRefresh();
         // pc.printf("%d, %d, %d, %d, %d, %d, %d, %d\r\n",controller.psd_val[0],controller.psd_val[1],controller.psd_val[2],controller.psd_val[3],controller.psd_val[4],controller.psd_val[5],controller.psd_val[6],controller.psd_val[7]);
         // pc.printf("%d, %d, %d, %d, %d, %d \r\n",irfl.read(), irfr.read(), irfc.read(), irbc.read(), irbl.read(), irbr.read());
-        pc.printf("%d, %d, %d, %d, %d",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
-        controller.OrientViewer((int)controller.GetOrient());
+        // pc.printf("%d, %d, %d, %d, %d",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
+        // controller.OrientViewer((int)controller.GetOrient());
         // controller.SetPosition();
         // controller.WallViewer();
         ThisThread::sleep_for(20); //임의
@@ -1050,17 +1107,4 @@ float Controller::GetCurrentYaw()
 void Controller::SetCurrentYaw(float yaw)
 {
     currentYaw = yaw;
-}
-void gyroFunction()
-{
-    pc.printf("gyroThread running\n");    
-    while(1)
-    {
-        imu.parse();
-        //gyroMutex.lock();
-        controller.SetCurrentYaw(imu.getYaw());
-        //gyroMutex.unlock();
-        pc.printf("Current Yaw : %.2f\r\n",controller.GetCurrentYaw());
-        ThisThread::sleep_for(10);
-    }
 }

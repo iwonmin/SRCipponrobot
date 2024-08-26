@@ -3,8 +3,8 @@
 
 int main()
 {
-    pc.printf("main started\n");
  while (true) {
+        controller.CheckStartTime();
         controller.EnemyDetect();
         switch(controller.GetState())
         {
@@ -27,6 +27,6 @@ int main()
             controller.Yellow();
         }
         controller.Move(controller.GetSpeedL(),controller.GetSpeedR());
-        wait_us(10000);
+        ThisThread::sleep_until(controller.GetStartTime() + 10); //절대 시간으로 10ms 만큼 쉬기
     }
 }
