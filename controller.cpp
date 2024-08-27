@@ -7,7 +7,7 @@ DigitalOut DirR(PB_6);
 PwmOut PwmL(PB_4);
 PwmOut PwmR(PB_5);
 GP2A psdlf(PA_0, 7, 80, 24.6, -0.297);
-GP2A psdf(PB_0, 30, 150, 60, 0);
+GP2A psdf(PB_0, 7, 80, 24.6, -0.297);
 GP2A psdrf(PA_1, 7, 80, 24.6, -0.297);
 GP2A psdlc(PA_4, 30, 150, 60, 0);
 GP2A psdrc(PC_1, 30, 150, 60, 0);
@@ -138,9 +138,15 @@ void Controller::Start() {
     PwmL.period_us(66);
     PwmR.period_us(66);
     Thread1.start(ImuThread);
+<<<<<<< Updated upstream
     Thread1.set_priority(osPriorityHigh);
     Thread2.start(PsdThread);
     Thread2.set_priority(osPriorityAboveNormal);
+=======
+    Thread1.set_priority(osPriorityNormal2);
+    // Thread2.start(DetectThread);
+    // Thread2.set_priority(osPriorityNormal1);
+>>>>>>> Stashed changes
     SetState(RoboState::IDLE);
     }
 };
@@ -152,7 +158,7 @@ void Controller::Idle() {
     SetState(RoboState::ESCAPE);
   }
 };
-
+/*
 void Controller::Detect() {
     if (imuSafe && irSafe && wallSafe) {
         if (GetEnemyState()) {
@@ -167,11 +173,32 @@ void Controller::Detect() {
         SetState(RoboState::IDLE);
     }
 };
+*/
+void Controller::Detect() {
+    if (imuSafe && irSafe && wallSafe) {
+        if (GetEnemyState()) {
+        SetSpeed(0);
+        SetState(RoboState::ATTACK);
+        } else if (!GetEnemyState() && GetHD() > 0) {
+
+        SetSpeed(-0.5, 0.5);
+        } else if (!GetEnemyState() && GetHD() < 0) {
+
+        SetSpeed(0.5, -0.5);
+        }
+    } else {
+        SetState(RoboState::IDLE);
+    }
+};
 
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
     if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
     if (irSafe && imuSafe) {
+<<<<<<< Updated upstream
         SetSpeed(0.6);
+=======
+        SetSpeed(1.0);
+>>>>>>> Stashed changes
         if (!GetEnemyState()) {
         SetState(RoboState::IDLE);
         SetAttackState(false);
@@ -244,6 +271,10 @@ void Controller::Move(float sL, float sR) {
   PwmL = abs(sL);
   PwmR = abs(sR);
 };
+<<<<<<< Updated upstream
+=======
+/*
+>>>>>>> Stashed changes
 void Controller::EnemyDetect() {
     /*
   if (device.readable()) {
@@ -268,7 +299,17 @@ void Controller::EnemyDetect() {
   }*/
   SetEnemyState(true);
 }
+*/
+void Controller::EnemyDetect() {
+    if(psd_val[1] <= 25) {SetEnemyState(true); SetHD(0);}
+    else { SetEnemyState(false); SetHD(-1); }
 
+<<<<<<< Updated upstream
+=======
+}
+
+
+>>>>>>> Stashed changes
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
   filtered_distance[i] = now_distance[i] * alpha_psd + (1 - alpha_psd) * prev_distance[i];
@@ -820,106 +861,62 @@ void Controller::ImuRefresh_MPU9250() {
     mpu9250.pitch = alpha_imu * gyro_angle_y + (1.0-alpha_imu) * accel_angle_y;
     // mpu9250.yaw = 0.95 * gyro_angle_z + (1.0-0.95) * mag_angle_z;
 }
-
-void Controller::ImuDetect_MPU9250()  {
-    if (mpu9250.az >= MinStableZAccel && mpu9250.az <= MaxStableZAccel) {
-        if (SettleTimer.read_ms() == 0) {
-            SettleTimer.start();
-        } else if (SettleTimer.read_ms() >= SettlingTime) { isZAccelSettled = true; }
-    } else {
-        isZAccelSettled = false;
-        SettleTimer.stop();
-        SettleTimer.reset();
-    }
-    if(GetEnemyState() && mpu9250.pitch < -IMU_THRESHOLD && isZAccelSettled) {
-        SetImuSafetyState(false);
-        tilt_state = TiltState::FRONT;
-    } else if(GetEnemyState() && (psd_val[0] < 9) && mpu9250.pitch < -IMU_THRESHOLD) {
-        SetImuSafetyState(false);
-        tilt_state = TiltState::FRONT_LEFT;
-    } else if((GetEnemyState() &&  psd_val[2] < 9) && mpu9250.pitch <- IMU_THRESHOLD) {
-        SetImuSafetyState(false);
-        tilt_state = TiltState::FRONT_RIGHT;
-    } else if(psd_val[0] < 9 && mpu9250.roll < -IMU_THRESHOLD) {
-        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[0] < 9 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
-            SetImuSafetyState(false);
-            tilt_state = TiltState::SIDE_LEFT;
-            Escape_Timer.reset();
-        }
-    } else if(psd_val[3] <= 30 && mpu9250.roll > IMU_THRESHOLD) {
-        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[3] <= 30 && mpu9250.roll < -IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
-            SetImuSafetyState(false);
-            tilt_state = TiltState::SIDE_LEFT;
-            Escape_Timer.reset();
-        }
-    } else if(psd_val[2] < 9 && mpu9250.roll < -IMU_THRESHOLD) {
-        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[2] < 15 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
-            SetImuSafetyState(false);
-            tilt_state = TiltState::SIDE_RIGHT;
-            Escape_Timer.reset();
-        }
-    } else if(psd_val[4] <= 30 && mpu9250.roll < -IMU_THRESHOLD) {
-        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[4] <= 30 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
-            SetImuSafetyState(false);
-            tilt_state = TiltState::SIDE_RIGHT;
-            Escape_Timer.reset();
-        }
-    } else if (mpu9250.pitch < IMU_THRESHOLD){ SetImuSafetyState(true); tilt_state = TiltState::SAFE;}
-    if(Escape_Timer.read_ms() > 10000) Escape_Timer.reset();
-}
 */
 void Controller::ImuDetect()  {
-    if (az >= MinStableZAccel && az <= MaxStableZAccel) {
-        if (SettleTimer.read_ms() == 0) {
-            SettleTimer.start();
-        } else if (SettleTimer.read_ms() >= SettlingTime) { isZAccelSettled = true; }
-    } else {
-        isZAccelSettled = false;
-        SettleTimer.stop();
-        SettleTimer.reset();
-    }
-    if(GetEnemyState() && pitch > IMU_THRESHOLD && isZAccelSettled) {
+
+    if(GetEnemyState() && psd_val[1] < 15 && pitch < -IMU_THRESHOLD) {
         SetImuSafetyState(false);
+        ImuPitchLift = true;
         tilt_state = TiltState::FRONT;
-    } else if(GetEnemyState() && (psd_val[0] < 9) && pitch > IMU_THRESHOLD) {
+    } else if(psd_val[0] < 9 && pitch < -IMU_THRESHOLD) {
         SetImuSafetyState(false);
+        ImuPitchLift = true;
         tilt_state = TiltState::FRONT_LEFT;
-    } else if(GetEnemyState() && (psd_val[2] < 9) && pitch > IMU_THRESHOLD) {
+    } else if(psd_val[2] < 9 && pitch <- IMU_THRESHOLD) {
         SetImuSafetyState(false);
+        ImuPitchLift = true;
         tilt_state = TiltState::FRONT_RIGHT;
     } else if(psd_val[0] < 9 && roll < -IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[0] < 9 && roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
+            ImuRollLift = true;
             tilt_state = TiltState::SIDE_LEFT;
             Escape_Timer.reset();
         }
-    } else if(psd_val[3] <= 30 && roll > IMU_THRESHOLD) {
+    } else if(psd_val[3] <= 30 && roll < -IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[3] <= 30 && roll < -IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
+            ImuRollLift = true;
             tilt_state = TiltState::SIDE_LEFT;
             Escape_Timer.reset();
         }
-    } else if(psd_val[2] < 9 && roll < -IMU_THRESHOLD) {
+    } else if(psd_val[2] < 9 && roll > IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[2] < 15 && roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
+            ImuRollLift = true;
             tilt_state = TiltState::SIDE_RIGHT;
             Escape_Timer.reset();
         }
-    } else if(psd_val[4] <= 30 && roll < -IMU_THRESHOLD) {
+    } else if(psd_val[4] <= 30 && roll > IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
         if(psd_val[4] <= 30 && roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
+            ImuRollLift = true;
             tilt_state = TiltState::SIDE_RIGHT;
             Escape_Timer.reset();
         }
-    } else if (pitch < IMU_THRESHOLD){ SetImuSafetyState(true); tilt_state = TiltState::SAFE;}
+    } else if (pitch > -IMU_THRESHOLD && ImuPitchLift) { 
+        SetImuSafetyState(true);
+        ImuPitchLift = false;
+        tilt_state = TiltState::SAFE;
+    } else if (roll > -IMU_THRESHOLD && roll < IMU_THRESHOLD && ImuRollLift) {
+        SetImuSafetyState(true);
+        ImuRollLift = false;
+        tilt_state = TiltState::SAFE;
+    }
     if(Escape_Timer.read_ms() > 10000) Escape_Timer.reset();
 }
 
@@ -976,7 +973,7 @@ void Controller::ImuChartoData() {
                         isInitialized = true; // 초기화 완료 표시
                     }
                     yaw = NormalizeYaw(rawYaw - initialYaw); // 기준 yaw 값을 초기화한 값으로 설정하고 정규화
-
+/*
                     token = strtok(NULL, ",");
                     if (token != NULL) {
                         ax = atof(token);
@@ -991,7 +988,7 @@ void Controller::ImuChartoData() {
                         
                             }
                         }                       
-                    }                     
+                    }      */               
                 }
             }
         }
@@ -999,13 +996,19 @@ void Controller::ImuChartoData() {
 }
 
 void Controller::ImuParse() {
-    ebimu.printf("*");
+    ebimu.putc(0x2A);
+    // for(int i=0;i<32;i++){
+    //     char a = ebimu.getc();
+    //     data[i] = a;
+    // }
     ebimu.scanf("%s",data);
     controller.ImuChartoData();
+    memset(data, NULL, 32*sizeof(char));
 }
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
     while(1) {
+<<<<<<< Updated upstream
         controller.ImuParse();
         pc.printf("%.1f, %.1f, %.1f\r\n",controller.roll, controller.pitch, controller.az);
         ThisThread::sleep_for(20);
@@ -1024,6 +1027,18 @@ void PsdThread() {
         ThisThread::sleep_for(20); //임의
     }
 }
+=======
+        // controller.ImuParse();
+        controller.ImuDetect();
+        controller.PsdRefresh();
+        controller.IrRefresh();
+        pc.printf("%.2f,%.2f,",controller.roll,controller.pitch);
+        controller.ImuViewer();
+        ThisThread::sleep_for(20);
+    }
+}
+
+>>>>>>> Stashed changes
 
 void Starter() {
     controller.StartFlag = true;
@@ -1087,7 +1102,7 @@ void Controller::ImuViewer() {
             // pc.printf("5\r\n");
             break;
         case TiltState::SAFE:
-            // pc.printf("SAFE\r\n");
+            pc.printf("SAFE\r\n");
             // pc.printf("0\r\n");
             return;
     }

@@ -235,7 +235,7 @@ class Controller
     
     void ImuRefresh_MPU9250();
 
-    void ImuDetect_MPU9250();
+    void ImuDetect();
 
     void ImuParse();
 
@@ -245,11 +245,14 @@ class Controller
     
     void ImuEscape();
 
+    bool ImuPitchLift = false;
+
+    bool ImuRollLift = false;
+
     Timer Escape_Timer;
 
-    float roll, pitch, yaw, currentyaw, prevyaw, normalized_yaw;
+    float roll, pitch, yaw;
 
-    float ax, ay, az;
     //------------------------Tester's Choice-------------------//
     void OrientViewer();
 
@@ -267,7 +270,7 @@ class Controller
     //예상되는 위치
     enum Position CurrentPos;
     //Imu 상태
-    enum TiltState tilt_state;
+    enum TiltState tilt_state = TiltState::SAFE;
     //적 감지 여부
     volatile bool enemy = false;
 
@@ -327,6 +330,7 @@ class Controller
     bool LeftCollision;
 
     bool RightCollision;
+<<<<<<< Updated upstream
     /*Good bye Mpu9250 ㅠㅠ
     const float alpha_imu = 0.93f;
 
@@ -334,8 +338,11 @@ class Controller
 
     float accel_angle_x, accel_angle_y, mag_angle_z;
     */
+=======
+
+>>>>>>> Stashed changes
     //-------------------------------EBIMU-------------------------------//
-    char data[64] = "";
+    char data[32] = "";
 
     Timer t; //for gyro integral;
     //-------------------------------Stable Z-axis Accel Detector-------------------------------//
