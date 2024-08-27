@@ -234,11 +234,8 @@ class Controller
     */
 
     //-----------------------MPU9250, IMU-----------------------------//
-    void SetupImu_MPU9250();
-    
-    void ImuRefresh_MPU9250();
 
-    void ImuDetect_MPU9250();
+    void ImuDetect();
 
     void ImuParse();
 
@@ -248,9 +245,12 @@ class Controller
 
     Timer Escape_Timer;
 
-    float roll, pitch, yaw, currentyaw, prevyaw, normalized_yaw;
+    float roll, pitch, yaw;
 
-    float ax, ay, az;
+    bool ImuPitchLift = false;
+
+    bool ImuRollLift = false;
+    
     //------------------------Tester's Choice-------------------//
     void OrientViewer(int);
 
