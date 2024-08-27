@@ -138,15 +138,9 @@ void Controller::Start() {
     PwmL.period_us(66);
     PwmR.period_us(66);
     Thread1.start(ImuThread);
-<<<<<<< Updated upstream
     Thread1.set_priority(osPriorityHigh);
     Thread2.start(PsdThread);
     Thread2.set_priority(osPriorityAboveNormal);
-=======
-    Thread1.set_priority(osPriorityNormal2);
-    // Thread2.start(DetectThread);
-    // Thread2.set_priority(osPriorityNormal1);
->>>>>>> Stashed changes
     SetState(RoboState::IDLE);
     }
 };
@@ -194,11 +188,7 @@ void Controller::Detect() {
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
     if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
     if (irSafe && imuSafe) {
-<<<<<<< Updated upstream
-        SetSpeed(0.6);
-=======
-        SetSpeed(1.0);
->>>>>>> Stashed changes
+        SetSpeed(0.5);
         if (!GetEnemyState()) {
         SetState(RoboState::IDLE);
         SetAttackState(false);
@@ -271,12 +261,11 @@ void Controller::Move(float sL, float sR) {
   PwmL = abs(sL);
   PwmR = abs(sR);
 };
-<<<<<<< Updated upstream
-=======
+
 /*
->>>>>>> Stashed changes
+
 void Controller::EnemyDetect() {
-    /*
+ 
   if (device.readable()) {
     char receivedChar = device.getc();
     if (receivedChar == '*') {
@@ -297,19 +286,14 @@ void Controller::EnemyDetect() {
       }
     }
   }*/
-  SetEnemyState(true);
-}
-*/
+
 void Controller::EnemyDetect() {
     if(psd_val[1] <= 25) {SetEnemyState(true); SetHD(0);}
     else { SetEnemyState(false); SetHD(-1); }
 
-<<<<<<< Updated upstream
-=======
 }
 
 
->>>>>>> Stashed changes
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
   filtered_distance[i] = now_distance[i] * alpha_psd + (1 - alpha_psd) * prev_distance[i];
@@ -1008,9 +992,10 @@ void Controller::ImuParse() {
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
     while(1) {
-<<<<<<< Updated upstream
         controller.ImuParse();
-        pc.printf("%.1f, %.1f, %.1f\r\n",controller.roll, controller.pitch, controller.az);
+        controller.ImuDetect();
+        pc.printf("%.1f,%.1f,",controller.roll, controller.pitch);
+        controller.ImuViewer();
         ThisThread::sleep_for(20);
     }
 }
@@ -1027,18 +1012,6 @@ void PsdThread() {
         ThisThread::sleep_for(20); //임의
     }
 }
-=======
-        // controller.ImuParse();
-        controller.ImuDetect();
-        controller.PsdRefresh();
-        controller.IrRefresh();
-        pc.printf("%.2f,%.2f,",controller.roll,controller.pitch);
-        controller.ImuViewer();
-        ThisThread::sleep_for(20);
-    }
-}
-
->>>>>>> Stashed changes
 
 void Starter() {
     controller.StartFlag = true;

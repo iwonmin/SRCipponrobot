@@ -13,7 +13,7 @@
 #define WALL_DISTANCE 70 //cm
 #define TIME_90DEGTURN 50 //ms, pwm == 0.5
 #define Time_10CMMOVE 20 //ms, pwm == 0.5
-#define IMU_THRESHOLD 4.f
+#define IMU_THRESHOLD 7.f
 #define ESCAPE_TIME 500 //ms
 #pragma endregion Preprocessor
 #pragma region external
@@ -239,8 +239,6 @@ class Controller
 
     void ImuParse();
 
-    void ImuDetect();
-
     void ImuChartoData();
     
     void ImuEscape();
@@ -330,7 +328,7 @@ class Controller
     bool LeftCollision;
 
     bool RightCollision;
-<<<<<<< Updated upstream
+
     /*Good bye Mpu9250 ㅠㅠ
     const float alpha_imu = 0.93f;
 
@@ -338,23 +336,12 @@ class Controller
 
     float accel_angle_x, accel_angle_y, mag_angle_z;
     */
-=======
 
->>>>>>> Stashed changes
     //-------------------------------EBIMU-------------------------------//
     char data[32] = "";
 
     Timer t; //for gyro integral;
-    //-------------------------------Stable Z-axis Accel Detector-------------------------------//
-    const float MaxStableZAccel = 1.2f;
-    
-    const float MinStableZAccel = 0.8f;
 
-    const uint16_t SettlingTime = 300; //ms
-    
-    bool isZAccelSettled = false;
-    
-    Timer SettleTimer;
 
     bool PitchLift = false;
     
