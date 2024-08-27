@@ -225,21 +225,8 @@ class Controller
     void RightWallTrack();
 
     void WallTwerk();
-    /*
-    void CenterSpin();
-    
-    void FrontWall();
-
-    void BehindWall();
-    */
 
     //-----------------------MPU9250, IMU-----------------------------//
-    void SetupImu_MPU9250();
-    
-    void ImuRefresh_MPU9250();
-
-    void ImuDetect_MPU9250();
-
     void ImuParse();
 
     void ImuChartoData();

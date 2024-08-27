@@ -3,10 +3,12 @@
 
 int main()
 {
-    pc.printf("main started\n");
- while (true) {
+ while (controller.StartFlag) {
         controller.CheckStartTime();
-        //controller.EnemyDetect();
+        controller.EnemyDetect();
+        controller.ImuParse();
+        controller.PsdRefresh();
+        controller.IrRefresh();
         switch(controller.GetState())
         {
             case Controller::RoboState::START:

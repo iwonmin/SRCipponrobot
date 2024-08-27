@@ -23,12 +23,7 @@ DigitalIn irbr(PA_5);
 Serial ebimu(PB_10,PC_5,115200);
 // MPU9250 mpu9250(D14, D15);
 Controller controller;
-Thread Thread1;
-Thread Thread2;
-Thread Thread4;
 #pragma endregion variables
-Mutex gyroMutex;
-Mutex detectMutex;
 #pragma region Serial Variables
 // PC와의 통신을 위한 Serial 객체 생성
 Serial pc(USBTX, USBRX, 115200);
@@ -135,16 +130,9 @@ uint64_t Controller::GetStartTime() {
     return StartTime;
 }
 void Controller::Start() {
-    //pc.printf("Start\n");
     if(StartFlag) {
     PwmL.period_us(66);
     PwmR.period_us(66);
-    Thread1.start(ImuThread);
-    Thread1.set_priority(osPriorityNormal2);
-    // Thread2.start(PsdThread);
-    //Thread2.set_priority(osPriorityAboveNormal);
-    Thread4.start(DetectThread);
-    Thread4.set_priority(osPriorityNormal1);
     SetState(RoboState::IDLE);
     }
 };
@@ -325,12 +313,12 @@ void Controller::EnemyDetect() {
                     
                 //데이터 출력
                 //pc.printf("Data1: %s, Data2: %s, Data3: %s\r\n", data1, data2, data3);
-                pc.printf("GHD: %d, YHD: %d, YA: %.2f, yaw: %.2f\r\n",GetHD(),GetYHD(),GetYA(),GetCurrentYaw());
+                // pc.printf("GHD: %d, YHD: %d, YA: %.2f, yaw: %.2f\r\n",GetHD(),GetYHD(),GetYA(),GetCurrentYaw());
             }else{
-                pc.printf("Error: Only two data fields found!\r\n");
+                // pc.printf("Error: Only two data fields found!\r\n");
             }
         }else{
-            pc.printf("Error: Only one data field found!\r\n");
+            // pc.printf("Error: Only one data field found!\r\n");
         }
         bufferIndex =0; //인덱스 초기화
     }else{
@@ -368,112 +356,7 @@ void Controller::PsdRefresh() {
   psd_val[7] = PsdDistance(psdrb, 7);
   PsdWallDetect();
 }
-/*
-void Controller::PsdDetect() { //아직 안돌려봄
-    if (FollowIndex == 0){
-        MinValue = psd_val[6];
-        MinIndex = 1;
-        if (psdlc < MinValue) { MinValue = psd_val[3]; MinIndex = 2; }
-        if (psdrc < MinValue) { MinValue = psd_val[4]; MinIndex = 3; }
-        switch (MinIndex) {
-            case 1: //in which case psdb is minimum
-                    if(detection[3]) {
-                        //psdlc detected, ccw
-                        SetSpeed(-1.0,1.0);
-                        FollowIndex = 2;
-                    } else if(detection[4]) {
-                        //psdrc detected, cw
-                        SetSpeed(1.0,-1.0);
-                        FollowIndex = 3;
-                    } else if(detection[6]) {
-                        //psdb detected, both but cw
-                        SetSpeed(1.0,-1.0);
-                        FollowIndex = 1;
-                    }
-                break;
-            case 2: //in which case psdlc is minimum
-                    if(detection[6]) {
-                        //psdb detected, both but cw
-                        SetSpeed(1.0,-1.0);
-                        FollowIndex = 1;
-                    } else if(detection[4]) {
-                        //psdrc detected, cw
-                        SetSpeed(1.0,-1.0);
-                        FollowIndex = 3;
-                    } else if(detection[3]) {
-                        //psdlc detected, ccw
-                        SetSpeed(-1.0,1.0);
-                        FollowIndex = 2;
-                    }             
-                break;
-            case 3: //in which case psdrc is minimum
-                    if(detection[3]) {
-                        //psdlc detected, both but cw
-                        SetSpeed(1.0,-1.0);
-                        FollowIndex = 2;
-                    } else if(detection[6]) {
-                        //psdb detected, ccw
-                        SetSpeed(-1.0,1.0);
-                        FollowIndex = 1;
-                    } else if(detection[4]) {
-                        //psdrc detected, cw
-                        SetSpeed(1.0,-1.0);
-                        FollowIndex = 3;
-                    }
-                break;
-        }        
-    }
-    if (FollowIndex != 0){
-        switch (MinIndex) {
-            case 1: //in which case psdb is minimum
-                    if(psd_val[3] == MinValue) {
-                        //psdlc detected, ccw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    } else if(psd_val[4] == MinValue) {
-                        //psdrc detected, cw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    } else if(psd_val[6] == MinValue) {
-                        //psdb detected, both but cw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    }
-                break;
-            case 2: //in which case psdlc is minimum
-                    if(psd_val[6] == MinValue) {
-                        //psdb detected, both but cw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    } else if(psd_val[4]) {
-                        //psdrc detected, cw
-                        SetSpeed(0,0);
-                        FollowIndex = 3;
-                    } else if(psd_val[3] == MinValue) {
-                        //psdlc detected, ccw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    }             
-                break;
-            case 3: //in which case psdrc is minimum
-                    if(psd_val[3] == MinValue) {
-                        //psdlc detected, both but cw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    } else if(psd_val[6] == MinValue) {
-                        //psdb detected, ccw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    } else if(psd_val[4] == MinValue) {
-                        //psdrc detected, cw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    }
-                break;
-        }        
-    }
-}
-*/
+
 void Controller::PsdWallDetect() {
     if (psd_val[0] <= 10 && psd_val[2] <= 10 && !GetEnemyState()) {
         FrontCollision = true; 
@@ -693,45 +576,6 @@ void Controller::ColorOrient_new() {
         break;
     }
 }
-/*
-Controller::Position Controller::GetPosition() { return CurrentPos; }
-//Position::@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함.
-//getDistance() 타이밍에 로봇 있을 때 거를 방안 찾아야함. 
-//거리 함수 말고 전역 변수로 불러와야할 듯(controller)
-//irs Colororient=>정확성 높음, 벽거리만 추가고려해서 바로 사용
-void Controller::SetPosition() { 
-    if (Orient == ColorOrient::TAN_LEFT && psd_val[3] < CIRCLE_DISTANCE) {
-    CurrentPos = Position::ClosetoLeftWall;
-    return;
-    } else if (Orient == ColorOrient::TAN_RIGHT && psd_val[4] < CIRCLE_DISTANCE) {
-    CurrentPos = Position::ClosetoRightWall;
-    return;
-    } else if (Orient == ColorOrient::FRONT_LEFT && psd_val[3] < CIRCLE_DISTANCE && psd_val[1] < WALL_DISTANCE) {
-    CurrentPos = Position::CriticalLeftWall;
-    //뒤로, 오른쪽으로 이동하는 것 필요
-    } else if (Orient == ColorOrient::BACK_LEFT && psd_val[3] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
-    CurrentPos = Position::CriticalLeftWall;
-    //앞으로, 오른쪽으로 이동하는 것 필요
-    } else if (Orient == ColorOrient::FRONT_RIGHT && psd_val[4] < CIRCLE_DISTANCE && psd_val[1] < WALL_DISTANCE) {
-    CurrentPos = Position::CriticalRightWall;
-    //뒤로, 왼쪽으로 이동하는 것 필요
-    } else if (Orient == ColorOrient::BACK_RIGHT && psd_val[4] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
-    CurrentPos = Position::CriticalRightWall;
-    //앞으로, 왼쪽으로 이동하는 것 필요
-    } else if (Orient != ColorOrient::SAFE && psd_val[0] > 90 && psd_val[7] > 90 || psd_val[2] > 90 && psd_val[5] > 90) {
-    //일단 ir에 색은 감지되었지만 벽과의 거리가 생각보다 멀때 -> 중앙임
-    CurrentPos = Position::ClosetoCenter;
-    } else {
-    // ir 영역 아닐떄, psd만 사용(부정확)
-    if (psd_val[1] <= 10) {
-      CurrentPos = Position::WallFront;
-    } else if (psd_val[6] <= 10) {
-      CurrentPos = Position::WallBehind;
-    } else
-      CurrentPos = Position::FartoCenter; // 색영역도 아닌데 안보임
-  }
-}
-*/
 void Controller::IrEscape() {
   if (Orient == ColorOrient::SAFE) {
     return;
@@ -758,23 +602,6 @@ void Controller::IrEscape() {
     SetSpeed(-0.5, 0.5);
   } else {}
 }
-/*
-void Controller::IrEscapeWhenImuUnsafe() {
-    if(Controller::ir_val[2]+Controller::ir_val[3]+Controller::ir_val[4] < 2) {
-        //뒤쪽에 IR영역
-        SetSpeed(0.5,-0.5);
-    } else if(Controller::ir_val[0]+Controller::ir_val[1]+Controller::ir_val[2] < 2) {
-        //앞쪽에 IR영역
-        SetSpeed(-0.5, 0.5);
-    } else if(Controller::ir_val[0]+Controller::ir_val[1]+Controller::ir_val[3] < 2) {
-        //왼쪽에 IR영역
-        SetSpeed(0.5, 0.5);
-    } else if(Controller::ir_val[1]+Controller::ir_val[2]+Controller::ir_val[4] < 2) {
-        //오른쪽에 IR영역
-        SetSpeed(-0.5, -0.5);
-    }
-}
-*/
 
 //Imu Thread에서 새로운 Sub-Thread 실행, 여기서 IMU 값 새로 받아와야함
 /*
@@ -803,150 +630,7 @@ void Controller::WallTwerk() {
     }
 }
 */
-/*
-void Controller::CenterSpin() {//굳이??싶은 함수
-  SetSpeed(0.5, -0.5); //빙글빙글
-  if (detection[0] || detection[2] || detection[5] || detection[7]) {
-    SetSpeed(0, 0);
-    ThisThread::sleep_for(50); // 90도 돌만큼의 시간
-    SetState(RoboState::ATTACK);
-  }
-}
 
-void Controller::FrontWall() {
-  if (detection[2] || detection[4] == 1) {
-    SetSpeed(-1.0, 1.0);
-    ThisThread::sleep_for(50); //반시계 방향으로 135도 회전
-    SetState(RoboState::ATTACK);
-  } else if (detection[5] == 1 || detection[3] == 1) {
-    SetSpeed(1.0, -1.0);
-    ThisThread::sleep_for(50); //시계 방향으로 135도 회전
-    SetState(RoboState::ATTACK);
-  } else {
-    SetSpeed(0.5, -0.5); // 180도 회전
-  }
-}
-
-void Controller::BehindWall() {
-  if (detection[2]) {
-    SetSpeed(-1.0, 1.0);
-    ThisThread::sleep_for(50); //반시계 방향 90도 회전
-    SetState(RoboState::ATTACK);
-  }
-  if (detection[3]) {
-    SetSpeed(1.0, -1.0);
-    ThisThread::sleep_for(50); //시계 방향 90도 회전
-    SetState(RoboState::ATTACK);
-  }
-}
-*/
-/*
-void Controller::SetupImu_MPU9250() {
-  uint8_t whoami = mpu9250.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250); // Read WHO_AM_I register for MPU-9250
-    // pc.printf("I AM 0x%x\t", whoami); pc.printf("I SHOULD BE 0x71\n\r");
-  mpu9250.resetMPU9250(); // Reset registers to default in preparation for
-    // device calibration
-  mpu9250.MPU9250SelfTest(mpu9250.SelfTest); // Start by performing self test and reporting values
-  mpu9250.calibrateMPU9250(mpu9250.gyroBias, mpu9250.accelBias);
-  // Calibrate gyro and accelerometers, load biases in bias registers
-  mpu9250.initMPU9250();
-//   mpu9250.initAK8963(mpu9250.magCalibration);
-  mpu9250.getAres(); // Get accelerometer sensitivity
-  mpu9250.getGres(); // Get gyro sensitivity
-//   mpu9250.getMres(); // Get magnetometer sensitivity
-  t.start();
-}
-
-void Controller::ImuRefresh_MPU9250() {
-    // If intPin goes high, all data registers have new data
-    t.reset();
-    if(mpu9250.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
-    {  // On interrupt, check if data ready interrupt
-        //pc.printf("imu main     ");
-        mpu9250.readAccelData(mpu9250.accelCount);  // Read the x/y/z adc values   
-        // Now we'll calculate the accleration value into actual g's
-        mpu9250.ax = (float)mpu9250.accelCount[0]*mpu9250.aRes - mpu9250.accelBias[0];  // get actual g value, this depends on scale being set
-        mpu9250.ay = (float)mpu9250.accelCount[1]*mpu9250.aRes - mpu9250.accelBias[1];   
-        mpu9250.az = (float)mpu9250.accelCount[2]*mpu9250.aRes - mpu9250.accelBias[2];  
-        mpu9250.readGyroData(mpu9250.gyroCount);  // Read the x/y/z adc values
-        // Calculate the gyro value into actual degrees per second
-        mpu9250.gx = (float)mpu9250.gyroCount[0]*mpu9250.gRes - mpu9250.gyroBias[0];  // get actual gyro value, this depends on scale being set
-        mpu9250.gy = (float)mpu9250.gyroCount[1]*mpu9250.gRes - mpu9250.gyroBias[1];  
-        // mpu9250.gz = (float)mpu9250.g+yroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
-        // Read the x/y/z adc values   
-        // // Calculate the magnetometer values in milliGauss
-        // // Include factory calibration per data sheet and user environmental corrections
-        mpu9250.readMagData(mpu9250.magCount);
-        mpu9250.mx = (float)mpu9250.magCount[0]*mpu9250.mRes*mpu9250.magCalibration[0] - mpu9250.magbias[0];  // get actual magnetometer value, this depends on scale being set
-        mpu9250.my = (float)mpu9250.magCount[1]*mpu9250.mRes*mpu9250.magCalibration[1] - mpu9250.magbias[1];  
-        // mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
-    }
-    mpu9250.deltat = t.read_us()/1000000.0f;
-    accel_angle_x = atan2(mpu9250.ay, sqrt(mpu9250.ax * mpu9250.ax + mpu9250.az * mpu9250.az)) * (180.0f / PI); 
-    accel_angle_y = atan2(mpu9250.ax, sqrt(mpu9250.ay * mpu9250.ay + mpu9250.az * mpu9250.az)) * (180.0f / PI);
-    // mag_angle_z  = atan2(mpu9250.my*cos(mpu9250.pitch*PI/180.0f) - mpu9250.mz*sin(mpu9250.pitch*PI/180.0f), mpu9250.mx*cos(mpu9250.roll*PI/180.0f)+mpu9250.my*sin(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)+mpu9250.mz*cos(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)) * (180.0f / PI);
-    // mag_angle_z = atan2(mpu9250.my, mpu9250.mx) * (180.0f / PI);
-    //gyro값 넣기
-    gyro_angle_x = mpu9250.roll + mpu9250.gx * mpu9250.deltat;
-    gyro_angle_y = mpu9250.pitch + mpu9250.gy * mpu9250.deltat;
-    // gyro_angle_z = mpu9250.yaw + mpu9250.gz * mpu9250.deltat;
-    //alpha를 이용한 보정(상보)
-    mpu9250.roll = alpha_imu * gyro_angle_x + (1.0-alpha_imu) * accel_angle_x;
-    mpu9250.pitch = alpha_imu * gyro_angle_y + (1.0-alpha_imu) * accel_angle_y;
-    // mpu9250.yaw = 0.95 * gyro_angle_z + (1.0-0.95) * mag_angle_z;
-}
-
-void Controller::ImuDetect_MPU9250()  {
-    if (mpu9250.az >= MinStableZAccel && mpu9250.az <= MaxStableZAccel) {
-        if (SettleTimer.read_ms() == 0) {
-            SettleTimer.start();
-        } else if (SettleTimer.read_ms() >= SettlingTime) { isZAccelSettled = true; }
-    } else {
-        isZAccelSettled = false;
-        SettleTimer.stop();
-        SettleTimer.reset();
-    }
-    if(GetEnemyState() && mpu9250.pitch < -IMU_THRESHOLD && isZAccelSettled) {
-        SetImuSafetyState(false);
-        tilt_state = TiltState::FRONT;
-    } else if(GetEnemyState() && (psd_val[0] < 9) && mpu9250.pitch < -IMU_THRESHOLD) {
-        SetImuSafetyState(false);
-        tilt_state = TiltState::FRONT_LEFT;
-    } else if((GetEnemyState() &&  psd_val[2] < 9) && mpu9250.pitch <- IMU_THRESHOLD) {
-        SetImuSafetyState(false);
-        tilt_state = TiltState::FRONT_RIGHT;
-    } else if(psd_val[0] < 9 && mpu9250.roll < -IMU_THRESHOLD) {
-        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[0] < 9 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
-            SetImuSafetyState(false);
-            tilt_state = TiltState::SIDE_LEFT;
-            Escape_Timer.reset();
-        }
-    } else if(psd_val[3] <= 30 && mpu9250.roll > IMU_THRESHOLD) {
-        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[3] <= 30 && mpu9250.roll < -IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
-            SetImuSafetyState(false);
-            tilt_state = TiltState::SIDE_LEFT;
-            Escape_Timer.reset();
-        }
-    } else if(psd_val[2] < 9 && mpu9250.roll < -IMU_THRESHOLD) {
-        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[2] < 15 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
-            SetImuSafetyState(false);
-            tilt_state = TiltState::SIDE_RIGHT;
-            Escape_Timer.reset();
-        }
-    } else if(psd_val[4] <= 30 && mpu9250.roll < -IMU_THRESHOLD) {
-        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[4] <= 30 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
-            SetImuSafetyState(false);
-            tilt_state = TiltState::SIDE_RIGHT;
-            Escape_Timer.reset();
-        }
-    } else if (mpu9250.pitch < IMU_THRESHOLD){ SetImuSafetyState(true); tilt_state = TiltState::SAFE;}
-    if(Escape_Timer.read_ms() > 10000) Escape_Timer.reset();
-}
-*/
 void Controller::ImuEscape() {
     switch (tilt_state) {
         case TiltState::FRONT:
@@ -1028,29 +712,6 @@ void Controller::ImuParse() {
     controller.ImuChartoData();
 }
 //------------------------------Thread&NotController--------------------------------//
-void ImuThread() {
-    pc.printf("IMU Thread running\n");
-    while(1) {
-        gyroMutex.lock();
-        controller.ImuParse();
-        gyroMutex.unlock();
-        //pc.printf("HD: %d,Roll: %.1f, Pitch: %.1f, Yaw:%.1f, Z AC: %.1f\r\n",controller.GetHD(),controller.roll, controller.pitch, controller.yaw, controller.az);
-        ThisThread::sleep_for(20);
-    }
-}
-void PsdThread() {
-    while(1) {
-        controller.PsdRefresh();
-        // controller.IrRefresh();
-        // pc.printf("%d, %d, %d, %d, %d, %d, %d, %d\r\n",controller.psd_val[0],controller.psd_val[1],controller.psd_val[2],controller.psd_val[3],controller.psd_val[4],controller.psd_val[5],controller.psd_val[6],controller.psd_val[7]);
-        // pc.printf("%d, %d, %d, %d, %d, %d \r\n",irfl.read(), irfr.read(), irfc.read(), irbc.read(), irbl.read(), irbr.read());
-        // pc.printf("%d, %d, %d, %d, %d",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
-        // controller.OrientViewer((int)controller.GetOrient());
-        // controller.SetPosition();
-        // controller.WallViewer();
-        ThisThread::sleep_for(20); //임의
-    }
-}
 
 void DetectThread()
 {
@@ -1096,22 +757,16 @@ void DetectThread()
                     }else
                     {
                         controller.SetYA(404);
-                    } 
-                        
-                    //데이터 출력
-                   // pc.printf("Data1: %s, Data2: %s, Data3: %s\r\n", data1, data2, data3);
-                    detectMutex.lock();
+                    }
+
                     pc.printf("GHD: %d, YHD: %d, YA: %.2f yaw: %.2f\r\n",controller.GetHD(),controller.GetYHD(),controller.GetYA(), controller.GetCurrentYaw());
-                    detectMutex.unlock();
+
                 }else{
-                    detectMutex.lock();
                     pc.printf("Error: Only two data fields found!\r\n");
-                    detectMutex.unlock();
+
                 }
             }else{
-                detectMutex.lock();
                 //pc.printf("Error: Only one data field found!\r\n");
-                detectMutex.unlock();
             }
             bufferIndex =0; //인덱스 초기화
         }else{
@@ -1169,27 +824,21 @@ void Controller::ImuViewer() {
     switch (tilt_state) {
         case TiltState::FRONT:
             pc.printf("FRONT\r\n");
-            // pc.printf("1\r\n");
             break;
         case TiltState::FRONT_LEFT:
             pc.printf("FRONT_LEFT\r\n");
-            // pc.printf("2\r\n");
             break;
         case TiltState::FRONT_RIGHT:
             pc.printf("FRONT_RIGHT\r\n");
-            // pc.printf("3\r\n");
             break;
         case TiltState::SIDE_LEFT:
             pc.printf("SIDE_LEFT\r\n");
-            // pc.printf("4\r\n");
             break;
         case TiltState::SIDE_RIGHT:
             pc.printf("SIDE_RIGHT\r\n");
-            // pc.printf("5\r\n");
             break;
         case TiltState::SAFE:
-            // pc.printf("SAFE\r\n");
-            // pc.printf("0\r\n");
+            pc.printf("SAFE\r\n");
             return;
     }
 }
