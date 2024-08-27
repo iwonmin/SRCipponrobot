@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include "GP2A.h"
 #include "rtos.h"
-#include "MPU9250.h"
-#include "EBIMU.h"
 #pragma region Preprocessor
 #define MAXSPEED 0.5
 #define ESCAPESPEED -0.5
@@ -241,6 +239,8 @@ class Controller
 
     void ImuParse();
 
+    void ImuDetect();
+
     void ImuChartoData();
     
     void ImuEscape();
@@ -251,7 +251,7 @@ class Controller
 
     float ax, ay, az;
     //------------------------Tester's Choice-------------------//
-    void OrientViewer(int);
+    void OrientViewer();
 
     void WallViewer();
 
@@ -327,12 +327,13 @@ class Controller
     bool LeftCollision;
 
     bool RightCollision;
-
+    /*Good bye Mpu9250 ㅠㅠ
     const float alpha_imu = 0.93f;
 
     float gyro_angle_x, gyro_angle_y, gyro_angle_z;
 
     float accel_angle_x, accel_angle_y, mag_angle_z;
+    */
     //-------------------------------EBIMU-------------------------------//
     char data[64] = "";
 
@@ -347,6 +348,11 @@ class Controller
     bool isZAccelSettled = false;
     
     Timer SettleTimer;
+
+    bool PitchLift = false;
+    
+    bool RollLift = false;
+    
 };
 
 //-------------------------Thread----------------------------//

@@ -139,8 +139,8 @@ void Controller::Start() {
     PwmR.period_us(66);
     Thread1.start(ImuThread);
     Thread1.set_priority(osPriorityHigh);
-    // Thread2.start(PsdThread);
-    //Thread2.set_priority(osPriorityAboveNormal);
+    Thread2.start(PsdThread);
+    Thread2.set_priority(osPriorityAboveNormal);
     SetState(RoboState::IDLE);
     }
 };
@@ -155,34 +155,23 @@ void Controller::Idle() {
 
 void Controller::Detect() {
     if (imuSafe && irSafe && wallSafe) {
-        if(!GetYellow()){
-            if(GetCurrentYaw()>=-90){
-                SetSpeed(-0.1,0.1);
-            }if(GetCurrentYaw()<-90)
-            {
-                SetSpeed(0);
-                SetState(RoboState::YELLOW);
-            }
-        }
-        else if(GetYellow()){
-            if(GetEnemyState()) {
-            SetSpeed(0);
-            SetState(RoboState::ATTACK);
-            } else if (!GetEnemyState() && GetHD() > 0) {
-            SetSpeed(-0.5, 0.5);
-            } else if (!GetEnemyState() && GetHD() < 0) {
-            SetSpeed(0.5, -0.5);
-            }
+        if (GetEnemyState()) {
+        SetSpeed(0);
+        SetState(RoboState::ATTACK);
+        } else if (!GetEnemyState() && GetHD() > 0) {
+        SetSpeed(-0.5, 0.5);
+        } else if (!GetEnemyState() && GetHD() < 0) {
+        SetSpeed(0.5, -0.5);
         }
     } else {
-        SetState(RoboState::ESCAPE);
+        SetState(RoboState::IDLE);
     }
 };
 
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
     if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
     if (irSafe && imuSafe) {
-        SetSpeed(1.0);
+        SetSpeed(0.6);
         if (!GetEnemyState()) {
         SetState(RoboState::IDLE);
         SetAttackState(false);
@@ -255,8 +244,8 @@ void Controller::Move(float sL, float sR) {
   PwmL = abs(sL);
   PwmR = abs(sR);
 };
-
 void Controller::EnemyDetect() {
+    /*
   if (device.readable()) {
     char receivedChar = device.getc();
     if (receivedChar == '*') {
@@ -264,71 +253,21 @@ void Controller::EnemyDetect() {
     } else {
       SetEnemyState(true);
     }
-    // if (receivedChar == '/') {
-    //   distanceBuffer[bufferIndex] = '\0';
-    //   SetHD(atoi(distanceBuffer));
-    //   pc.printf("Received Distance: %d\n", GetHD());
-    //   bufferIndex = 0; // 버퍼 초기화
-    // } else {
-    //   distanceBuffer[bufferIndex] = receivedChar;
-    //   bufferIndex++;
-    //   if (bufferIndex >= sizeof(distanceBuffer) - 1) {
-    //     bufferIndex = 0; // 버퍼가 가득 찬 경우 초기화
-    //   }
-    // }
-    if(receivedChar=='\n')
-    {
-        distanceBuffer[bufferIndex]='\0';
-        char *comma_ptr1=strchr(distanceBuffer,',');//첫번째 콤마 위치
-        char *comma_ptr2=NULL;
-        if(comma_ptr1 !=NULL)
-        {
-            *comma_ptr1='\0';//첫 번째 콤마 위치를 문자열 종료로 설정
-            char* data1=distanceBuffer;//첫 번째 데이터
-
-            if(*data1 != '*') SetHD(atoi(data1));
-            comma_ptr2 = strchr(comma_ptr1+1,',');//두번째 콤마 위치
-            
-            if(comma_ptr2!=NULL)
-            {
-                *comma_ptr2 ='\0';//두 번째 콤마 위치를 문자열 종료로 설정
-                char* data2=comma_ptr1+1;//두번째 데이터
-                if(*data2!='*')
-                {
-                    SetYHD(atoi(data2));
-                } else
-                {
-                    SetYHD(404);
-                }                   
-                char* data3=comma_ptr2+1;//세번째 데이터
-                if(*data3!='*')
-                {
-                    SetYA(atof(data3));
-                }else
-                {
-                    SetYA(404);
-                } 
-                    
-                //데이터 출력
-                //pc.printf("Data1: %s, Data2: %s, Data3: %s\r\n", data1, data2, data3);
-                //pc.printf("GHD: %d, YHD: %d, YA: %.2f\r\n",GetHD(),GetYHD(),GetYA());
-            }else{
-                //pc.printf("Error: Only two data fields found!\r\n");
-            }
-        }else{
-            //pc.printf("Error: Only one data field found!\r\n");
-        }
-        bufferIndex =0; //인덱스 초기화
-    }else{
-        //버퍼가 가득 차지 않았을 경우에만 저장
-        if(bufferIndex<sizeof(distanceBuffer)-1){
-            distanceBuffer[bufferIndex++]=receivedChar;//버퍼에 데이터 저장
-        }
+    if (receivedChar == '/') {
+      distanceBuffer[bufferIndex] = '\0';
+      SetHD(atoi(distanceBuffer));
+      pc.printf("Received Distance: %d\n", GetHD());
+      bufferIndex = 0; // 버퍼 초기화
+    } else {
+      distanceBuffer[bufferIndex] = receivedChar;
+      bufferIndex++;
+      if (bufferIndex >= sizeof(distanceBuffer) - 1) {
+        bufferIndex = 0; // 버퍼가 가득 찬 경우 초기화
+      }
     }
-  }
+  }*/
+  SetEnemyState(true);
 }
-
-
 
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
@@ -461,31 +400,31 @@ void Controller::PsdDetect() { //아직 안돌려봄
 }
 */
 void Controller::PsdWallDetect() {
-    if (psd_val[0] <= 10 && psd_val[2] <= 10 && !GetEnemyState()) {
+    if (psd_val[0] <= 20 && psd_val[2] <= 20 && !GetEnemyState()) {
         FrontCollision = true; 
         SetWallSafetyState(false);
-    } else if ((psd_val[0]+psd_val[2])/2 > 10) {
+    } else if ((psd_val[0]+psd_val[2])/2 > 20) {
         FrontCollision = false;
         SetWallSafetyState(true);
     }
-    if (psd_val[5] <= 10 && psd_val[7] <= 10) {
+    if (psd_val[5] <= 20 && psd_val[7] <= 20) {
         BackCollision = true;
         SetWallSafetyState(false);
-    } else if ((psd_val[5]+psd_val[7])/2 > 10) {
+    } else if ((psd_val[5]+psd_val[7])/2 > 20) {
         BackCollision = false;
         SetWallSafetyState(true);
     }
-    if (psd_val[0] <= 10 && psd_val[5] <= 10) {
+    if (psd_val[0] <= 20 && psd_val[5] <= 20) {
         LeftCollision = true;
         SetWallSafetyState(false);
-    } else if ((psd_val[0]+psd_val[5])/2 > 10) {
+    } else if ((psd_val[0]+psd_val[5])/2 > 20) {
         LeftCollision = false;
         SetWallSafetyState(true);
     }
-    if (psd_val[2] <= 10 && psd_val[7] <= 10) {
+    if (psd_val[2] <= 20 && psd_val[7] <= 20) {
         RightCollision = true;
         SetWallSafetyState(false);
-    } else if ((psd_val[2]+psd_val[7])/2 > 10) {
+    } else if ((psd_val[2]+psd_val[7])/2 > 20) {
         RightCollision = false;
         SetWallSafetyState(true);
     }
@@ -933,6 +872,57 @@ void Controller::ImuDetect_MPU9250()  {
     if(Escape_Timer.read_ms() > 10000) Escape_Timer.reset();
 }
 */
+void Controller::ImuDetect()  {
+    if (az >= MinStableZAccel && az <= MaxStableZAccel) {
+        if (SettleTimer.read_ms() == 0) {
+            SettleTimer.start();
+        } else if (SettleTimer.read_ms() >= SettlingTime) { isZAccelSettled = true; }
+    } else {
+        isZAccelSettled = false;
+        SettleTimer.stop();
+        SettleTimer.reset();
+    }
+    if(GetEnemyState() && pitch > IMU_THRESHOLD && isZAccelSettled) {
+        SetImuSafetyState(false);
+        tilt_state = TiltState::FRONT;
+    } else if(GetEnemyState() && (psd_val[0] < 9) && pitch > IMU_THRESHOLD) {
+        SetImuSafetyState(false);
+        tilt_state = TiltState::FRONT_LEFT;
+    } else if(GetEnemyState() && (psd_val[2] < 9) && pitch > IMU_THRESHOLD) {
+        SetImuSafetyState(false);
+        tilt_state = TiltState::FRONT_RIGHT;
+    } else if(psd_val[0] < 9 && roll < -IMU_THRESHOLD) {
+        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
+        if(psd_val[0] < 9 && roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
+            SetImuSafetyState(false);
+            tilt_state = TiltState::SIDE_LEFT;
+            Escape_Timer.reset();
+        }
+    } else if(psd_val[3] <= 30 && roll > IMU_THRESHOLD) {
+        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
+        if(psd_val[3] <= 30 && roll < -IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
+            SetImuSafetyState(false);
+            tilt_state = TiltState::SIDE_LEFT;
+            Escape_Timer.reset();
+        }
+    } else if(psd_val[2] < 9 && roll < -IMU_THRESHOLD) {
+        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
+        if(psd_val[2] < 15 && roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
+            SetImuSafetyState(false);
+            tilt_state = TiltState::SIDE_RIGHT;
+            Escape_Timer.reset();
+        }
+    } else if(psd_val[4] <= 30 && roll < -IMU_THRESHOLD) {
+        if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
+        if(psd_val[4] <= 30 && roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
+            SetImuSafetyState(false);
+            tilt_state = TiltState::SIDE_RIGHT;
+            Escape_Timer.reset();
+        }
+    } else if (pitch < IMU_THRESHOLD){ SetImuSafetyState(true); tilt_state = TiltState::SAFE;}
+    if(Escape_Timer.read_ms() > 10000) Escape_Timer.reset();
+}
+
 void Controller::ImuEscape() {
     switch (tilt_state) {
         case TiltState::FRONT:
@@ -1017,18 +1007,18 @@ void Controller::ImuParse() {
 void ImuThread() {
     while(1) {
         controller.ImuParse();
-        pc.printf("%.1f, %.1f, %.1f, %.1f\r\n",controller.roll, controller.pitch, controller.yaw, controller.az);
+        pc.printf("%.1f, %.1f, %.1f\r\n",controller.roll, controller.pitch, controller.az);
         ThisThread::sleep_for(20);
     }
 }
 void PsdThread() {
     while(1) {
         controller.PsdRefresh();
-        // controller.IrRefresh();
-        // pc.printf("%d, %d, %d, %d, %d, %d, %d, %d\r\n",controller.psd_val[0],controller.psd_val[1],controller.psd_val[2],controller.psd_val[3],controller.psd_val[4],controller.psd_val[5],controller.psd_val[6],controller.psd_val[7]);
+        controller.IrRefresh();
+        // pc.printf("%d, %d, %d, %d\r\n",controller.psd_val[0],controller.psd_val[2],controller.psd_val[5],controller.psd_val[7]);
         // pc.printf("%d, %d, %d, %d, %d, %d \r\n",irfl.read(), irfr.read(), irfc.read(), irbc.read(), irbl.read(), irbr.read());
         // pc.printf("%d, %d, %d, %d, %d",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
-        // controller.OrientViewer((int)controller.GetOrient());
+        // controller.OrientViewer();
         // controller.SetPosition();
         // controller.WallViewer();
         ThisThread::sleep_for(20); //임의
@@ -1040,30 +1030,29 @@ void Starter() {
 }
 
 //---------------임시------------------//
-void Controller::OrientViewer(int orient) {
-    if(orient == 0) {
+void Controller::OrientViewer() {
+    if((int)Orient == 0) {
         pc.printf("FRONT\r\n");
-    } else if(orient == 1) {
+    } else if((int)Orient == 1) {
         pc.printf("TAN_LEFT\r\n");
-    } else if(orient == 2) {
+    } else if((int)Orient == 2) {
         pc.printf("TAN_RIGHT\r\n");
-    } else if(orient == 3) {
+    } else if((int)Orient == 3) {
         pc.printf("BACK\r\n");
-    } else if(orient == 4) {
+    } else if((int)Orient == 4) {
         pc.printf("FRONT_LEFT\r\n");
-    } else if(orient == 5) {
+    } else if((int)Orient == 5) {
         pc.printf("FRONT_RIGHT\r\n");
-    } else if(orient == 6) {
+    } else if((int)Orient == 6) {
         pc.printf("BACK_LEFT\r\n");
-    } else if(orient == 7) {
+    } else if((int)Orient == 7) {
         pc.printf("BACK_RIGHT\r\n");
-    } else if(orient == 8) {
-        //pc.printf("SAFE\r\n");
+    } else if((int)Orient == 8) {
+        pc.printf("SAFE\r\n");
     }
 }
 
 void Controller::WallViewer() {
-    pc.printf("Distance : %d ",psd_val[1]);
     if(controller.FrontCollision == true) pc.printf("Front ");
     else pc.printf("      ");
     if(controller.BackCollision == true) pc.printf("Back ");

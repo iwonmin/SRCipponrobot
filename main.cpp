@@ -6,7 +6,7 @@ int main()
     pc.printf("main started\n");
  while (true) {
         controller.CheckStartTime();
-        // controller.EnemyDetect();
+        controller.EnemyDetect();
         switch(controller.GetState())
         {
             case Controller::RoboState::START:
