@@ -25,8 +25,10 @@ Serial ebimu(PB_10,PC_5,115200);
 Controller controller;
 Thread Thread1;
 Thread Thread2;
+Thread Thread4;
 #pragma endregion variables
-
+Mutex gyroMutex;
+Mutex detectMutex;
 #pragma region Serial Variables
 // PC와의 통신을 위한 Serial 객체 생성
 Serial pc(USBTX, USBRX, 115200);
@@ -138,9 +140,11 @@ void Controller::Start() {
     PwmL.period_us(66);
     PwmR.period_us(66);
     Thread1.start(ImuThread);
-    Thread1.set_priority(osPriorityHigh);
+    Thread1.set_priority(osPriorityNormal2);
     // Thread2.start(PsdThread);
     //Thread2.set_priority(osPriorityAboveNormal);
+    Thread4.start(DetectThread);
+    Thread4.set_priority(osPriorityNormal1);
     SetState(RoboState::IDLE);
     }
 };
@@ -157,7 +161,7 @@ void Controller::Detect() {
     if (imuSafe && irSafe && wallSafe) {
         if(!GetYellow()){
             if(GetCurrentYaw()>=-90){
-                SetSpeed(-0.1,0.1);
+                SetSpeed(-0.5,0.5);
             }if(GetCurrentYaw()<-90)
             {
                 SetSpeed(0);
@@ -182,7 +186,7 @@ void Controller::Detect() {
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
     if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
     if (irSafe && imuSafe) {
-        SetSpeed(1.0);
+        SetSpeed(0.1);
         if (!GetEnemyState()) {
         SetState(RoboState::IDLE);
         SetAttackState(false);
@@ -198,35 +202,45 @@ void Controller::Yellow()
     {
         if(GetCurrentYaw()>=-130)
         {
-            SetSpeed(-0.1,0.1);
+            SetSpeed(-0.5,0.5);
         }else if(GetCurrentYaw()<=-140)
         {
-            SetSpeed(0.1,-0.1);
+            SetSpeed(0.5,-0.5);
         }else if(GetCurrentYaw()<-130 && GetCurrentYaw()>-140)
         {
             if(GetOrient()!=ColorOrient::FRONT)
             {
-                SetSpeed(0.1);
+                SetSpeed(0.3);
             }else
             {
                 SetSpeed(0);
+                if(GetEnemyState()&& psd_val[1]<10)
+                {
+                    SetYellow(true);
+                    SetState(RoboState::ATTACK);
+                }
             }
         }
     }else if(GetHD()<0){
         if(GetCurrentYaw()>=-40)
         {
-            SetSpeed(-0.1,0.1);
+            SetSpeed(-0.5,0.5);
         }else if(GetCurrentYaw()<=-50)
         {
-            SetSpeed(0.1,-0.1);
+            SetSpeed(0.5,-0.5);
         }else if(GetCurrentYaw()<-40 && GetCurrentYaw()>-50)
         {
             if(GetOrient()!=ColorOrient::FRONT)
             {
-                SetSpeed(0.1);
+                SetSpeed(0.3);
             }else
             {
                 SetSpeed(0);
+                if(GetEnemyState()&& psd_val[1]<10)
+                {
+                    SetYellow(true);
+                    SetState(RoboState::ATTACK);
+                }
             }
         }
     }
@@ -311,12 +325,12 @@ void Controller::EnemyDetect() {
                     
                 //데이터 출력
                 //pc.printf("Data1: %s, Data2: %s, Data3: %s\r\n", data1, data2, data3);
-                //pc.printf("GHD: %d, YHD: %d, YA: %.2f\r\n",GetHD(),GetYHD(),GetYA());
+                pc.printf("GHD: %d, YHD: %d, YA: %.2f, yaw: %.2f\r\n",GetHD(),GetYHD(),GetYA(),GetCurrentYaw());
             }else{
-                //pc.printf("Error: Only two data fields found!\r\n");
+                pc.printf("Error: Only two data fields found!\r\n");
             }
         }else{
-            //pc.printf("Error: Only one data field found!\r\n");
+            pc.printf("Error: Only one data field found!\r\n");
         }
         bufferIndex =0; //인덱스 초기화
     }else{
@@ -1015,9 +1029,12 @@ void Controller::ImuParse() {
 }
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
+    pc.printf("IMU Thread running\n");
     while(1) {
+        gyroMutex.lock();
         controller.ImuParse();
-        pc.printf("%.1f, %.1f, %.1f, %.1f\r\n",controller.roll, controller.pitch, controller.yaw, controller.az);
+        gyroMutex.unlock();
+        //pc.printf("HD: %d,Roll: %.1f, Pitch: %.1f, Yaw:%.1f, Z AC: %.1f\r\n",controller.GetHD(),controller.roll, controller.pitch, controller.yaw, controller.az);
         ThisThread::sleep_for(20);
     }
 }
@@ -1032,6 +1049,79 @@ void PsdThread() {
         // controller.SetPosition();
         // controller.WallViewer();
         ThisThread::sleep_for(20); //임의
+    }
+}
+
+void DetectThread()
+{
+    pc.printf("Detect Thread running\n");
+    while(1)
+    {
+        //pc.printf("Detecting\n");
+        if (device.readable()) {
+        char receivedChar = device.getc();
+        if (receivedChar == '*') {
+        controller.SetEnemyState(false);
+        } else {
+        controller.SetEnemyState(true);
+        }
+        if(receivedChar=='\n')
+        {
+            distanceBuffer[bufferIndex]='\0';
+            char *comma_ptr1=strchr(distanceBuffer,',');//첫번째 콤마 위치
+            char *comma_ptr2=NULL;
+            if(comma_ptr1 !=NULL)
+            {
+                *comma_ptr1='\0';//첫 번째 콤마 위치를 문자열 종료로 설정
+                char* data1=distanceBuffer;//첫 번째 데이터
+
+                if(*data1 != '*') controller.SetHD(atoi(data1));
+                comma_ptr2 = strchr(comma_ptr1+1,',');//두번째 콤마 위치
+                
+                if(comma_ptr2!=NULL)
+                {
+                    *comma_ptr2 ='\0';//두 번째 콤마 위치를 문자열 종료로 설정
+                    char* data2=comma_ptr1+1;//두번째 데이터
+                    if(*data2!='*')
+                    {
+                        controller.SetYHD(atoi(data2));
+                    } else
+                    {
+                        controller.SetYHD(404);
+                    }                   
+                    char* data3=comma_ptr2+1;//세번째 데이터
+                    if(*data3!='*')
+                    {
+                        controller.SetYA(atof(data3));
+                    }else
+                    {
+                        controller.SetYA(404);
+                    } 
+                        
+                    //데이터 출력
+                   // pc.printf("Data1: %s, Data2: %s, Data3: %s\r\n", data1, data2, data3);
+                    detectMutex.lock();
+                    pc.printf("GHD: %d, YHD: %d, YA: %.2f yaw: %.2f\r\n",controller.GetHD(),controller.GetYHD(),controller.GetYA(), controller.GetCurrentYaw());
+                    detectMutex.unlock();
+                }else{
+                    detectMutex.lock();
+                    pc.printf("Error: Only two data fields found!\r\n");
+                    detectMutex.unlock();
+                }
+            }else{
+                detectMutex.lock();
+                //pc.printf("Error: Only one data field found!\r\n");
+                detectMutex.unlock();
+            }
+            bufferIndex =0; //인덱스 초기화
+        }else{
+            //버퍼가 가득 차지 않았을 경우에만 저장
+            if(bufferIndex<sizeof(distanceBuffer)-1){
+                distanceBuffer[bufferIndex++]=receivedChar;//버퍼에 데이터 저장
+            }
+        }
+    }
+    ThisThread::sleep_for(1);
     }
 }
 
@@ -1105,10 +1195,10 @@ void Controller::ImuViewer() {
 }
 float Controller::GetCurrentYaw()
 {
-    return currentYaw;
+    return yaw;
 }
 
-void Controller::SetCurrentYaw(float yaw)
+void Controller::SetCurrentYaw(float y)
 {
-    currentYaw = yaw;
+    yaw = y;
 }

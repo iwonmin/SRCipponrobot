@@ -42,6 +42,7 @@ extern class Controller controller;
 extern Thread Thread1;
 extern Thread Thread2;
 extern Thread Thread3;
+extern Thread Thread4;
 extern Serial pc;
 extern Serial ebimu;
 #pragma endregion external
@@ -353,5 +354,7 @@ class Controller
 void ImuThread();
 
 void PsdThread();
+
+void DetectThread();
 
 void Starter();
