@@ -27,8 +27,8 @@ Thread Thread1;
 Thread Thread2;
 Thread Thread4;
 #pragma endregion variables
-Mutex gyroMutex;
-Mutex detectMutex;
+Mutex mutex;
+
 #pragma region Serial Variables
 // PC와의 통신을 위한 Serial 객체 생성
 Serial pc(USBTX, USBRX, 115200);
@@ -39,7 +39,7 @@ bool decimalPointSeen = false;
 // 부호 정보를 추적하기 위한 변수
 bool isNegative = false;
 
-char distanceBuffer[32];
+char distanceBuffer[256];
 
 float initialYaw=0.0;
 int bufferIndex = 0;
@@ -119,9 +119,9 @@ bool Controller::GetYellow(){return yellow;}
 
 void Controller::SetYellow(bool y){yellow = y;}
 
-float Controller::GetYA(){return yellowAngle;}
+int Controller::GetYA(){return yellowAngle;}
 
-void Controller::SetYA(float YA){yellowAngle = YA;}
+void Controller::SetYA(int YA){yellowAngle = YA;}
 
 int Controller::GetYHD(){return yellow_horizontal_distance;}
 
@@ -139,12 +139,12 @@ void Controller::Start() {
     if(StartFlag) {
     PwmL.period_us(66);
     PwmR.period_us(66);
-    Thread1.start(ImuThread);
-    Thread1.set_priority(osPriorityNormal2);
+    Thread1.start(DetectThread2);
+    Thread1.set_priority(osPriorityNormal);
+    Thread2.start(ImuThread);
+    Thread2.set_priority(osPriorityHigh);
     // Thread2.start(PsdThread);
     //Thread2.set_priority(osPriorityAboveNormal);
-    Thread4.start(DetectThread);
-    Thread4.set_priority(osPriorityNormal1);
     SetState(RoboState::IDLE);
     }
 };
@@ -165,6 +165,7 @@ void Controller::Detect() {
             }if(GetCurrentYaw()<-90)
             {
                 SetSpeed(0);
+                lastDirection = GetHD();
                 SetState(RoboState::YELLOW);
             }
         }
@@ -186,7 +187,7 @@ void Controller::Detect() {
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
     if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
     if (irSafe && imuSafe) {
-        SetSpeed(0.1);
+        SetSpeed(1.0);
         if (!GetEnemyState()) {
         SetState(RoboState::IDLE);
         SetAttackState(false);
@@ -198,7 +199,7 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
 
 void Controller::Yellow()
 {
-    if(GetHD()>=0)
+    if(lastDirection>=0)
     {
         if(GetCurrentYaw()>=-130)
         {
@@ -210,18 +211,18 @@ void Controller::Yellow()
         {
             if(GetOrient()!=ColorOrient::FRONT)
             {
-                SetSpeed(0.3);
+                SetSpeed(0.5);
             }else
             {
                 SetSpeed(0);
-                if(GetEnemyState()&& psd_val[1]<10)
+                if(GetEnemyState()&& psd_val[1]<75)
                 {
                     SetYellow(true);
-                    SetState(RoboState::ATTACK);
+                    SetState(RoboState::DETECT);
                 }
             }
         }
-    }else if(GetHD()<0){
+    }else if(lastDirection<0){
         if(GetCurrentYaw()>=-40)
         {
             SetSpeed(-0.5,0.5);
@@ -232,14 +233,14 @@ void Controller::Yellow()
         {
             if(GetOrient()!=ColorOrient::FRONT)
             {
-                SetSpeed(0.3);
+                SetSpeed(0.5);
             }else
             {
                 SetSpeed(0);
-                if(GetEnemyState()&& psd_val[1]<10)
+                if(GetEnemyState()&& psd_val[1]<75)
                 {
                     SetYellow(true);
-                    SetState(RoboState::ATTACK);
+                    SetState(RoboState::DETECT);
                 }
             }
         }
@@ -325,7 +326,7 @@ void Controller::EnemyDetect() {
                     
                 //데이터 출력
                 //pc.printf("Data1: %s, Data2: %s, Data3: %s\r\n", data1, data2, data3);
-                pc.printf("GHD: %d, YHD: %d, YA: %.2f, yaw: %.2f\r\n",GetHD(),GetYHD(),GetYA(),GetCurrentYaw());
+                pc.printf("GHD: %d, YHD: %d, YA: %d, yaw: %.2f\r\n",GetHD(),GetYHD(),GetYA(),GetCurrentYaw());
             }else{
                 pc.printf("Error: Only two data fields found!\r\n");
             }
@@ -939,14 +940,17 @@ void Controller::ImuParse() {
     ebimu.scanf("%s",data);
     controller.ImuChartoData();
 }
+
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
     pc.printf("IMU Thread running\n");
     while(1) {
-        gyroMutex.lock();
+        mutex.lock();
         controller.ImuParse();
+        controller.PsdRefresh();
+        controller.IrRefresh();
+        mutex.unlock();
         // controller.ImuDetect();
-        gyroMutex.unlock();
         //pc.printf("HD: %d,Roll: %.1f, Pitch: %.1f, Yaw:%.1f, Z AC: %.1f\r\n",controller.GetHD(),controller.roll, controller.pitch, controller.yaw, controller.az);
         ThisThread::sleep_for(20);
     }
@@ -954,7 +958,7 @@ void ImuThread() {
 void PsdThread() {
     while(1) {
         controller.PsdRefresh();
-        // controller.IrRefresh();
+        controller.IrRefresh();
         // pc.printf("%d, %d, %d, %d, %d, %d, %d, %d\r\n",controller.psd_val[0],controller.psd_val[1],controller.psd_val[2],controller.psd_val[3],controller.psd_val[4],controller.psd_val[5],controller.psd_val[6],controller.psd_val[7]);
         // pc.printf("%d, %d, %d, %d, %d, %d \r\n",irfl.read(), irfr.read(), irfc.read(), irbc.read(), irbl.read(), irbr.read());
         // pc.printf("%d, %d, %d, %d, %d",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
@@ -969,7 +973,7 @@ void DetectThread()
 {
     pc.printf("Detect Thread running\n");
     while(1)
-    {
+    {        
         //pc.printf("Detecting\n");
         if (device.readable()) {
         char receivedChar = device.getc();
@@ -1013,18 +1017,18 @@ void DetectThread()
                         
                     //데이터 출력
                    // pc.printf("Data1: %s, Data2: %s, Data3: %s\r\n", data1, data2, data3);
-                    detectMutex.lock();
-                    pc.printf("GHD: %d, YHD: %d, YA: %.2f yaw: %.2f\r\n",controller.GetHD(),controller.GetYHD(),controller.GetYA(), controller.GetCurrentYaw());
-                    detectMutex.unlock();
+                    mutex.lock();
+                    pc.printf("GHD: %d, YHD: %d, YA: %d yaw: %.2f\r\n",controller.GetHD(),controller.GetYHD(),controller.GetYA(), controller.GetCurrentYaw());
+                    mutex.unlock();
                 }else{
-                    detectMutex.lock();
+                    mutex.lock();
                     pc.printf("Error: Only two data fields found!\r\n");
-                    detectMutex.unlock();
+                    mutex.unlock();
                 }
             }else{
-                detectMutex.lock();
+                mutex.lock();
                 //pc.printf("Error: Only one data field found!\r\n");
-                detectMutex.unlock();
+                mutex.unlock();
             }
             bufferIndex =0; //인덱스 초기화
         }else{
@@ -1038,6 +1042,59 @@ void DetectThread()
     }
 }
 
+void DetectThread2()
+{
+    char buffer_D[1024];
+
+    int index_D=0;
+
+    bool receiving_D = false;
+    pc.printf("DetecThread2 running\n");
+    while(1)
+    {
+        if(device.readable())
+        {
+            char c = device.getc();
+            if (c == '*') {
+            controller.SetEnemyState(false);
+            } else 
+            {
+                controller.SetEnemyState(true);
+            }
+            if(c=='[')
+            {
+                receiving_D=true;
+                index_D=0;
+            }
+            if(receiving_D)
+            {
+                buffer[index_D++]=c;
+                if(c==']')
+                {
+                    buffer[index_D++]='\0';
+                    //pc.printf("Received Data: %s Yaw : %.2f\n",buffer, controller.GetCurrentYaw());
+                    char *token = strtok(buffer + 1, "]"); // 대괄호 안의 값 추출
+                    if (token != NULL) {
+                        mutex.lock();
+                        controller.SetHD(atoi(token)); // 값을 정수로 변환
+                        mutex.unlock();
+                    }
+                    // pc.printf("HD : %d, Yaw: %.2f\n",controller.GetHD(),controller.GetCurrentYaw());
+                    pc.printf("HD: %d\n", controller.GetHD());
+                    receiving_D=false;
+                }
+            }
+             if (index_D >= sizeof(buffer_D) - 1) {
+            index_D = 0; // 버퍼 초기화
+            receiving_D = false; // 수신 종료
+            }               
+        }
+        // mutex.lock();
+        // controller.ImuParse();
+        // mutex.unlock();
+        ThisThread::sleep_for(1);
+    }
+}
 void Starter() {
     controller.StartFlag = true;
 }

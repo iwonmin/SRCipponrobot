@@ -7,6 +7,9 @@ int main()
  while (true) {
         controller.CheckStartTime();
         //controller.EnemyDetect();
+        // DetectThread2();
+        //ImuThread();
+        //controller.ImuParse();
         switch(controller.GetState())
         {
             case Controller::RoboState::START:
@@ -29,5 +32,6 @@ int main()
         }
         controller.Move(controller.GetSpeedL(),controller.GetSpeedR());
         ThisThread::sleep_until(controller.GetStartTime() + 10); //절대 시간으로 10ms 만큼 쉬기
+        //ThisThread::sleep_for(20);
     }
 }
