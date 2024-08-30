@@ -40,6 +40,7 @@ extern class Controller controller;
 extern Thread Thread1;
 extern Thread Thread2;
 extern Thread Thread3;
+extern Thread Thread4;
 extern Serial pc;
 extern Serial ebimu;
 #pragma endregion external
@@ -142,9 +143,9 @@ class Controller
     //노랑플래그 설정
     void SetYellow(bool yellow);
     //현재 노란영역 수평각도 반환
-    float GetYA();
+    int GetYA();
     //현재 노란 영역 수평 각도 설정
-    void SetYA(float yellowAngle);
+    void SetYA(int yellowAngle);
     //현재 노란 영역 중앙으로부터 거리 반환
     int GetYHD();
     //현재 노란 영역 중앙으로부터 거리 설정정
@@ -181,6 +182,8 @@ class Controller
     void Move(float sL, float sR);
 
     void EnemyDetect();
+
+    
     //-----------------------psd--------------------//
     uint16_t PsdDistance(GP2A, uint8_t);
 
@@ -231,9 +234,6 @@ class Controller
     */
 
     //-----------------------MPU9250, IMU-----------------------------//
-    void SetupImu_MPU9250();
-    
-    void ImuRefresh_MPU9250();
 
     void ImuDetect();
 
@@ -249,8 +249,9 @@ class Controller
 
     Timer Escape_Timer;
 
-    float roll, pitch, yaw;
+    float roll, pitch, yaw, currentyaw, prevyaw, normalized_yaw;
 
+    float ax, ay, az;
     //------------------------Tester's Choice-------------------//
     void OrientViewer();
 
@@ -329,6 +330,10 @@ class Controller
 
     bool RightCollision;
 
+    int lastDirection;
+
+    int lastDirection;
+
     /*Good bye Mpu9250 ㅠㅠ
     const float alpha_imu = 0.93f;
 
@@ -353,5 +358,13 @@ class Controller
 void ImuThread();
 
 void PsdThread();
+
+void DetectThread();
+
+void DetectThread2();
+
+int calculateChecksum(char *data, int length);
+
+void processPacket(char *data, int length);
 
 void Starter();

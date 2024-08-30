@@ -25,7 +25,9 @@ Serial ebimu(PB_10,PC_5,115200);
 Controller controller;
 Thread Thread1;
 Thread Thread2;
+Thread Thread4;
 #pragma endregion variables
+Mutex mutex;
 
 #pragma region Serial Variables
 // PC와의 통신을 위한 Serial 객체 생성
@@ -37,7 +39,7 @@ bool decimalPointSeen = false;
 // 부호 정보를 추적하기 위한 변수
 bool isNegative = false;
 
-char distanceBuffer[32];
+char distanceBuffer[256];
 
 float initialYaw=0.0;
 int bufferIndex = 0;
@@ -117,9 +119,9 @@ bool Controller::GetYellow(){return yellow;}
 
 void Controller::SetYellow(bool y){yellow = y;}
 
-float Controller::GetYA(){return yellowAngle;}
+int Controller::GetYA(){return yellowAngle;}
 
-void Controller::SetYA(float YA){yellowAngle = YA;}
+void Controller::SetYA(int YA){yellowAngle = YA;}
 
 int Controller::GetYHD(){return yellow_horizontal_distance;}
 
@@ -137,10 +139,12 @@ void Controller::Start() {
     if(StartFlag) {
     PwmL.period_us(66);
     PwmR.period_us(66);
-    Thread1.start(ImuThread);
-    Thread1.set_priority(osPriorityHigh);
-    Thread2.start(PsdThread);
-    Thread2.set_priority(osPriorityAboveNormal);
+    Thread1.start(DetectThread2);
+    Thread1.set_priority(osPriorityNormal);
+    Thread2.start(ImuThread);
+    Thread2.set_priority(osPriorityHigh);
+    // Thread2.start(PsdThread);
+    //Thread2.set_priority(osPriorityAboveNormal);
     SetState(RoboState::IDLE);
     }
 };
@@ -155,30 +159,25 @@ void Controller::Idle() {
 /*
 void Controller::Detect() {
     if (imuSafe && irSafe && wallSafe) {
-        if (GetEnemyState()) {
-        SetSpeed(0);
-        SetState(RoboState::ATTACK);
-        } else if (!GetEnemyState() && GetHD() > 0) {
-        SetSpeed(-0.5, 0.5);
-        } else if (!GetEnemyState() && GetHD() < 0) {
-        SetSpeed(0.5, -0.5);
+        if(!GetYellow()){
+            if(GetCurrentYaw()>=-90){
+                SetSpeed(-0.5,0.5);
+            }if(GetCurrentYaw()<-90)
+            {
+                SetSpeed(0);
+                lastDirection = GetHD();
+                SetState(RoboState::YELLOW);
+            }
         }
-    } else {
-        SetState(RoboState::IDLE);
-    }
-};
-*/
-void Controller::Detect() {
-    if (imuSafe && irSafe && wallSafe) {
-        if (GetEnemyState()) {
-        SetSpeed(0);
-        SetState(RoboState::ATTACK);
-        } else if (!GetEnemyState() && GetHD() > 0) {
-
-        SetSpeed(-0.5, 0.5);
-        } else if (!GetEnemyState() && GetHD() < 0) {
-
-        SetSpeed(0.5, -0.5);
+        else if(GetYellow()){
+            if(GetEnemyState()) {
+            SetSpeed(0);
+            SetState(RoboState::ATTACK);
+            } else if (!GetEnemyState() && GetHD() > 0) {
+            SetSpeed(-0.5, 0.5);
+            } else if (!GetEnemyState() && GetHD() < 0) {
+            SetSpeed(0.5, -0.5);
+            }
         }
     } else {
         SetState(RoboState::IDLE);
@@ -200,39 +199,49 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
 
 void Controller::Yellow()
 {
-    if(GetHD()>=0)
+    if(lastDirection>=0)
     {
         if(GetCurrentYaw()>=-130)
         {
-            SetSpeed(-0.1,0.1);
+            SetSpeed(-0.5,0.5);
         }else if(GetCurrentYaw()<=-140)
         {
-            SetSpeed(0.1,-0.1);
+            SetSpeed(0.5,-0.5);
         }else if(GetCurrentYaw()<-130 && GetCurrentYaw()>-140)
         {
             if(GetOrient()!=ColorOrient::FRONT)
             {
-                SetSpeed(0.1);
+                SetSpeed(0.5);
             }else
             {
                 SetSpeed(0);
+                if(GetEnemyState()&& psd_val[1]<75)
+                {
+                    SetYellow(true);
+                    SetState(RoboState::DETECT);
+                }
             }
         }
-    }else if(GetHD()<0){
+    }else if(lastDirection<0){
         if(GetCurrentYaw()>=-40)
         {
-            SetSpeed(-0.1,0.1);
+            SetSpeed(-0.5,0.5);
         }else if(GetCurrentYaw()<=-50)
         {
-            SetSpeed(0.1,-0.1);
+            SetSpeed(0.5,-0.5);
         }else if(GetCurrentYaw()<-40 && GetCurrentYaw()>-50)
         {
             if(GetOrient()!=ColorOrient::FRONT)
             {
-                SetSpeed(0.1);
+                SetSpeed(0.5);
             }else
             {
                 SetSpeed(0);
+                if(GetEnemyState()&& psd_val[1]<75)
+                {
+                    SetYellow(true);
+                    SetState(RoboState::DETECT);
+                }
             }
         }
     }
@@ -273,25 +282,70 @@ void Controller::EnemyDetect() {
     } else {
       SetEnemyState(true);
     }
-    if (receivedChar == '/') {
-      distanceBuffer[bufferIndex] = '\0';
-      SetHD(atoi(distanceBuffer));
-      pc.printf("Received Distance: %d\n", GetHD());
-      bufferIndex = 0; // 버퍼 초기화
-    } else {
-      distanceBuffer[bufferIndex] = receivedChar;
-      bufferIndex++;
-      if (bufferIndex >= sizeof(distanceBuffer) - 1) {
-        bufferIndex = 0; // 버퍼가 가득 찬 경우 초기화
-      }
+    // if (receivedChar == '/') {
+    //   distanceBuffer[bufferIndex] = '\0';
+    //   SetHD(atoi(distanceBuffer));
+    //   pc.printf("Received Distance: %d\n", GetHD());
+    //   bufferIndex = 0; // 버퍼 초기화
+    // } else {
+    //   distanceBuffer[bufferIndex] = receivedChar;
+    //   bufferIndex++;
+    //   if (bufferIndex >= sizeof(distanceBuffer) - 1) {
+    //     bufferIndex = 0; // 버퍼가 가득 찬 경우 초기화
+    //   }
+    // }
+    if(receivedChar=='\n')
+    {
+        distanceBuffer[bufferIndex]='\0';
+        char *comma_ptr1=strchr(distanceBuffer,',');//첫번째 콤마 위치
+        char *comma_ptr2=NULL;
+        if(comma_ptr1 !=NULL)
+        {
+            *comma_ptr1='\0';//첫 번째 콤마 위치를 문자열 종료로 설정
+            char* data1=distanceBuffer;//첫 번째 데이터
+
+            if(*data1 != '*') SetHD(atoi(data1));
+            comma_ptr2 = strchr(comma_ptr1+1,',');//두번째 콤마 위치
+            
+            if(comma_ptr2!=NULL)
+            {
+                *comma_ptr2 ='\0';//두 번째 콤마 위치를 문자열 종료로 설정
+                char* data2=comma_ptr1+1;//두번째 데이터
+                if(*data2!='*')
+                {
+                    SetYHD(atoi(data2));
+                } else
+                {
+                    SetYHD(404);
+                }                   
+                char* data3=comma_ptr2+1;//세번째 데이터
+                if(*data3!='*')
+                {
+                    SetYA(atof(data3));
+                }else
+                {
+                    SetYA(404);
+                } 
+                    
+                //데이터 출력
+                //pc.printf("Data1: %s, Data2: %s, Data3: %s\r\n", data1, data2, data3);
+                pc.printf("GHD: %d, YHD: %d, YA: %d, yaw: %.2f\r\n",GetHD(),GetYHD(),GetYA(),GetCurrentYaw());
+            }else{
+                pc.printf("Error: Only two data fields found!\r\n");
+            }
+        }else{
+            pc.printf("Error: Only one data field found!\r\n");
+        }
+        bufferIndex =0; //인덱스 초기화
+    }else{
+        //버퍼가 가득 차지 않았을 경우에만 저장
+        if(bufferIndex<sizeof(distanceBuffer)-1){
+            distanceBuffer[bufferIndex++]=receivedChar;//버퍼에 데이터 저장
+        }
     }
-  }*/
-
-void Controller::EnemyDetect() {
-    if(psd_val[1] <= 25) {SetEnemyState(true); SetHD(0);}
-    else { SetEnemyState(false); SetHD(-1); }
-
+  }
 }
+
 
 
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
@@ -753,101 +807,7 @@ void Controller::WallTwerk() {
     }
 }
 */
-/*
-void Controller::CenterSpin() {//굳이??싶은 함수
-  SetSpeed(0.5, -0.5); //빙글빙글
-  if (detection[0] || detection[2] || detection[5] || detection[7]) {
-    SetSpeed(0, 0);
-    ThisThread::sleep_for(50); // 90도 돌만큼의 시간
-    SetState(RoboState::ATTACK);
-  }
-}
-
-void Controller::FrontWall() {
-  if (detection[2] || detection[4] == 1) {
-    SetSpeed(-1.0, 1.0);
-    ThisThread::sleep_for(50); //반시계 방향으로 135도 회전
-    SetState(RoboState::ATTACK);
-  } else if (detection[5] == 1 || detection[3] == 1) {
-    SetSpeed(1.0, -1.0);
-    ThisThread::sleep_for(50); //시계 방향으로 135도 회전
-    SetState(RoboState::ATTACK);
-  } else {
-    SetSpeed(0.5, -0.5); // 180도 회전
-  }
-}
-
-void Controller::BehindWall() {
-  if (detection[2]) {
-    SetSpeed(-1.0, 1.0);
-    ThisThread::sleep_for(50); //반시계 방향 90도 회전
-    SetState(RoboState::ATTACK);
-  }
-  if (detection[3]) {
-    SetSpeed(1.0, -1.0);
-    ThisThread::sleep_for(50); //시계 방향 90도 회전
-    SetState(RoboState::ATTACK);
-  }
-}
-*/
-/*
-void Controller::SetupImu_MPU9250() {
-  uint8_t whoami = mpu9250.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250); // Read WHO_AM_I register for MPU-9250
-    // pc.printf("I AM 0x%x\t", whoami); pc.printf("I SHOULD BE 0x71\n\r");
-  mpu9250.resetMPU9250(); // Reset registers to default in preparation for
-    // device calibration
-  mpu9250.MPU9250SelfTest(mpu9250.SelfTest); // Start by performing self test and reporting values
-  mpu9250.calibrateMPU9250(mpu9250.gyroBias, mpu9250.accelBias);
-  // Calibrate gyro and accelerometers, load biases in bias registers
-  mpu9250.initMPU9250();
-//   mpu9250.initAK8963(mpu9250.magCalibration);
-  mpu9250.getAres(); // Get accelerometer sensitivity
-  mpu9250.getGres(); // Get gyro sensitivity
-//   mpu9250.getMres(); // Get magnetometer sensitivity
-  t.start();
-}
-
-void Controller::ImuRefresh_MPU9250() {
-    // If intPin goes high, all data registers have new data
-    t.reset();
-    if(mpu9250.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
-    {  // On interrupt, check if data ready interrupt
-        //pc.printf("imu main     ");
-        mpu9250.readAccelData(mpu9250.accelCount);  // Read the x/y/z adc values   
-        // Now we'll calculate the accleration value into actual g's
-        mpu9250.ax = (float)mpu9250.accelCount[0]*mpu9250.aRes - mpu9250.accelBias[0];  // get actual g value, this depends on scale being set
-        mpu9250.ay = (float)mpu9250.accelCount[1]*mpu9250.aRes - mpu9250.accelBias[1];   
-        mpu9250.az = (float)mpu9250.accelCount[2]*mpu9250.aRes - mpu9250.accelBias[2];  
-        mpu9250.readGyroData(mpu9250.gyroCount);  // Read the x/y/z adc values
-        // Calculate the gyro value into actual degrees per second
-        mpu9250.gx = (float)mpu9250.gyroCount[0]*mpu9250.gRes - mpu9250.gyroBias[0];  // get actual gyro value, this depends on scale being set
-        mpu9250.gy = (float)mpu9250.gyroCount[1]*mpu9250.gRes - mpu9250.gyroBias[1];  
-        // mpu9250.gz = (float)mpu9250.g+yroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
-        // Read the x/y/z adc values   
-        // // Calculate the magnetometer values in milliGauss
-        // // Include factory calibration per data sheet and user environmental corrections
-        mpu9250.readMagData(mpu9250.magCount);
-        mpu9250.mx = (float)mpu9250.magCount[0]*mpu9250.mRes*mpu9250.magCalibration[0] - mpu9250.magbias[0];  // get actual magnetometer value, this depends on scale being set
-        mpu9250.my = (float)mpu9250.magCount[1]*mpu9250.mRes*mpu9250.magCalibration[1] - mpu9250.magbias[1];  
-        // mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
-    }
-    mpu9250.deltat = t.read_us()/1000000.0f;
-    accel_angle_x = atan2(mpu9250.ay, sqrt(mpu9250.ax * mpu9250.ax + mpu9250.az * mpu9250.az)) * (180.0f / PI); 
-    accel_angle_y = atan2(mpu9250.ax, sqrt(mpu9250.ay * mpu9250.ay + mpu9250.az * mpu9250.az)) * (180.0f / PI);
-    // mag_angle_z  = atan2(mpu9250.my*cos(mpu9250.pitch*PI/180.0f) - mpu9250.mz*sin(mpu9250.pitch*PI/180.0f), mpu9250.mx*cos(mpu9250.roll*PI/180.0f)+mpu9250.my*sin(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)+mpu9250.mz*cos(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)) * (180.0f / PI);
-    // mag_angle_z = atan2(mpu9250.my, mpu9250.mx) * (180.0f / PI);
-    //gyro값 넣기
-    gyro_angle_x = mpu9250.roll + mpu9250.gx * mpu9250.deltat;
-    gyro_angle_y = mpu9250.pitch + mpu9250.gy * mpu9250.deltat;
-    // gyro_angle_z = mpu9250.yaw + mpu9250.gz * mpu9250.deltat;
-    //alpha를 이용한 보정(상보)
-    mpu9250.roll = alpha_imu * gyro_angle_x + (1.0-alpha_imu) * accel_angle_x;
-    mpu9250.pitch = alpha_imu * gyro_angle_y + (1.0-alpha_imu) * accel_angle_y;
-    // mpu9250.yaw = 0.95 * gyro_angle_z + (1.0-0.95) * mag_angle_z;
-}
-*/
 void Controller::ImuDetect()  {
-
     if(GetEnemyState() && psd_val[1] < 15 && pitch < -IMU_THRESHOLD) {
         SetImuSafetyState(false);
         ImuPitchLift = true;
@@ -903,7 +863,7 @@ void Controller::ImuDetect()  {
     }
     if(Escape_Timer.read_ms() > 10000) Escape_Timer.reset();
 }
-
+*/
 void Controller::ImuEscape() {
     switch (tilt_state) {
         case TiltState::FRONT:
@@ -972,7 +932,7 @@ void Controller::ImuChartoData() {
                         
                             }
                         }                       
-                    }      */               
+                    }                     
                 }
             }
         }
@@ -981,21 +941,22 @@ void Controller::ImuChartoData() {
 
 void Controller::ImuParse() {
     ebimu.putc(0x2A);
-    // for(int i=0;i<32;i++){
-    //     char a = ebimu.getc();
-    //     data[i] = a;
-    // }
     ebimu.scanf("%s",data);
     controller.ImuChartoData();
     memset(data, NULL, 32*sizeof(char));
 }
+
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
+    pc.printf("IMU Thread running\n");
     while(1) {
+        mutex.lock();
         controller.ImuParse();
-        controller.ImuDetect();
-        pc.printf("%.1f,%.1f,",controller.roll, controller.pitch);
-        controller.ImuViewer();
+        controller.PsdRefresh();
+        controller.IrRefresh();
+        mutex.unlock();
+        // controller.ImuDetect();
+        //pc.printf("HD: %d,Roll: %.1f, Pitch: %.1f, Yaw:%.1f, Z AC: %.1f\r\n",controller.GetHD(),controller.roll, controller.pitch, controller.yaw, controller.az);
         ThisThread::sleep_for(20);
     }
 }
@@ -1003,7 +964,7 @@ void PsdThread() {
     while(1) {
         controller.PsdRefresh();
         controller.IrRefresh();
-        // pc.printf("%d, %d, %d, %d\r\n",controller.psd_val[0],controller.psd_val[2],controller.psd_val[5],controller.psd_val[7]);
+        // pc.printf("%d, %d, %d, %d, %d, %d, %d, %d\r\n",controller.psd_val[0],controller.psd_val[1],controller.psd_val[2],controller.psd_val[3],controller.psd_val[4],controller.psd_val[5],controller.psd_val[6],controller.psd_val[7]);
         // pc.printf("%d, %d, %d, %d, %d, %d \r\n",irfl.read(), irfr.read(), irfc.read(), irbc.read(), irbl.read(), irbr.read());
         // pc.printf("%d, %d, %d, %d, %d",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
         // controller.OrientViewer();
@@ -1013,6 +974,132 @@ void PsdThread() {
     }
 }
 
+void DetectThread()
+{
+    pc.printf("Detect Thread running\n");
+    while(1)
+    {        
+        //pc.printf("Detecting\n");
+        if (device.readable()) {
+        char receivedChar = device.getc();
+        if (receivedChar == '*') {
+        controller.SetEnemyState(false);
+        } else {
+        controller.SetEnemyState(true);
+        }
+        if(receivedChar=='\n')
+        {
+            distanceBuffer[bufferIndex]='\0';
+            char *comma_ptr1=strchr(distanceBuffer,',');//첫번째 콤마 위치
+            char *comma_ptr2=NULL;
+            if(comma_ptr1 !=NULL)
+            {
+                *comma_ptr1='\0';//첫 번째 콤마 위치를 문자열 종료로 설정
+                char* data1=distanceBuffer;//첫 번째 데이터
+
+                if(*data1 != '*') controller.SetHD(atoi(data1));
+                comma_ptr2 = strchr(comma_ptr1+1,',');//두번째 콤마 위치
+                
+                if(comma_ptr2!=NULL)
+                {
+                    *comma_ptr2 ='\0';//두 번째 콤마 위치를 문자열 종료로 설정
+                    char* data2=comma_ptr1+1;//두번째 데이터
+                    if(*data2!='*')
+                    {
+                        controller.SetYHD(atoi(data2));
+                    } else
+                    {
+                        controller.SetYHD(404);
+                    }                   
+                    char* data3=comma_ptr2+1;//세번째 데이터
+                    if(*data3!='*')
+                    {
+                        controller.SetYA(atof(data3));
+                    }else
+                    {
+                        controller.SetYA(404);
+                    } 
+                        
+                    //데이터 출력
+                   // pc.printf("Data1: %s, Data2: %s, Data3: %s\r\n", data1, data2, data3);
+                    mutex.lock();
+                    pc.printf("GHD: %d, YHD: %d, YA: %d yaw: %.2f\r\n",controller.GetHD(),controller.GetYHD(),controller.GetYA(), controller.GetCurrentYaw());
+                    mutex.unlock();
+                }else{
+                    mutex.lock();
+                    pc.printf("Error: Only two data fields found!\r\n");
+                    mutex.unlock();
+                }
+            }else{
+                mutex.lock();
+                //pc.printf("Error: Only one data field found!\r\n");
+                mutex.unlock();
+            }
+            bufferIndex =0; //인덱스 초기화
+        }else{
+            //버퍼가 가득 차지 않았을 경우에만 저장
+            if(bufferIndex<sizeof(distanceBuffer)-1){
+                distanceBuffer[bufferIndex++]=receivedChar;//버퍼에 데이터 저장
+            }
+        }
+    }
+    ThisThread::sleep_for(1);
+    }
+}
+
+void DetectThread2()
+{
+    char buffer_D[1024];
+
+    int index_D=0;
+
+    bool receiving_D = false;
+    pc.printf("DetecThread2 running\n");
+    while(1)
+    {
+        if(device.readable())
+        {
+            char c = device.getc();
+            if (c == '*') {
+            controller.SetEnemyState(false);
+            } else 
+            {
+                controller.SetEnemyState(true);
+            }
+            if(c=='[')
+            {
+                receiving_D=true;
+                index_D=0;
+            }
+            if(receiving_D)
+            {
+                buffer[index_D++]=c;
+                if(c==']')
+                {
+                    buffer[index_D++]='\0';
+                    //pc.printf("Received Data: %s Yaw : %.2f\n",buffer, controller.GetCurrentYaw());
+                    char *token = strtok(buffer + 1, "]"); // 대괄호 안의 값 추출
+                    if (token != NULL) {
+                        mutex.lock();
+                        controller.SetHD(atoi(token)); // 값을 정수로 변환
+                        mutex.unlock();
+                    }
+                    // pc.printf("HD : %d, Yaw: %.2f\n",controller.GetHD(),controller.GetCurrentYaw());
+                    pc.printf("HD: %d\n", controller.GetHD());
+                    receiving_D=false;
+                }
+            }
+             if (index_D >= sizeof(buffer_D) - 1) {
+            index_D = 0; // 버퍼 초기화
+            receiving_D = false; // 수신 종료
+            }               
+        }
+        // mutex.lock();
+        // controller.ImuParse();
+        // mutex.unlock();
+        ThisThread::sleep_for(1);
+    }
+}
 void Starter() {
     controller.StartFlag = true;
 }
@@ -1082,10 +1169,10 @@ void Controller::ImuViewer() {
 }
 float Controller::GetCurrentYaw()
 {
-    return currentYaw;
+    return yaw;
 }
 
-void Controller::SetCurrentYaw(float yaw)
+void Controller::SetCurrentYaw(float y)
 {
-    currentYaw = yaw;
+    yaw = y;
 }
