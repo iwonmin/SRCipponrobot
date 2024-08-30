@@ -42,7 +42,9 @@ extern Thread Thread2;
 extern Thread Thread3;
 extern Thread Thread4;
 extern Serial pc;
+extern RawSerial device;
 extern Serial ebimu;
+extern void sibal();
 #pragma endregion external
 class Controller
 {
@@ -84,7 +86,7 @@ class Controller
 //-------------------Get & Set methods----------------------//
     //현재 로봇의 상태 반환
     RoboState GetState();
-    
+
     void CheckStartTime();
     
     uint64_t GetStartTime();
@@ -183,7 +185,7 @@ class Controller
 
     void EnemyDetect();
 
-    
+    void Sex();
     //-----------------------psd--------------------//
     uint16_t PsdDistance(GP2A, uint8_t);
 
@@ -329,8 +331,6 @@ class Controller
     bool LeftCollision;
 
     bool RightCollision;
-
-    int lastDirection;
 
     int lastDirection;
 

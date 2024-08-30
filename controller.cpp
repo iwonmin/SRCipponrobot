@@ -1,5 +1,7 @@
 #include "controller.h"
 char buffer[8] = "";
+char a = 0;
+bool Incoming = false;
 #pragma region variables
 InterruptIn btn(BUTTON1);
 DigitalOut DirL(PC_7);
@@ -25,7 +27,6 @@ Serial ebimu(PB_10,PC_5,115200);
 Controller controller;
 Thread Thread1;
 Thread Thread2;
-Thread Thread4;
 #pragma endregion variables
 Mutex mutex;
 
@@ -33,7 +34,7 @@ Mutex mutex;
 // PC와의 통신을 위한 Serial 객체 생성
 Serial pc(USBTX, USBRX, 115200);
 // Raspberry Pi와의 통신 설정 (TX, RX, baud rate)
-Serial device(D8, D2, 9600);
+RawSerial device(D8, D2, 9600);
 // 소수점 발견 여부를 추적하기 위한 변수
 bool decimalPointSeen = false;
 // 부호 정보를 추적하기 위한 변수
@@ -48,6 +49,7 @@ int bufferIndex = 0;
 
 Controller::Controller() { 
     SetState(RoboState::START);
+
     btn.fall(&Starter);
 }
 
@@ -135,16 +137,14 @@ uint64_t Controller::GetStartTime() {
     return StartTime;
 }
 void Controller::Start() {
-    //pc.printf("Start\n");
     if(StartFlag) {
     PwmL.period_us(66);
     PwmR.period_us(66);
-    Thread1.start(DetectThread2);
-    Thread1.set_priority(osPriorityNormal);
+    // Thread1.start(DetectThread2);
+    // Thread1.start(PsdThread);
+    // Thread1.set_priority(osPriorityHigh);
     Thread2.start(ImuThread);
-    Thread2.set_priority(osPriorityHigh);
-    // Thread2.start(PsdThread);
-    //Thread2.set_priority(osPriorityAboveNormal);
+    Thread2.set_priority(osPriorityAboveNormal);
     SetState(RoboState::IDLE);
     }
 };
@@ -156,7 +156,7 @@ void Controller::Idle() {
     SetState(RoboState::ESCAPE);
   }
 };
-/*
+
 void Controller::Detect() {
     if (imuSafe && irSafe && wallSafe) {
         if(!GetYellow()){
@@ -271,83 +271,6 @@ void Controller::Move(float sL, float sR) {
   PwmR = abs(sR);
 };
 
-/*
-
-void Controller::EnemyDetect() {
- 
-  if (device.readable()) {
-    char receivedChar = device.getc();
-    if (receivedChar == '*') {
-      SetEnemyState(false);
-    } else {
-      SetEnemyState(true);
-    }
-    // if (receivedChar == '/') {
-    //   distanceBuffer[bufferIndex] = '\0';
-    //   SetHD(atoi(distanceBuffer));
-    //   pc.printf("Received Distance: %d\n", GetHD());
-    //   bufferIndex = 0; // 버퍼 초기화
-    // } else {
-    //   distanceBuffer[bufferIndex] = receivedChar;
-    //   bufferIndex++;
-    //   if (bufferIndex >= sizeof(distanceBuffer) - 1) {
-    //     bufferIndex = 0; // 버퍼가 가득 찬 경우 초기화
-    //   }
-    // }
-    if(receivedChar=='\n')
-    {
-        distanceBuffer[bufferIndex]='\0';
-        char *comma_ptr1=strchr(distanceBuffer,',');//첫번째 콤마 위치
-        char *comma_ptr2=NULL;
-        if(comma_ptr1 !=NULL)
-        {
-            *comma_ptr1='\0';//첫 번째 콤마 위치를 문자열 종료로 설정
-            char* data1=distanceBuffer;//첫 번째 데이터
-
-            if(*data1 != '*') SetHD(atoi(data1));
-            comma_ptr2 = strchr(comma_ptr1+1,',');//두번째 콤마 위치
-            
-            if(comma_ptr2!=NULL)
-            {
-                *comma_ptr2 ='\0';//두 번째 콤마 위치를 문자열 종료로 설정
-                char* data2=comma_ptr1+1;//두번째 데이터
-                if(*data2!='*')
-                {
-                    SetYHD(atoi(data2));
-                } else
-                {
-                    SetYHD(404);
-                }                   
-                char* data3=comma_ptr2+1;//세번째 데이터
-                if(*data3!='*')
-                {
-                    SetYA(atof(data3));
-                }else
-                {
-                    SetYA(404);
-                } 
-                    
-                //데이터 출력
-                //pc.printf("Data1: %s, Data2: %s, Data3: %s\r\n", data1, data2, data3);
-                pc.printf("GHD: %d, YHD: %d, YA: %d, yaw: %.2f\r\n",GetHD(),GetYHD(),GetYA(),GetCurrentYaw());
-            }else{
-                pc.printf("Error: Only two data fields found!\r\n");
-            }
-        }else{
-            pc.printf("Error: Only one data field found!\r\n");
-        }
-        bufferIndex =0; //인덱스 초기화
-    }else{
-        //버퍼가 가득 차지 않았을 경우에만 저장
-        if(bufferIndex<sizeof(distanceBuffer)-1){
-            distanceBuffer[bufferIndex++]=receivedChar;//버퍼에 데이터 저장
-        }
-    }
-  }
-}
-
-
-
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
   filtered_distance[i] = now_distance[i] * alpha_psd + (1 - alpha_psd) * prev_distance[i];
@@ -372,112 +295,7 @@ void Controller::PsdRefresh() {
   psd_val[7] = PsdDistance(psdrb, 7);
   PsdWallDetect();
 }
-/*
-void Controller::PsdDetect() { //아직 안돌려봄
-    if (FollowIndex == 0){
-        MinValue = psd_val[6];
-        MinIndex = 1;
-        if (psdlc < MinValue) { MinValue = psd_val[3]; MinIndex = 2; }
-        if (psdrc < MinValue) { MinValue = psd_val[4]; MinIndex = 3; }
-        switch (MinIndex) {
-            case 1: //in which case psdb is minimum
-                    if(detection[3]) {
-                        //psdlc detected, ccw
-                        SetSpeed(-1.0,1.0);
-                        FollowIndex = 2;
-                    } else if(detection[4]) {
-                        //psdrc detected, cw
-                        SetSpeed(1.0,-1.0);
-                        FollowIndex = 3;
-                    } else if(detection[6]) {
-                        //psdb detected, both but cw
-                        SetSpeed(1.0,-1.0);
-                        FollowIndex = 1;
-                    }
-                break;
-            case 2: //in which case psdlc is minimum
-                    if(detection[6]) {
-                        //psdb detected, both but cw
-                        SetSpeed(1.0,-1.0);
-                        FollowIndex = 1;
-                    } else if(detection[4]) {
-                        //psdrc detected, cw
-                        SetSpeed(1.0,-1.0);
-                        FollowIndex = 3;
-                    } else if(detection[3]) {
-                        //psdlc detected, ccw
-                        SetSpeed(-1.0,1.0);
-                        FollowIndex = 2;
-                    }             
-                break;
-            case 3: //in which case psdrc is minimum
-                    if(detection[3]) {
-                        //psdlc detected, both but cw
-                        SetSpeed(1.0,-1.0);
-                        FollowIndex = 2;
-                    } else if(detection[6]) {
-                        //psdb detected, ccw
-                        SetSpeed(-1.0,1.0);
-                        FollowIndex = 1;
-                    } else if(detection[4]) {
-                        //psdrc detected, cw
-                        SetSpeed(1.0,-1.0);
-                        FollowIndex = 3;
-                    }
-                break;
-        }        
-    }
-    if (FollowIndex != 0){
-        switch (MinIndex) {
-            case 1: //in which case psdb is minimum
-                    if(psd_val[3] == MinValue) {
-                        //psdlc detected, ccw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    } else if(psd_val[4] == MinValue) {
-                        //psdrc detected, cw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    } else if(psd_val[6] == MinValue) {
-                        //psdb detected, both but cw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    }
-                break;
-            case 2: //in which case psdlc is minimum
-                    if(psd_val[6] == MinValue) {
-                        //psdb detected, both but cw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    } else if(psd_val[4]) {
-                        //psdrc detected, cw
-                        SetSpeed(0,0);
-                        FollowIndex = 3;
-                    } else if(psd_val[3] == MinValue) {
-                        //psdlc detected, ccw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    }             
-                break;
-            case 3: //in which case psdrc is minimum
-                    if(psd_val[3] == MinValue) {
-                        //psdlc detected, both but cw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    } else if(psd_val[6] == MinValue) {
-                        //psdb detected, ccw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    } else if(psd_val[4] == MinValue) {
-                        //psdrc detected, cw
-                        SetSpeed(0,0);
-                        FollowIndex = 0;
-                    }
-                break;
-        }        
-    }
-}
-*/
+
 void Controller::PsdWallDetect() {
     if (psd_val[0] <= 20 && psd_val[2] <= 20 && !GetEnemyState()) {
         FrontCollision = true; 
@@ -697,45 +515,7 @@ void Controller::ColorOrient_new() {
         break;
     }
 }
-/*
-Controller::Position Controller::GetPosition() { return CurrentPos; }
-//Position::@@@@@@@@@@@@@@@@조건 너무 빈약, 고쳐야함.
-//getDistance() 타이밍에 로봇 있을 때 거를 방안 찾아야함. 
-//거리 함수 말고 전역 변수로 불러와야할 듯(controller)
-//irs Colororient=>정확성 높음, 벽거리만 추가고려해서 바로 사용
-void Controller::SetPosition() { 
-    if (Orient == ColorOrient::TAN_LEFT && psd_val[3] < CIRCLE_DISTANCE) {
-    CurrentPos = Position::ClosetoLeftWall;
-    return;
-    } else if (Orient == ColorOrient::TAN_RIGHT && psd_val[4] < CIRCLE_DISTANCE) {
-    CurrentPos = Position::ClosetoRightWall;
-    return;
-    } else if (Orient == ColorOrient::FRONT_LEFT && psd_val[3] < CIRCLE_DISTANCE && psd_val[1] < WALL_DISTANCE) {
-    CurrentPos = Position::CriticalLeftWall;
-    //뒤로, 오른쪽으로 이동하는 것 필요
-    } else if (Orient == ColorOrient::BACK_LEFT && psd_val[3] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
-    CurrentPos = Position::CriticalLeftWall;
-    //앞으로, 오른쪽으로 이동하는 것 필요
-    } else if (Orient == ColorOrient::FRONT_RIGHT && psd_val[4] < CIRCLE_DISTANCE && psd_val[1] < WALL_DISTANCE) {
-    CurrentPos = Position::CriticalRightWall;
-    //뒤로, 왼쪽으로 이동하는 것 필요
-    } else if (Orient == ColorOrient::BACK_RIGHT && psd_val[4] < CIRCLE_DISTANCE && psd_val[6] < WALL_DISTANCE) {
-    CurrentPos = Position::CriticalRightWall;
-    //앞으로, 왼쪽으로 이동하는 것 필요
-    } else if (Orient != ColorOrient::SAFE && psd_val[0] > 90 && psd_val[7] > 90 || psd_val[2] > 90 && psd_val[5] > 90) {
-    //일단 ir에 색은 감지되었지만 벽과의 거리가 생각보다 멀때 -> 중앙임
-    CurrentPos = Position::ClosetoCenter;
-    } else {
-    // ir 영역 아닐떄, psd만 사용(부정확)
-    if (psd_val[1] <= 10) {
-      CurrentPos = Position::WallFront;
-    } else if (psd_val[6] <= 10) {
-      CurrentPos = Position::WallBehind;
-    } else
-      CurrentPos = Position::FartoCenter; // 색영역도 아닌데 안보임
-  }
-}
-*/
+
 void Controller::IrEscape() {
   if (Orient == ColorOrient::SAFE) {
     return;
@@ -762,25 +542,7 @@ void Controller::IrEscape() {
     SetSpeed(-0.5, 0.5);
   } else {}
 }
-/*
-void Controller::IrEscapeWhenImuUnsafe() {
-    if(Controller::ir_val[2]+Controller::ir_val[3]+Controller::ir_val[4] < 2) {
-        //뒤쪽에 IR영역
-        SetSpeed(0.5,-0.5);
-    } else if(Controller::ir_val[0]+Controller::ir_val[1]+Controller::ir_val[2] < 2) {
-        //앞쪽에 IR영역
-        SetSpeed(-0.5, 0.5);
-    } else if(Controller::ir_val[0]+Controller::ir_val[1]+Controller::ir_val[3] < 2) {
-        //왼쪽에 IR영역
-        SetSpeed(0.5, 0.5);
-    } else if(Controller::ir_val[1]+Controller::ir_val[2]+Controller::ir_val[4] < 2) {
-        //오른쪽에 IR영역
-        SetSpeed(-0.5, -0.5);
-    }
-}
-*/
 
-//Imu Thread에서 새로운 Sub-Thread 실행, 여기서 IMU 값 새로 받아와야함
 /*
 void Controller::WallTwerk() {
     bool FinishMove = false;
@@ -808,7 +570,7 @@ void Controller::WallTwerk() {
 }
 */
 void Controller::ImuDetect()  {
-    if(GetEnemyState() && psd_val[1] < 15 && pitch < -IMU_THRESHOLD) {
+    if( psd_val[1] < 15 && pitch < -IMU_THRESHOLD) {
         SetImuSafetyState(false);
         ImuPitchLift = true;
         tilt_state = TiltState::FRONT;
@@ -863,7 +625,7 @@ void Controller::ImuDetect()  {
     }
     if(Escape_Timer.read_ms() > 10000) Escape_Timer.reset();
 }
-*/
+
 void Controller::ImuEscape() {
     switch (tilt_state) {
         case TiltState::FRONT:
@@ -932,7 +694,7 @@ void Controller::ImuChartoData() {
                         
                             }
                         }                       
-                    }                     
+                    }*/                     
                 }
             }
         }
@@ -948,105 +710,23 @@ void Controller::ImuParse() {
 
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
-    pc.printf("IMU Thread running\n");
+    // pc.printf("IMU Thread running\n");
     while(1) {
         mutex.lock();
         controller.ImuParse();
+        controller.ImuDetect();
         controller.PsdRefresh();
         controller.IrRefresh();
         mutex.unlock();
-        // controller.ImuDetect();
-        //pc.printf("HD: %d,Roll: %.1f, Pitch: %.1f, Yaw:%.1f, Z AC: %.1f\r\n",controller.GetHD(),controller.roll, controller.pitch, controller.yaw, controller.az);
+        // controller.ImuViewer();
         ThisThread::sleep_for(20);
     }
 }
 void PsdThread() {
-    while(1) {
-        controller.PsdRefresh();
-        controller.IrRefresh();
-        // pc.printf("%d, %d, %d, %d, %d, %d, %d, %d\r\n",controller.psd_val[0],controller.psd_val[1],controller.psd_val[2],controller.psd_val[3],controller.psd_val[4],controller.psd_val[5],controller.psd_val[6],controller.psd_val[7]);
-        // pc.printf("%d, %d, %d, %d, %d, %d \r\n",irfl.read(), irfr.read(), irfc.read(), irbc.read(), irbl.read(), irbr.read());
-        // pc.printf("%d, %d, %d, %d, %d",controller.GetState(), controller.GetAttackState(), controller.GetImuSafetyState(), controller.GetIrSafetyState(), controller.GetWallSafetyState());
-        // controller.OrientViewer();
-        // controller.SetPosition();
-        // controller.WallViewer();
-        ThisThread::sleep_for(20); //임의
-    }
+        pc.printf("EnemyDistance : %d, Yaw : %.1f, CenterPsd : %d, State : %d ImuState : ",controller.GetHD(),controller.GetCurrentYaw(),controller.psd_val[1], (int)controller.GetState());
+        controller.ImuViewer();
+        ThisThread::sleep_for(100);
 }
-
-void DetectThread()
-{
-    pc.printf("Detect Thread running\n");
-    while(1)
-    {        
-        //pc.printf("Detecting\n");
-        if (device.readable()) {
-        char receivedChar = device.getc();
-        if (receivedChar == '*') {
-        controller.SetEnemyState(false);
-        } else {
-        controller.SetEnemyState(true);
-        }
-        if(receivedChar=='\n')
-        {
-            distanceBuffer[bufferIndex]='\0';
-            char *comma_ptr1=strchr(distanceBuffer,',');//첫번째 콤마 위치
-            char *comma_ptr2=NULL;
-            if(comma_ptr1 !=NULL)
-            {
-                *comma_ptr1='\0';//첫 번째 콤마 위치를 문자열 종료로 설정
-                char* data1=distanceBuffer;//첫 번째 데이터
-
-                if(*data1 != '*') controller.SetHD(atoi(data1));
-                comma_ptr2 = strchr(comma_ptr1+1,',');//두번째 콤마 위치
-                
-                if(comma_ptr2!=NULL)
-                {
-                    *comma_ptr2 ='\0';//두 번째 콤마 위치를 문자열 종료로 설정
-                    char* data2=comma_ptr1+1;//두번째 데이터
-                    if(*data2!='*')
-                    {
-                        controller.SetYHD(atoi(data2));
-                    } else
-                    {
-                        controller.SetYHD(404);
-                    }                   
-                    char* data3=comma_ptr2+1;//세번째 데이터
-                    if(*data3!='*')
-                    {
-                        controller.SetYA(atof(data3));
-                    }else
-                    {
-                        controller.SetYA(404);
-                    } 
-                        
-                    //데이터 출력
-                   // pc.printf("Data1: %s, Data2: %s, Data3: %s\r\n", data1, data2, data3);
-                    mutex.lock();
-                    pc.printf("GHD: %d, YHD: %d, YA: %d yaw: %.2f\r\n",controller.GetHD(),controller.GetYHD(),controller.GetYA(), controller.GetCurrentYaw());
-                    mutex.unlock();
-                }else{
-                    mutex.lock();
-                    pc.printf("Error: Only two data fields found!\r\n");
-                    mutex.unlock();
-                }
-            }else{
-                mutex.lock();
-                //pc.printf("Error: Only one data field found!\r\n");
-                mutex.unlock();
-            }
-            bufferIndex =0; //인덱스 초기화
-        }else{
-            //버퍼가 가득 차지 않았을 경우에만 저장
-            if(bufferIndex<sizeof(distanceBuffer)-1){
-                distanceBuffer[bufferIndex++]=receivedChar;//버퍼에 데이터 저장
-            }
-        }
-    }
-    ThisThread::sleep_for(1);
-    }
-}
-
 void DetectThread2()
 {
     char buffer_D[1024];
@@ -1085,7 +765,7 @@ void DetectThread2()
                         mutex.unlock();
                     }
                     // pc.printf("HD : %d, Yaw: %.2f\n",controller.GetHD(),controller.GetCurrentYaw());
-                    pc.printf("HD: %d\n", controller.GetHD());
+                    // pc.printf("HD: %d\n", controller.GetHD());
                     receiving_D=false;
                 }
             }
@@ -1098,6 +778,24 @@ void DetectThread2()
         // controller.ImuParse();
         // mutex.unlock();
         ThisThread::sleep_for(1);
+    }
+}
+void sibal()
+{
+    a = device.getc();
+    if(a=='[') {Incoming = true;}
+    else if(a==']') {
+        Incoming = false;
+        bufferIndex = 0;
+        controller.SetHD(atoi(buffer));
+        if(controller.GetHD() == 999) controller.SetEnemyState(false);
+        else controller.SetEnemyState(true);
+        memset(buffer,NULL,8*sizeof(char));
+    }
+    else {
+        if(Incoming) {
+            buffer[bufferIndex++] = a;
+        }
     }
 }
 void Starter() {
