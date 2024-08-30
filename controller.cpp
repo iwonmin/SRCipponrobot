@@ -215,7 +215,7 @@ void Controller::Yellow()
             }else
             {
                 SetSpeed(0);
-                if(GetEnemyState()&& psd_val[1]<75)
+                if(GetEnemyState()&& psd_val[1]<20)
                 {
                     SetYellow(true);
                     SetState(RoboState::DETECT);
