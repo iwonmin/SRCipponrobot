@@ -2,6 +2,7 @@
 char buffer[8] = "";
 char a = 0;
 bool Incoming = false;
+bool AsteriskReceived = false;
 #pragma region variables
 InterruptIn btn(BUTTON1);
 DigitalOut DirL(PC_7);
@@ -170,7 +171,7 @@ void Controller::Detect() {
             }
         }
         else if(GetYellow()){
-            if(GetEnemyState()) {
+            if(GetEnemyState() && abs(GetHD())<150) {
             SetSpeed(0);
             SetState(RoboState::ATTACK);
             } else if (!GetEnemyState() && GetHD() > 0) {
@@ -787,12 +788,17 @@ void sibal()
     else if(a==']') {
         Incoming = false;
         bufferIndex = 0;
-        controller.SetHD(atoi(buffer));
-        if(controller.GetHD() == 999) controller.SetEnemyState(false);
-        else controller.SetEnemyState(true);
+        if(AsteriskReceived) {
+            controller.SetEnemyState(false);
+        } else {
+            controller.SetHD(atoi(buffer));
+            controller.SetEnemyState(true);
+        }
+
         memset(buffer,NULL,8*sizeof(char));
-    }
+    } else if(a=='*') AsteriskReceived = true;
     else {
+        AsteriskReceived = false;
         if(Incoming) {
             buffer[bufferIndex++] = a;
         }
