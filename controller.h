@@ -43,8 +43,10 @@ extern Thread Thread3;
 extern Thread Thread4;
 extern Serial pc;
 extern RawSerial device;
-extern Serial ebimu;
-extern void sibal();
+extern RawSerial ebimu;
+extern void EnemyDetect3();
+extern void ImuParse2();
+extern float euler[3];
 #pragma endregion external
 class Controller
 {
@@ -251,7 +253,7 @@ class Controller
 
     Timer Escape_Timer;
 
-    float roll, pitch, yaw, currentyaw, prevyaw, normalized_yaw;
+    float roll, pitch, yaw, rawYaw;
 
     float ax, ay, az;
     //------------------------Tester's Choice-------------------//

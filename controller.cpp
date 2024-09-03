@@ -1,7 +1,14 @@
 #include "controller.h"
-char buffer[8] = "";
+char buffer_enemy[8] = "";
+char buffer_Imu[8] = "";
 char a = 0;
-bool Incoming = false;
+char c = 0;
+bool Incoming_Imu = false;
+bool Incoming_enemy = false;
+uint8_t bufferIndex_Imu = 0;
+uint8_t valueIndex_Imu = 0;
+uint8_t bufferIndex_enemy = 0;
+float euler[3] = {0.f,};
 #pragma region variables
 InterruptIn btn(BUTTON1);
 DigitalOut DirL(PC_7);
@@ -22,7 +29,7 @@ DigitalIn irfc(PA_6);
 DigitalIn irbc(PA_8);//new pin!!
 DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
-Serial ebimu(PB_10,PC_5,115200);
+RawSerial ebimu(PB_10,PC_5,115200);
 // MPU9250 mpu9250(D14, D15);
 Controller controller;
 Thread Thread1;
@@ -672,7 +679,7 @@ void Controller::ImuChartoData() {
 
                 token = strtok(NULL, ",");
                 if (token != NULL) {
-                    float rawYaw = atof(token); 
+                    rawYaw = atof(token); 
                      if (!isInitialized) {
                         // 최초 초기화 시 yaw 값을 0으로 설정
                         initialYaw = rawYaw;
@@ -700,20 +707,20 @@ void Controller::ImuChartoData() {
         }
     }
 }
-
+/*
 void Controller::ImuParse() {
     ebimu.putc(0x2A);
     ebimu.scanf("%s",data);
     controller.ImuChartoData();
     memset(data, NULL, 32*sizeof(char));
 }
-
+*/
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
     // pc.printf("IMU Thread running\n");
     while(1) {
         mutex.lock();
-        controller.ImuParse();
+        // controller.ImuParse();
         controller.ImuDetect();
         controller.PsdRefresh();
         controller.IrRefresh();
@@ -727,6 +734,7 @@ void PsdThread() {
         controller.ImuViewer();
         ThisThread::sleep_for(100);
 }
+/*
 void DetectThread2()
 {
     char buffer_D[1024];
@@ -779,22 +787,54 @@ void DetectThread2()
         // mutex.unlock();
         ThisThread::sleep_for(1);
     }
-}
-void sibal()
+    
+}*/
+void ImuParse2()
 {
-    a = device.getc();
-    if(a=='[') {Incoming = true;}
-    else if(a==']') {
-        Incoming = false;
+    c = ebimu.getc();
+    if(c == '*') {Incoming_Imu = true;}
+    else if(c == ',') {
+        euler[valueIndex_Imu++] = atof(buffer_Imu);
         bufferIndex = 0;
-        controller.SetHD(atoi(buffer));
-        if(controller.GetHD() == 999) controller.SetEnemyState(false);
-        else controller.SetEnemyState(true);
-        memset(buffer,NULL,8*sizeof(char));
+        memset(buffer_Imu, NULL, 8*sizeof(char));
+    }
+    else if(c == '\n') {
+        euler[valueIndex_Imu++] = atof(buffer_Imu);
+        bufferIndex_Imu = 0;
+        memset(buffer_Imu, NULL, 8*sizeof(char));
+        Incoming_Imu = false;
+        bufferIndex_Imu = 0;
+        valueIndex_Imu = 0;
+        controller.rawYaw = euler[2];
+        if (!isInitialized) {
+            // 최초 초기화 시 yaw 값을 0으로 설정
+            initialYaw = controller.rawYaw;
+            isInitialized = true; // 초기화 완료 표시
+            }
+            controller.yaw = controller.NormalizeYaw(controller.rawYaw - initialYaw); // 기준 yaw 값을 초기화한 값으로 설정하고 정규화
     }
     else {
-        if(Incoming) {
-            buffer[bufferIndex++] = a;
+        if(Incoming_Imu) {
+            buffer_Imu[bufferIndex_Imu++] = c;
+        }
+    }
+}
+
+void EnemyDetect3()
+{
+    a = device.getc();
+    if(a=='[') {Incoming_enemy = true;}
+    else if(a==']') {
+        Incoming_enemy = false;
+        bufferIndex_enemy = 0;
+        controller.SetHD(atoi(buffer_enemy));
+        if(controller.GetHD() == 999) controller.SetEnemyState(false);
+        else controller.SetEnemyState(true);
+        memset(buffer_enemy,NULL,8*sizeof(char));
+    }
+    else {
+        if(Incoming_enemy) {
+            buffer_enemy[bufferIndex_enemy++] = a;
         }
     }
 }
