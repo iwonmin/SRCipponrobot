@@ -50,7 +50,6 @@ int bufferIndex = 0;
 
 Controller::Controller() { 
     SetState(RoboState::START);
-
     btn.fall(&Starter);
 }
 
@@ -146,6 +145,7 @@ void Controller::Start() {
     // Thread1.set_priority(osPriorityHigh);
     Thread2.start(ImuThread);
     Thread2.set_priority(osPriorityAboveNormal);
+    ThisThread::sleep_for(50);
     SetState(RoboState::IDLE);
     }
 };
@@ -210,7 +210,7 @@ void Controller::Yellow()
             SetSpeed(0.5,-0.5);
         }else if(GetCurrentYaw()<-130 && GetCurrentYaw()>-140)
         {
-            if(GetOrient()!=ColorOrient::FRONT)
+            if(irfc.read())
             {
                 SetSpeed(0.5);
             }else
@@ -232,7 +232,7 @@ void Controller::Yellow()
             SetSpeed(0.5,-0.5);
         }else if(GetCurrentYaw()<-40 && GetCurrentYaw()>-50)
         {
-            if(GetOrient()!=ColorOrient::FRONT)
+            if(irfc.read())
             {
                 SetSpeed(0.5);
             }else
@@ -298,31 +298,31 @@ void Controller::PsdRefresh() {
 }
 
 void Controller::PsdWallDetect() {
-    if (psd_val[0] <= 20 && psd_val[2] <= 20 && !GetEnemyState()) {
+    if (psd_val[0] <= 10 && psd_val[2] <= 10 && !GetEnemyState()) {
         FrontCollision = true; 
         SetWallSafetyState(false);
-    } else if ((psd_val[0]+psd_val[2])/2 > 20) {
+    } else if ((psd_val[0]+psd_val[2])/2 > 10) {
         FrontCollision = false;
         SetWallSafetyState(true);
     }
-    if (psd_val[5] <= 20 && psd_val[7] <= 20) {
+    if (psd_val[5] <= 10 && psd_val[7] <= 10) {
         BackCollision = true;
         SetWallSafetyState(false);
-    } else if ((psd_val[5]+psd_val[7])/2 > 20) {
+    } else if ((psd_val[5]+psd_val[7])/2 > 10) {
         BackCollision = false;
         SetWallSafetyState(true);
     }
-    if (psd_val[0] <= 20 && psd_val[5] <= 20) {
+    if (psd_val[0] <= 10 && psd_val[5] <= 10) {
         LeftCollision = true;
         SetWallSafetyState(false);
-    } else if ((psd_val[0]+psd_val[5])/2 > 20) {
+    } else if ((psd_val[0]+psd_val[5])/2 > 10) {
         LeftCollision = false;
         SetWallSafetyState(true);
     }
-    if (psd_val[2] <= 20 && psd_val[7] <= 20) {
+    if (psd_val[2] <= 10 && psd_val[7] <= 10) {
         RightCollision = true;
         SetWallSafetyState(false);
-    } else if ((psd_val[2]+psd_val[7])/2 > 20) {
+    } else if ((psd_val[2]+psd_val[7])/2 > 10) {
         RightCollision = false;
         SetWallSafetyState(true);
     }
@@ -711,12 +711,11 @@ void Controller::ImuParse() {
 
 //------------------------------Thread&NotController--------------------------------//
 void ImuThread() {
-    // pc.printf("IMU Thread running\n");
     while(1) {
         mutex.lock();
         controller.ImuParse();
-        controller.ImuDetect();
         controller.PsdRefresh();
+        controller.ImuDetect();
         controller.IrRefresh();
         mutex.unlock();
         // controller.ImuViewer();
