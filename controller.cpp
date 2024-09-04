@@ -1,8 +1,4 @@
 #include "controller.h"
-char buffer[8] = "";
-char a = 0;
-bool Incoming = false;
-bool AsteriskReceived = false;
 #pragma region variables
 InterruptIn btn(BUTTON1);
 DigitalOut DirL(PC_7);
@@ -20,31 +16,22 @@ GP2A psdrb(PC_0, 7, 80, 24.6, -0.297);
 DigitalIn irfl(PC_4);
 DigitalIn irfr(PB_1);
 DigitalIn irfc(PA_6);
-DigitalIn irbc(PA_8);//new pin!!
+DigitalIn irbc(PA_8);
 DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
 Serial ebimu(PB_10,PC_5,115200);
-// MPU9250 mpu9250(D14, D15);
 Controller controller;
 Thread Thread1;
-Thread Thread2;
-#pragma endregion variables
 Mutex mutex;
-
+#pragma endregion variables
 #pragma region Serial Variables
-// PC와의 통신을 위한 Serial 객체 생성
 Serial pc(USBTX, USBRX, 115200);
-// Raspberry Pi와의 통신 설정 (TX, RX, baud rate)
-RawSerial device(D8, D2, 9600);
-// 소수점 발견 여부를 추적하기 위한 변수
-bool decimalPointSeen = false;
-// 부호 정보를 추적하기 위한 변수
-bool isNegative = false;
-
-char distanceBuffer[256];
-
-float initialYaw=0.0;
+RawSerial device(D8, D2, 9600); // Raspberry Pi
 int bufferIndex = 0;
+char buffer[8] = "";
+char a = 0;
+bool Incoming = false;
+bool AsteriskReceived = false;
 #pragma endregion Serial Variables
 
 
@@ -66,24 +53,6 @@ void Controller::SetSpeed(float speed) {
   speedR = speed;
 };
 void Controller::SetSpeed(float sL, float sR) {
-//   float speedL_i = GetSpeedL();
-//   float speedR_i = GetSpeedR();
-//   int interval_L = (sL - speedL_i) / 0.1f;
-//   int interval_R = (sR - speedR_i) / 0.1f;
-//   for (int i = 0; i <= abs(interval_L); i++) {
-//     if (interval_L >= 0) {
-//       speedL = speedL_i + 0.1 * i;
-//     } else {
-//       speedL = speedL_i - 0.1 * i;
-//     }
-//   }
-//   for (int i = 0; i <= abs(interval_R); i++) {
-//     if (interval_R >= 0) {
-//       speedR = speedR_i + 0.1 * i;
-//     } else {
-//       speedR = speedR_i - 0.1 * i;
-//     }
-//   }
   speedL = sL;
   speedR = sR;
 };
@@ -94,7 +63,7 @@ void Controller::SetEnemyState(bool enemyState) { enemy = enemyState; }
 
 bool Controller::GetStartFlag() {return StartFlag;}
 
-void Controller::SetStartFlag(bool sf){StartFlag=sf;}
+void Controller::SetStartFlag(bool sf) {StartFlag=sf;}
 
 bool Controller::GetAttackState() { return attack; }
 
@@ -108,26 +77,18 @@ bool Controller::GetImuSafetyState() { return imuSafe; }
 
 void Controller::SetImuSafetyState(bool ImuSafetyState) { imuSafe = ImuSafetyState; }
 
-bool Controller::GetWallSafetyState() { return wallSafe; };
+bool Controller::GetWallSafetyState() { return wallSafe; }
 
 void Controller::SetWallSafetyState(bool WallSafetyState) { wallSafe = WallSafetyState; }
-//==================================flags endregion=================================//
+
+bool Controller::GetYellow() {return yellow;}
+
+void Controller::SetYellow(bool y) {yellow = y;}
+//==================================Volatile Variables=================================//
 
 int Controller::GetHD() { return enemy_horizontal_distance; }
 
 void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
-
-bool Controller::GetYellow(){return yellow;}
-
-void Controller::SetYellow(bool y){yellow = y;}
-
-int Controller::GetYA(){return yellowAngle;}
-
-void Controller::SetYA(int YA){yellowAngle = YA;}
-
-int Controller::GetYHD(){return yellow_horizontal_distance;}
-
-void Controller::SetYHD(int YHD){yellow_horizontal_distance = YHD;}
 
 void Controller::CheckStartTime() {
     StartTime = Kernel::get_ms_count();
@@ -136,15 +97,13 @@ void Controller::CheckStartTime() {
 uint64_t Controller::GetStartTime() {
     return StartTime;
 }
+//==================================State Methods=================================//
 void Controller::Start() {
     if(StartFlag) {
     PwmL.period_us(66);
     PwmR.period_us(66);
-    // Thread1.start(DetectThread2);
-    // Thread1.start(PsdThread);
-    // Thread1.set_priority(osPriorityHigh);
-    Thread2.start(ImuThread);
-    Thread2.set_priority(osPriorityAboveNormal);
+    Thread1.start(ImuThread);
+    Thread1.set_priority(osPriorityAboveNormal);
     ThisThread::sleep_for(50);
     SetState(RoboState::IDLE);
     }
@@ -259,28 +218,22 @@ void Controller::Escape() {
 };
 
 void Controller::Move(float sL, float sR) {
-  if (sL < 0)
-    DirL = 0;
-  else
-    DirL = 1;
-  if (sR < 0)
-    DirR = 0;
-  else
-    DirR = 1;
+    if (sL < 0)
+        DirL = 0;
+    else
+        DirL = 1;
+    if (sR < 0)
+        DirR = 0;
+    else
+        DirR = 1;
 
-  PwmL = abs(sL);
-  PwmR = abs(sR);
+    PwmL = abs(sL);
+    PwmR = abs(sR);
 };
 
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
   filtered_distance[i] = now_distance[i] * alpha_psd + (1 - alpha_psd) * prev_distance[i];
-  uint16_t difference = fabs(filtered_distance[i] - prev_distance[i]);
-  if (difference > PSD_THRESHOLD) {
-    detection[i] = 1;
-  } else {
-    detection[i] = 0;
-  }
   prev_distance[i] = now_distance[i];
   return filtered_distance[i];
 }
@@ -570,6 +523,44 @@ void Controller::WallTwerk() {
     }
 }
 */
+
+//-----------------------MPU9250, IMU-----------------------------//
+void Controller::ImuParse() {
+    ebimu.putc(0x2A);
+    ebimu.scanf("%s",data);
+    controller.ImuChartoData();
+    memset(data, NULL, 32*sizeof(char));
+}
+
+void Controller::ImuChartoData() {
+
+    char* start = strchr(data, '*');
+    if (start != NULL) {
+        start++;
+
+        char* token = strtok(start, ",");
+        if (token != NULL) {
+            roll = atof(token); 
+
+            token = strtok(NULL, ",");
+            if (token != NULL) {
+                pitch = atof(token); 
+
+                token = strtok(NULL, ",");
+                if (token != NULL) {
+                    rawYaw = atof(token); 
+                     if (!isInitialized) {
+                        // 최초 초기화 시 yaw 값을 0으로 설정
+                        initialYaw = rawYaw;
+                        isInitialized = true; // 초기화 완료 표시
+                    }
+                    yaw = NormalizeYaw(rawYaw - initialYaw); // 기준 yaw 값을 초기화한 값으로 설정하고 정규화              
+                }
+            }
+        }
+    }
+}
+
 void Controller::ImuDetect()  {
     if( psd_val[1] < 15 && pitch < -IMU_THRESHOLD) {
         SetImuSafetyState(false);
@@ -649,7 +640,16 @@ void Controller::ImuEscape() {
             return;
     }
 }
-bool isInitialized = false;
+
+float Controller::GetCurrentYaw()
+{
+    return yaw;
+}
+
+void Controller::SetCurrentYaw(float y)
+{
+    yaw = y;
+}
 
 float Controller::NormalizeYaw(float angle)
 {
@@ -657,59 +657,8 @@ float Controller::NormalizeYaw(float angle)
     if(angle<-180) angle +=360;
     return angle;
 }
-void Controller::ImuChartoData() {
 
-    char* start = strchr(data, '*');
-    if (start != NULL) {
-        start++;
-
-        char* token = strtok(start, ",");
-        if (token != NULL) {
-            roll = atof(token); 
-
-            token = strtok(NULL, ",");
-            if (token != NULL) {
-                pitch = atof(token); 
-
-                token = strtok(NULL, ",");
-                if (token != NULL) {
-                    float rawYaw = atof(token); 
-                     if (!isInitialized) {
-                        // 최초 초기화 시 yaw 값을 0으로 설정
-                        initialYaw = rawYaw;
-                        isInitialized = true; // 초기화 완료 표시
-                    }
-                    yaw = NormalizeYaw(rawYaw - initialYaw); // 기준 yaw 값을 초기화한 값으로 설정하고 정규화
-/*
-                    token = strtok(NULL, ",");
-                    if (token != NULL) {
-                        ax = atof(token);
-
-                        token = strtok(NULL, ",");
-                        if (token != NULL) {
-                            ay = atof(token);
-
-                            token = strtok(NULL, ",");
-                            if (token != NULL) {
-                                az = atof(token);
-                        
-                            }
-                        }                       
-                    }*/                     
-                }
-            }
-        }
-    }
-}
-
-void Controller::ImuParse() {
-    ebimu.putc(0x2A);
-    ebimu.scanf("%s",data);
-    controller.ImuChartoData();
-    memset(data, NULL, 32*sizeof(char));
-}
-
-//------------------------------Thread&NotController--------------------------------//
+//------------------------------Thread, Callbacks--------------------------------//
 void ImuThread() {
     while(1) {
         mutex.lock();
@@ -718,69 +667,11 @@ void ImuThread() {
         controller.ImuDetect();
         controller.IrRefresh();
         mutex.unlock();
-        // controller.ImuViewer();
         ThisThread::sleep_for(20);
     }
 }
-void PsdThread() {
-        pc.printf("EnemyDistance : %d, Yaw : %.1f, CenterPsd : %d, State : %d ImuState : ",controller.GetHD(),controller.GetCurrentYaw(),controller.psd_val[1], (int)controller.GetState());
-        controller.ImuViewer();
-        ThisThread::sleep_for(100);
-}
-void DetectThread2()
-{
-    char buffer_D[1024];
 
-    int index_D=0;
-
-    bool receiving_D = false;
-    pc.printf("DetecThread2 running\n");
-    while(1)
-    {
-        if(device.readable())
-        {
-            char c = device.getc();
-            if (c == '*') {
-            controller.SetEnemyState(false);
-            } else 
-            {
-                controller.SetEnemyState(true);
-            }
-            if(c=='[')
-            {
-                receiving_D=true;
-                index_D=0;
-            }
-            if(receiving_D)
-            {
-                buffer[index_D++]=c;
-                if(c==']')
-                {
-                    buffer[index_D++]='\0';
-                    //pc.printf("Received Data: %s Yaw : %.2f\n",buffer, controller.GetCurrentYaw());
-                    char *token = strtok(buffer + 1, "]"); // 대괄호 안의 값 추출
-                    if (token != NULL) {
-                        mutex.lock();
-                        controller.SetHD(atoi(token)); // 값을 정수로 변환
-                        mutex.unlock();
-                    }
-                    // pc.printf("HD : %d, Yaw: %.2f\n",controller.GetHD(),controller.GetCurrentYaw());
-                    // pc.printf("HD: %d\n", controller.GetHD());
-                    receiving_D=false;
-                }
-            }
-             if (index_D >= sizeof(buffer_D) - 1) {
-            index_D = 0; // 버퍼 초기화
-            receiving_D = false; // 수신 종료
-            }               
-        }
-        // mutex.lock();
-        // controller.ImuParse();
-        // mutex.unlock();
-        ThisThread::sleep_for(1);
-    }
-}
-void sibal()
+void EnemyDetect()
 {
     a = device.getc();
     if(a=='[') {Incoming = true;}
@@ -807,7 +698,7 @@ void Starter() {
     controller.StartFlag = true;
 }
 
-//---------------임시------------------//
+//---------------Tester Functions------------------//
 void Controller::OrientViewer() {
     if((int)Orient == 0) {
         pc.printf("FRONT\r\n");
@@ -869,13 +760,4 @@ void Controller::ImuViewer() {
             // pc.printf("0\r\n");
             return;
     }
-}
-float Controller::GetCurrentYaw()
-{
-    return yaw;
-}
-
-void Controller::SetCurrentYaw(float y)
-{
-    yaw = y;
 }

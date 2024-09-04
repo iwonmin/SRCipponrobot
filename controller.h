@@ -1,9 +1,5 @@
 #include "mbed.h"
-#include <cstdint>
-#include <string>
-#include <stdlib.h>
 #include "GP2A.h"
-#include "rtos.h"
 #pragma region Preprocessor
 #define MAXSPEED 0.5
 #define ESCAPESPEED -0.5
@@ -68,11 +64,6 @@ class Controller
         enum class ColorOrient
     {
         FRONT, TAN_LEFT, TAN_RIGHT, BACK, FRONT_LEFT, FRONT_RIGHT, BACK_LEFT, BACK_RIGHT, SAFE    
-    };
-        enum class Position
-    {
-        ClosetoLeftWall, CriticalLeftWall, ClosetoRightWall, CriticalRightWall,
-        WallFront, WallBehind, ClosetoCenter, FartoCenter
     };
         enum class TiltState
     {
@@ -142,17 +133,10 @@ class Controller
 
     //노랑플래그 반환
     bool GetYellow();
+
     //노랑플래그 설정
     void SetYellow(bool yellow);
-    //현재 노란영역 수평각도 반환
-    int GetYA();
-    //현재 노란 영역 수평 각도 설정
-    void SetYA(int yellowAngle);
-    //현재 노란 영역 중앙으로부터 거리 반환
-    int GetYHD();
-    //현재 노란 영역 중앙으로부터 거리 설정정
-    void SetYHD(int yellow_horizontal_distance);
-    
+
     //적과의 수평거리 반환 함수
     int GetHD();
 
@@ -183,9 +167,6 @@ class Controller
     //주행 함수
     void Move(float sL, float sR);
 
-    void EnemyDetect();
-
-    void Sex();
     //-----------------------psd--------------------//
     uint16_t PsdDistance(GP2A, uint8_t);
 
@@ -198,44 +179,19 @@ class Controller
     void PsdWallEscape();
     
     //-------------------------IR------------------------//
-    Position GetPosition();
-
     void IrRefresh();
     
     void IrRefresh_new();
 
-    void EnemyPushPull();
-
     void IrEscape();
-
-    // void IrEscapeWhenImuUnsafe();
 
     void ColorOrient();
     
     void ColorOrient_new();
 
     enum ColorOrient GetOrient();
-    //----------------------적 찾기 & 위치파악 & 적 괴롭히기 전략-------------------------//
-    // void SetPosition();
 
-    void EnemyFind(Position);
-    
-    void EnemyFind_Extended(Position);
-
-    void LeftWallTrack();
-
-    void RightWallTrack();
-
-    void WallTwerk();
-    /*
-    void CenterSpin();
-    
-    void FrontWall();
-
-    void BehindWall();
-    */
-
-    //-----------------------MPU9250, IMU-----------------------------//
+    //-----------------------EBIMU-----------------------------//
 
     void ImuDetect();
 
@@ -251,9 +207,16 @@ class Controller
 
     Timer Escape_Timer;
 
-    float roll, pitch, yaw, currentyaw, prevyaw, normalized_yaw;
+    float roll, pitch, yaw, rawYaw, initialYaw;
+    
+    char data[32] = "";
 
-    float ax, ay, az;
+    bool isInitialized = false;
+
+    bool PitchLift = false;
+    
+    bool RollLift = false;
+
     //------------------------Tester's Choice-------------------//
     void OrientViewer();
 
@@ -268,8 +231,6 @@ class Controller
     RoboState robo_state;
     //색 영역 위치
     enum ColorOrient Orient;
-    //예상되는 위치
-    enum Position CurrentPos;
     //Imu 상태
     enum TiltState tilt_state = TiltState::SAFE;
     //적 감지 여부
@@ -282,11 +243,6 @@ class Controller
 
     //노란 영역 진입 플래그
     bool yellow = false;
-    //노란영역 평행 각도
-    float yellowAngle;
-    //노란 영역 중앙까지 거리리
-    int yellow_horizontal_distance;
-
     //위험 지역 여부
     volatile bool irSafe = true;
 
@@ -310,19 +266,10 @@ class Controller
 
     uint16_t filtered_distance[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
 
-    bool detection[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
-
-    uint16_t MinValue = 0;
-
-    uint8_t MinIndex = 0;
-
-    uint8_t FollowIndex = 0;
-
     bool ir_val[6]; //irfl, irfr, irc, irbl, irbr //미리 선언되어야 함.
 
     uint8_t ir_total; 
 
-    //벽 충돌 감지
     //벽이 두방향에서 보일때는 다 색영역인데 그냥 열거형 쓰기 ??
     bool FrontCollision;
 
@@ -333,38 +280,12 @@ class Controller
     bool RightCollision;
 
     int lastDirection;
-
-    /*Good bye Mpu9250 ㅠㅠ
-    const float alpha_imu = 0.93f;
-
-    float gyro_angle_x, gyro_angle_y, gyro_angle_z;
-
-    float accel_angle_x, accel_angle_y, mag_angle_z;
-    */
-
-    //-------------------------------EBIMU-------------------------------//
-    char data[32] = "";
-
-    Timer t; //for gyro integral;
-
-
-    bool PitchLift = false;
-    
-    bool RollLift = false;
     
 };
 
 //-------------------------Thread----------------------------//
 void ImuThread();
 
-void PsdThread();
-
-void DetectThread();
-
-void DetectThread2();
-
-int calculateChecksum(char *data, int length);
-
-void processPacket(char *data, int length);
+void EnemyDetect();
 
 void Starter();
