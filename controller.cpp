@@ -1,8 +1,5 @@
 #include "controller.h"
-<<<<<<< Updated upstream
 char buffer[8] = "";
-=======
->>>>>>> Stashed changes
 #pragma region variables
 InterruptIn btn(BUTTON1);
 DigitalOut DirL(PC_7);
@@ -20,26 +17,22 @@ GP2A psdrb(PC_0, 7, 80, 24.6, -0.297);
 DigitalIn irfl(PC_4);
 DigitalIn irfr(PB_1);
 DigitalIn irfc(PA_6);
-DigitalIn irbc(PA_8);
+DigitalIn irbc(PA_8);//new pin!!
 DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
 Serial ebimu(PB_10,PC_5,115200);
+// MPU9250 mpu9250(D14, D15);
 Controller controller;
 Thread Thread1;
-<<<<<<< Updated upstream
 Thread Thread2;
 Thread Thread4;
 #pragma endregion variables
-=======
->>>>>>> Stashed changes
 Mutex mutex;
-#pragma endregion variables
 
 #pragma region Serial Variables
 // PC와의 통신을 위한 Serial 객체 생성
 Serial pc(USBTX, USBRX, 115200);
 // Raspberry Pi와의 통신 설정 (TX, RX, baud rate)
-<<<<<<< Updated upstream
 Serial device(D8, D2, 9600);
 // 소수점 발견 여부를 추적하기 위한 변수
 bool decimalPointSeen = false;
@@ -49,13 +42,6 @@ bool isNegative = false;
 char distanceBuffer[256];
 
 float initialYaw=0.0;
-=======
-RawSerial device(D8, D2, 9600);
-char buffer[8] = "";
-char a = 0;
-bool Incoming = false;
-bool AsteriskReceived = false;
->>>>>>> Stashed changes
 int bufferIndex = 0;
 #pragma endregion Serial Variables
 
@@ -78,6 +64,24 @@ void Controller::SetSpeed(float speed) {
   speedR = speed;
 };
 void Controller::SetSpeed(float sL, float sR) {
+//   float speedL_i = GetSpeedL();
+//   float speedR_i = GetSpeedR();
+//   int interval_L = (sL - speedL_i) / 0.1f;
+//   int interval_R = (sR - speedR_i) / 0.1f;
+//   for (int i = 0; i <= abs(interval_L); i++) {
+//     if (interval_L >= 0) {
+//       speedL = speedL_i + 0.1 * i;
+//     } else {
+//       speedL = speedL_i - 0.1 * i;
+//     }
+//   }
+//   for (int i = 0; i <= abs(interval_R); i++) {
+//     if (interval_R >= 0) {
+//       speedR = speedR_i + 0.1 * i;
+//     } else {
+//       speedR = speedR_i - 0.1 * i;
+//     }
+//   }
   speedL = sL;
   speedR = sR;
 };
@@ -102,19 +106,26 @@ bool Controller::GetImuSafetyState() { return imuSafe; }
 
 void Controller::SetImuSafetyState(bool ImuSafetyState) { imuSafe = ImuSafetyState; }
 
-bool Controller::GetWallSafetyState() { return wallSafe; }
+bool Controller::GetWallSafetyState() { return wallSafe; };
 
 void Controller::SetWallSafetyState(bool WallSafetyState) { wallSafe = WallSafetyState; }
-
-bool Controller::GetYellow() {return yellow;}
-
-void Controller::SetYellow(bool y) {yellow = y;}
-
-//===============================Misc Variables====================================//
+//==================================flags endregion=================================//
 
 int Controller::GetHD() { return enemy_horizontal_distance; }
 
 void Controller::SetHD(int HD) { enemy_horizontal_distance = HD; }
+
+bool Controller::GetYellow(){return yellow;}
+
+void Controller::SetYellow(bool y){yellow = y;}
+
+int Controller::GetYA(){return yellowAngle;}
+
+void Controller::SetYA(int YA){yellowAngle = YA;}
+
+int Controller::GetYHD(){return yellow_horizontal_distance;}
+
+void Controller::SetYHD(int YHD){yellow_horizontal_distance = YHD;}
 
 void Controller::CheckStartTime() {
     StartTime = Kernel::get_ms_count();
@@ -123,25 +134,17 @@ void Controller::CheckStartTime() {
 uint64_t Controller::GetStartTime() {
     return StartTime;
 }
-
-//--------------------State Machine methods----------------------//
 void Controller::Start() {
     //pc.printf("Start\n");
     if(StartFlag) {
     PwmL.period_us(66);
     PwmR.period_us(66);
-<<<<<<< Updated upstream
     Thread1.start(DetectThread2);
     Thread1.set_priority(osPriorityNormal);
     Thread2.start(ImuThread);
     Thread2.set_priority(osPriorityHigh);
     // Thread2.start(PsdThread);
     //Thread2.set_priority(osPriorityAboveNormal);
-=======
-    Thread1.start(ImuThread);
-    Thread1.set_priority(osPriorityAboveNormal);
-    ThisThread::sleep_for(50);
->>>>>>> Stashed changes
     SetState(RoboState::IDLE);
     }
 };
@@ -268,7 +271,6 @@ void Controller::Move(float sL, float sR) {
   PwmR = abs(sR);
 };
 
-<<<<<<< Updated upstream
 void Controller::EnemyDetect() {
   if (device.readable()) {
     char receivedChar = device.getc();
@@ -343,9 +345,6 @@ void Controller::EnemyDetect() {
 
 
 
-=======
-//-----------------------psd--------------------//
->>>>>>> Stashed changes
 uint16_t Controller::PsdDistance(GP2A GP2A_, uint8_t i) {
   now_distance[i] = GP2A_.getDistance();
   filtered_distance[i] = now_distance[i] * alpha_psd + (1 - alpha_psd) * prev_distance[i];
@@ -524,7 +523,6 @@ void Controller::PsdWallEscape() {
     SetSpeed(0.3, 1.0);
   }
 }
-//-------------------------IR------------------------//
 void Controller::IrRefresh() {
     //IR = false 이면 색영역
     ir_val[0] = irfl.read();
@@ -587,7 +585,6 @@ void Controller::ColorOrient() {
         Orient = ColorOrient::SAFE;
     } else {} //완전히 들어갔을 때, 적 찾다가 알아서 나갈것이므로 일단 비움
 }
-
 enum Controller::ColorOrient Controller::GetOrient() { return Orient;}
 
 void Controller::IrRefresh_new() {
@@ -780,7 +777,6 @@ void Controller::IrEscapeWhenImuUnsafe() {
 }
 */
 
-<<<<<<< Updated upstream
 //Imu Thread에서 새로운 Sub-Thread 실행, 여기서 IMU 값 새로 받아와야함
 /*
 void Controller::WallTwerk() {
@@ -793,59 +789,21 @@ void Controller::WallTwerk() {
                 if (abs(psd_val[5] - psd_val[7]) < 5) Orient = true;
                 if (psd_val[5] > psd_val[7]) SetSpeed(-0.3, 0.3);
                 if (psd_val[5] < psd_val[7]) SetSpeed(0.3,-0.3);
-=======
-//-----------------------IMU-----------------------------//
-void Controller::ImuParse() {
-    ebimu.putc(0x2A);
-    ebimu.scanf("%s",data);
-    controller.ImuChartoData();
-    memset(data, NULL, 32*sizeof(char));
-}
-
-void Controller::ImuChartoData() {
-
-    char* start = strchr(data, '*');
-    if (start != NULL) {
-        start++;
-
-        char* token = strtok(start, ",");
-        if (token != NULL) {
-            roll = atof(token); 
-
-            token = strtok(NULL, ",");
-            if (token != NULL) {
-                pitch = atof(token); 
-
-                token = strtok(NULL, ",");
-                if (token != NULL) {
-                    float rawYaw = atof(token); 
-                     if (!isInitialized) {
-                        // 최초 초기화 시 yaw 값을 0으로 설정
-                        initialYaw = rawYaw;
-                        isInitialized = true; // 초기화 완료 표시
-                    }
-                    yaw = NormalizeYaw(rawYaw - initialYaw); // 기준 yaw 값을 초기화한 값으로 설정하고 정규화                
-                }
->>>>>>> Stashed changes
             }
+            if (!BackCollision) { SetSpeed(-0.3); }
+            else {
+                SetSpeed(-0.1);
+                if(mpu9250.pitch < -10.0f) FinishMove = true;
+            }
+        }
+        if(GetEnemyState()) {
+            SetState(RoboState::ATTACK);
+            return;
+        controller.ImuRefresh_MPU9250();
         }
     }
 }
-
-float Controller::NormalizeYaw(float angle) {
-    if(angle>180) angle -=360;
-    if(angle<-180) angle +=360;
-    return angle;
-}
-
-float Controller::GetCurrentYaw() {
-    return yaw;
-}
-
-void Controller::SetCurrentYaw(float y) {
-    yaw = y;
-}
-
+*/
 void Controller::ImuDetect()  {
     if(GetEnemyState() && psd_val[1] < 15 && pitch < -IMU_THRESHOLD) {
         SetImuSafetyState(false);
@@ -924,8 +882,8 @@ void Controller::ImuEscape() {
             return;
     }
 }
+bool isInitialized = false;
 
-<<<<<<< Updated upstream
 float Controller::NormalizeYaw(float angle)
 {
     if(angle>180) angle -=360;
@@ -984,9 +942,6 @@ void Controller::ImuParse() {
 }
 
 //------------------------------Thread&NotController--------------------------------//
-=======
-//------------------------------Thread, Callbacks--------------------------------//
->>>>>>> Stashed changes
 void ImuThread() {
     pc.printf("IMU Thread running\n");
     while(1) {
@@ -995,7 +950,6 @@ void ImuThread() {
         controller.PsdRefresh();
         controller.IrRefresh();
         mutex.unlock();
-<<<<<<< Updated upstream
         // controller.ImuDetect();
         //pc.printf("HD: %d,Roll: %.1f, Pitch: %.1f, Yaw:%.1f, Z AC: %.1f\r\n",controller.GetHD(),controller.roll, controller.pitch, controller.yaw, controller.az);
         ThisThread::sleep_for(20);
@@ -1139,73 +1093,15 @@ void DetectThread2()
         // controller.ImuParse();
         // mutex.unlock();
         ThisThread::sleep_for(1);
-=======
-        ThisThread::sleep_for(20);
-    }
-}
-void EnemyDetect()
-{
-    a = device.getc();
-    if(a=='[') {Incoming = true;}
-    else if(a==']') {
-        Incoming = false;
-        bufferIndex = 0;
-        if(AsteriskReceived) {
-            controller.SetEnemyState(false);
-        } else {
-            controller.SetHD(atoi(buffer));
-            controller.SetEnemyState(true);
-        }
-
-        memset(buffer,NULL,8*sizeof(char));
-    } else if(a=='*') AsteriskReceived = true;
-    else {
-        AsteriskReceived = false;
-        if(Incoming) {
-            buffer[bufferIndex++] = a;
-        }
->>>>>>> Stashed changes
     }
 }
 void Starter() {
     controller.StartFlag = true;
 }
-/*
-void Controller::WallTwerk() {
-    bool FinishMove = false;
-    bool Orient = false;
-    while(1) {
-        EnemyDetect();
-        if(!FinishMove) {
-            if (!Orient) {
-                if (abs(psd_val[5] - psd_val[7]) < 5) Orient = true;
-                if (psd_val[5] > psd_val[7]) SetSpeed(-0.3, 0.3);
-                if (psd_val[5] < psd_val[7]) SetSpeed(0.3,-0.3);
-            }
-            if (!BackCollision) { SetSpeed(-0.3); }
-            else {
-                SetSpeed(-0.1);
-                if(mpu9250.pitch < -10.0f) FinishMove = true;
-            }
-        }
-        if(GetEnemyState()) {
-            SetState(RoboState::ATTACK);
-            return;
-        controller.ImuRefresh_MPU9250();
-        }
-    }
-}
-*/
 
-<<<<<<< Updated upstream
 //---------------임시------------------//
 void Controller::OrientViewer(int orient) {
     if(orient == 0) {
-=======
-//---------------테스트용 함수------------------//
-void Controller::OrientViewer() {
-    if((int)Orient == 0) {
->>>>>>> Stashed changes
         pc.printf("FRONT\r\n");
     } else if(orient == 1) {
         pc.printf("TAN_LEFT\r\n");
@@ -1266,4 +1162,13 @@ void Controller::ImuViewer() {
             // pc.printf("0\r\n");
             return;
     }
+}
+float Controller::GetCurrentYaw()
+{
+    return yaw;
+}
+
+void Controller::SetCurrentYaw(float y)
+{
+    yaw = y;
 }
