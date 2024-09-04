@@ -9,13 +9,16 @@
 #pragma region Preprocessor
 #define MAXSPEED 0.5
 #define ESCAPESPEED -0.5
-#define PSD_INTERVAL_us 0.1 // @@ dummy value, should be defined !!@@
 #define PSD_THRESHOLD 5 // encounter distance(cm) diff, must be defined with experiment - threshold / inverval = speed
+<<<<<<< Updated upstream
 #define CIRCLE_DISTANCE 70 //cm
 #define WALL_DISTANCE 70 //cm
 #define TIME_90DEGTURN 50 //ms, pwm == 0.5
 #define Time_10CMMOVE 20 //ms, pwm == 0.5
 #define IMU_THRESHOLD 4.f
+=======
+#define IMU_THRESHOLD 7.f
+>>>>>>> Stashed changes
 #define ESCAPE_TIME 500 //ms
 #pragma endregion Preprocessor
 #pragma region external
@@ -40,9 +43,6 @@ extern DigitalIn irbl;
 extern DigitalIn irbr;
 extern class Controller controller;
 extern Thread Thread1;
-extern Thread Thread2;
-extern Thread Thread3;
-extern Thread Thread4;
 extern Serial pc;
 extern Serial ebimu;
 #pragma endregion external
@@ -69,11 +69,6 @@ class Controller
     {
         FRONT, TAN_LEFT, TAN_RIGHT, BACK, FRONT_LEFT, FRONT_RIGHT, BACK_LEFT, BACK_RIGHT, SAFE    
     };
-        enum class Position
-    {
-        ClosetoLeftWall, CriticalLeftWall, ClosetoRightWall, CriticalRightWall,
-        WallFront, WallBehind, ClosetoCenter, FartoCenter
-    };
         enum class TiltState
     {
         FRONT, FRONT_LEFT, FRONT_RIGHT, SIDE_LEFT, SIDE_RIGHT, SAFE
@@ -81,6 +76,7 @@ class Controller
         bool StartFlag = false;
 
         uint16_t psd_val[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
+
     //객체 생성시 실행되는 생성자 함수
     Controller();
 //-------------------Get & Set methods----------------------//
@@ -142,17 +138,10 @@ class Controller
 
     //노랑플래그 반환
     bool GetYellow();
+
     //노랑플래그 설정
     void SetYellow(bool yellow);
-    //현재 노란영역 수평각도 반환
-    int GetYA();
-    //현재 노란 영역 수평 각도 설정
-    void SetYA(int yellowAngle);
-    //현재 노란 영역 중앙으로부터 거리 반환
-    int GetYHD();
-    //현재 노란 영역 중앙으로부터 거리 설정정
-    void SetYHD(int yellow_horizontal_distance);
-    
+
     //적과의 수평거리 반환 함수
     int GetHD();
 
@@ -160,8 +149,6 @@ class Controller
     void SetHD(int HD);
 
     float NormalizeYaw(float angle);
-
-
 //--------------------State Machine methods----------------------//
     //초기상태 시 실행 함수
     void Start();
@@ -177,15 +164,19 @@ class Controller
 
      //탈출상태 시 실행 함수
     void Escape();
+
     //노랑상태 시 실행 함수
     void Yellow();
 
     //주행 함수
     void Move(float sL, float sR);
 
+<<<<<<< Updated upstream
     void EnemyDetect();
 
     
+=======
+>>>>>>> Stashed changes
     //-----------------------psd--------------------//
     uint16_t PsdDistance(GP2A, uint8_t);
 
@@ -198,61 +189,48 @@ class Controller
     void PsdWallEscape();
     
     //-------------------------IR------------------------//
-    Position GetPosition();
-
     void IrRefresh();
     
     void IrRefresh_new();
 
-    void EnemyPushPull();
-
     void IrEscape();
-
-    // void IrEscapeWhenImuUnsafe();
 
     void ColorOrient();
     
     void ColorOrient_new();
 
     enum ColorOrient GetOrient();
-    //----------------------적 찾기 & 위치파악 & 적 괴롭히기 전략-------------------------//
-    // void SetPosition();
 
-    void EnemyFind(Position);
-    
-    void EnemyFind_Extended(Position);
-
-    void LeftWallTrack();
-
-    void RightWallTrack();
-
-    void WallTwerk();
-    /*
-    void CenterSpin();
-    
-    void FrontWall();
-
-    void BehindWall();
-    */
-
-    //-----------------------MPU9250, IMU-----------------------------//
-
-    void ImuDetect();
-
+    //-----------------------IMU-----------------------------//
     void ImuParse();
 
     void ImuChartoData();
+
+    void ImuDetect();
+
+    void NormalizeYaw();
     
     void ImuEscape();
 
+<<<<<<< Updated upstream
     Timer Escape_Timer;
 
     float roll, pitch, yaw;
+=======
+    bool isInitialized = false;
+>>>>>>> Stashed changes
 
     bool ImuPitchLift = false;
 
     bool ImuRollLift = false;
+<<<<<<< Updated upstream
     
+=======
+
+    Timer Escape_Timer;
+
+    float roll, pitch, yaw, initialYaw;
+>>>>>>> Stashed changes
     //------------------------Tester's Choice-------------------//
     void OrientViewer(int);
 
@@ -267,8 +245,6 @@ class Controller
     RoboState robo_state;
     //색 영역 위치
     enum ColorOrient Orient;
-    //예상되는 위치
-    enum Position CurrentPos;
     //Imu 상태
     enum TiltState tilt_state;
     //적 감지 여부
@@ -281,12 +257,7 @@ class Controller
 
     //노란 영역 진입 플래그
     bool yellow = false;
-    //노란영역 평행 각도
-    float yellowAngle;
-    //노란 영역 중앙까지 거리리
-    int yellow_horizontal_distance;
 
-    //위험 지역 여부
     volatile bool irSafe = true;
 
     volatile bool imuSafe = true;
@@ -321,8 +292,6 @@ class Controller
 
     uint8_t ir_total; 
 
-    //벽 충돌 감지
-    //벽이 두방향에서 보일때는 다 색영역인데 그냥 열거형 쓰기 ??
     bool FrontCollision;
 
     bool BackCollision;
@@ -333,17 +302,25 @@ class Controller
 
     int lastDirection;
 
+<<<<<<< Updated upstream
     const float alpha_imu = 0.93f;
 
     float gyro_angle_x, gyro_angle_y, gyro_angle_z;
 
     float accel_angle_x, accel_angle_y, mag_angle_z;
+=======
+>>>>>>> Stashed changes
     //-------------------------------EBIMU-------------------------------//
     char data[64] = "";
 
     Timer t; //for gyro integral;
+<<<<<<< Updated upstream
     //-------------------------------Stable Z-axis Accel Detector-------------------------------//
     const float MaxStableZAccel = 1.2f;
+=======
+
+    bool PitchLift = false;
+>>>>>>> Stashed changes
     
     const float MinStableZAccel = 0.8f;
 
@@ -354,17 +331,9 @@ class Controller
     Timer SettleTimer;
 };
 
-//-------------------------Thread----------------------------//
+//------------------------------Thread, Callbacks--------------------------------//
 void ImuThread();
 
-void PsdThread();
-
-void DetectThread();
-
-void DetectThread2();
-
-int calculateChecksum(char *data, int length);
-
-void processPacket(char *data, int length);
-
 void Starter();
+
+void EnemyDetect();

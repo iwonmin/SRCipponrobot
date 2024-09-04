@@ -3,8 +3,13 @@
 
 int main()
 {
+<<<<<<< Updated upstream
     pc.printf("main started\n");
  while (true) {
+=======
+    device.attach(&EnemyDetect, SerialBase::RxIrq);
+    while (true) {
+>>>>>>> Stashed changes
         controller.CheckStartTime();
         //controller.EnemyDetect();
         // DetectThread2();
