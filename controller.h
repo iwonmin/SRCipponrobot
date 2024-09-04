@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include "GP2A.h"
 #include "rtos.h"
-#include "MPU9250.h"
-#include "EBIMU.h"
 #pragma region Preprocessor
 #define MAXSPEED 0.5
 #define ESCAPESPEED -0.5
@@ -15,7 +13,7 @@
 #define WALL_DISTANCE 70 //cm
 #define TIME_90DEGTURN 50 //ms, pwm == 0.5
 #define Time_10CMMOVE 20 //ms, pwm == 0.5
-#define IMU_THRESHOLD 4.f
+#define IMU_THRESHOLD 7.f
 #define ESCAPE_TIME 500 //ms
 #pragma endregion Preprocessor
 #pragma region external
@@ -44,7 +42,9 @@ extern Thread Thread2;
 extern Thread Thread3;
 extern Thread Thread4;
 extern Serial pc;
+extern RawSerial device;
 extern Serial ebimu;
+extern void sibal();
 #pragma endregion external
 class Controller
 {
@@ -86,7 +86,7 @@ class Controller
 //-------------------Get & Set methods----------------------//
     //현재 로봇의 상태 반환
     RoboState GetState();
-    
+
     void CheckStartTime();
     
     uint64_t GetStartTime();
@@ -185,7 +185,7 @@ class Controller
 
     void EnemyDetect();
 
-    
+    void Sex();
     //-----------------------psd--------------------//
     uint16_t PsdDistance(GP2A, uint8_t);
 
@@ -245,16 +245,17 @@ class Controller
     
     void ImuEscape();
 
-    Timer Escape_Timer;
-
-    float roll, pitch, yaw;
-
     bool ImuPitchLift = false;
 
     bool ImuRollLift = false;
-    
+
+    Timer Escape_Timer;
+
+    float roll, pitch, yaw, currentyaw, prevyaw, normalized_yaw;
+
+    float ax, ay, az;
     //------------------------Tester's Choice-------------------//
-    void OrientViewer(int);
+    void OrientViewer();
 
     void WallViewer();
 
@@ -270,7 +271,7 @@ class Controller
     //예상되는 위치
     enum Position CurrentPos;
     //Imu 상태
-    enum TiltState tilt_state;
+    enum TiltState tilt_state = TiltState::SAFE;
     //적 감지 여부
     volatile bool enemy = false;
 
@@ -333,25 +334,24 @@ class Controller
 
     int lastDirection;
 
+    /*Good bye Mpu9250 ㅠㅠ
     const float alpha_imu = 0.93f;
 
     float gyro_angle_x, gyro_angle_y, gyro_angle_z;
 
     float accel_angle_x, accel_angle_y, mag_angle_z;
+    */
+
     //-------------------------------EBIMU-------------------------------//
-    char data[64] = "";
+    char data[32] = "";
 
     Timer t; //for gyro integral;
-    //-------------------------------Stable Z-axis Accel Detector-------------------------------//
-    const float MaxStableZAccel = 1.2f;
-    
-    const float MinStableZAccel = 0.8f;
 
-    const uint16_t SettlingTime = 300; //ms
+
+    bool PitchLift = false;
     
-    bool isZAccelSettled = false;
+    bool RollLift = false;
     
-    Timer SettleTimer;
 };
 
 //-------------------------Thread----------------------------//
