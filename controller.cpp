@@ -13,12 +13,14 @@ GP2A psdrc(PC_1, 30, 150, 60, 0);
 GP2A psdlb(PC_3, 7, 80, 24.6, -0.297);
 GP2A psdb(PC_2, 30, 150, 60, 0);
 GP2A psdrb(PC_0, 7, 80, 24.6, -0.297);
-DigitalIn irfl(PC_4);
-DigitalIn irfr(PB_1);
-DigitalIn irfc(PA_6);
-DigitalIn irbc(PA_8);
-DigitalIn irbl(PA_7);
-DigitalIn irbr(PA_5);
+BusIn ir(PC_4, PB_1, PA_6, PA_8, PA_7, PA_5);
+
+// DigitalIn irfl(PC_4);
+// DigitalIn irfr(PB_1);
+// DigitalIn irfc(PA_6);
+// DigitalIn irbc(PA_8);
+// DigitalIn irbl(PA_7);
+// DigitalIn irbr(PA_5);
 Serial ebimu(PB_10,PC_5,115200);
 Controller controller;
 Thread Thread1;
@@ -102,6 +104,7 @@ void Controller::Start() {
     if(StartFlag) {
     PwmL.period_us(66);
     PwmR.period_us(66);
+    ir.mode(PullDown);
     Thread1.start(ImuThread);
     Thread1.set_priority(osPriorityAboveNormal);
     ThisThread::sleep_for(50);
@@ -169,7 +172,7 @@ void Controller::Yellow()
             SetSpeed(0.5,-0.5);
         }else if(GetCurrentYaw()<-130 && GetCurrentYaw()>-140)
         {
-            if(irfc.read())
+            if(ir[2].read())
             {
                 SetSpeed(0.5);
             }else
@@ -191,7 +194,7 @@ void Controller::Yellow()
             SetSpeed(0.5,-0.5);
         }else if(GetCurrentYaw()<-40 && GetCurrentYaw()>-50)
         {
-            if(irfc.read())
+            if(ir[2].read())
             {
                 SetSpeed(0.5);
             }else
@@ -298,6 +301,7 @@ void Controller::PsdWallEscape() {
     SetSpeed(0.3, 1.0);
   }
 }
+/*
 void Controller::IrRefresh() {
     //IR = false 이면 색영역
     ir_val[0] = irfl.read();
@@ -311,7 +315,7 @@ void Controller::IrRefresh() {
     if (ir_total <= 3) { ColorOrient(); SetIrSafetyState(false);} //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
     else { Orient = ColorOrient::SAFE; SetIrSafetyState(true);}
 }
-
+*/
 void Controller::ColorOrient() {
     if (ir_total == 1) { 
         if (ir_val[0] == 1) {
@@ -363,18 +367,106 @@ void Controller::ColorOrient() {
 enum Controller::ColorOrient Controller::GetOrient() { return Orient;}
 
 void Controller::IrRefresh_new() {
-    ir_val[0] = irfl.read();
-    ir_val[1] = irfr.read();
-    ir_val[2] = irfc.read();
-    ir_val[3] = irbc.read();
-    ir_val[4] = irbl.read();
-    ir_val[5] = irbr.read();
-    ColorOrient_new();
+    ir_total = ir.read();
+    switch(ir_total) {
+        case 0b001111:
+            Orient = ColorOrient::FRONT;
+            SetIrSafetyState(true);
+        case 0b001011:
+            Orient = ColorOrient::FRONT;
+            SetIrSafetyState(false);
+        case 0b000011:
+            Orient = ColorOrient::FRONT;
+            SetIrSafetyState(false);
+        case 0b110100:
+            Orient = ColorOrient::BACK;
+            SetIrSafetyState(false);
+        case 0b110000:
+            Orient = ColorOrient::BACK;
+            SetIrSafetyState(false);
+        case 0b011001:
+            Orient = ColorOrient::TAN_LEFT;
+            SetIrSafetyState(true);
+        case 0b010101:
+            Orient = ColorOrient::TAN_LEFT;
+            SetIrSafetyState(true);
+        case 0b010001:
+            Orient = ColorOrient::TAN_LEFT;
+            SetIrSafetyState(true);
+        case 0b101010:
+            Orient = ColorOrient::TAN_RIGHT;
+            SetIrSafetyState(true);
+        case 0b100110:
+            Orient = ColorOrient::TAN_RIGHT;
+            SetIrSafetyState(true);
+        case 0b100010:
+            Orient = ColorOrient::TAN_RIGHT;
+            SetIrSafetyState(true);
+        case 0b000101:
+            Orient = ColorOrient::FRONT_LEFT;
+            SetIrSafetyState(false);
+        case 0b001001:
+            Orient = ColorOrient::FRONT_LEFT;
+            SetIrSafetyState(false);
+        case 0b000001:
+            Orient = ColorOrient::FRONT_LEFT;
+            SetIrSafetyState(false);
+        case 0b000110:
+            Orient = ColorOrient::FRONT_RIGHT;
+            SetIrSafetyState(false);
+        case 0b001010:
+            Orient = ColorOrient::FRONT_RIGHT;
+            SetIrSafetyState(false);
+        case 0b000010:
+            Orient = ColorOrient::FRONT_RIGHT;
+            SetIrSafetyState(false);
+        case 0b011000:
+            Orient = ColorOrient::BACK_LEFT;
+            SetIrSafetyState(false);
+        case 0b010100:
+            Orient = ColorOrient::BACK_LEFT;
+            SetIrSafetyState(false);
+        case 0b010000:
+            Orient = ColorOrient::BACK_LEFT;
+            SetIrSafetyState(false);
+        case 0b101000:
+            Orient = ColorOrient::BACK_RIGHT;
+            SetIrSafetyState(false);
+        case 0b100100:
+            Orient = ColorOrient::BACK_RIGHT;
+            SetIrSafetyState(false);
+        case 0b100000:
+            Orient = ColorOrient::BACK_RIGHT;
+            SetIrSafetyState(false);
+        //완전히 들어가버린 색영역.. Criterion 선정 기준은 로봇은 항상 적을 찾으려고 노력할 것이므로, 적이 없어 벽을 보고 있다면(FrontCollision) 상태일때는 빠져나가기만 한다면 일단                  //다시 적 추적할 것. 그러므로 LEFT/RIGHT Collision도 걍 BACK으로 선정. 빨간 색영역에서는 Collision이 없을 것이며 그냥 후진하고, 파란색 색영역에서는 LEFT/RIGHT Collision이  뜨기 위해서는 
+        //FRONT/BACK collision이 동반되므로, 정말 특별한 상황 아니면 쓸일 없을듯하다.
+        case 0b000000: 
+            if(FrontCollision) {
+                Orient = ColorOrient::FRONT;
+                SetIrSafetyState(false);
+            } else if(BackCollision) {
+                Orient = ColorOrient::BACK;
+                SetIrSafetyState(false);
+            } else if(LeftCollision) {
+                Orient = ColorOrient::BACK_LEFT;
+                SetIrSafetyState(false);
+            } else if(RightCollision) {
+                Orient = ColorOrient::BACK_RIGHT;
+                SetIrSafetyState(false);
+            } else {
+                Orient = ColorOrient::FRONT;
+                SetIrSafetyState(false);
+            }
+        default:
+            Orient = ColorOrient::SAFE;
+            SetIrSafetyState(true);
+        break;
+    }
 }
 
 void Controller::ColorOrient_new() {
     //0 b (irfl) (irfr) (irfc) (irbc) (irbl) (irbr) || gyumin == 1, white == 0;
-    switch((ir_val[0] << 5) | (ir_val[1] << 4) | (ir_val[2] << 3) | (ir_val[3] << 2) | (ir_val[4] << 1) | ir_val[5]) {
+    switch(ir_total) {
         case 0b001111:
             Orient = ColorOrient::FRONT;
             SetIrSafetyState(true);
@@ -665,7 +757,7 @@ void ImuThread() {
         controller.ImuParse();
         controller.PsdRefresh();
         controller.ImuDetect();
-        controller.IrRefresh();
+        controller.IrRefresh_new();
         mutex.unlock();
         ThisThread::sleep_for(20);
     }
