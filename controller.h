@@ -29,13 +29,9 @@ extern GP2A psdrb;
 extern BusIn ir;
 extern class Controller controller;
 extern Thread Thread1;
-extern Thread Thread2;
-extern Thread Thread3;
-extern Thread Thread4;
 extern Serial pc;
 extern RawSerial device;
 extern Serial ebimu;
-extern void sibal();
 #pragma endregion external
 class Controller
 {

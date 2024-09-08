@@ -26,7 +26,8 @@ int main()
             case Controller::RoboState::YELLOW:
             controller.Yellow();
         }
-        pc.printf("%d, %.1f\r\n",controller.GetHD(), controller.GetCurrentYaw());
+        // pc.printf("%d, ",controller.GetHD());
+        controller.OrientViewer();
         controller.Move(controller.GetSpeedL(),controller.GetSpeedR());
         ThisThread::sleep_until(controller.GetStartTime() + 10); //절대 시간으로 10ms 만큼 쉬기
     }

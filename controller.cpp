@@ -13,8 +13,7 @@ GP2A psdrc(PC_1, 30, 150, 60, 0);
 GP2A psdlb(PC_3, 7, 80, 24.6, -0.297);
 GP2A psdb(PC_2, 30, 150, 60, 0);
 GP2A psdrb(PC_0, 7, 80, 24.6, -0.297);
-BusIn ir(PC_4, PB_1, PA_6, PA_8, PA_7, PA_5);
-
+BusIn ir(PA_5, PA_7, PA_8, PA_6, PB_1, PC_4); //irbr, irbl, irbc, irfc, irfr, irfl BusIn은 역순으로 합이 계산됨 ㅆㅂ;
 // DigitalIn irfl(PC_4);
 // DigitalIn irfr(PB_1);
 // DigitalIn irfc(PA_6);
@@ -172,7 +171,7 @@ void Controller::Yellow()
             SetSpeed(0.5,-0.5);
         }else if(GetCurrentYaw()<-130 && GetCurrentYaw()>-140)
         {
-            if(ir[2].read())
+            if(ir[3].read())
             {
                 SetSpeed(0.5);
             }else
@@ -194,7 +193,7 @@ void Controller::Yellow()
             SetSpeed(0.5,-0.5);
         }else if(GetCurrentYaw()<-40 && GetCurrentYaw()>-50)
         {
-            if(ir[2].read())
+            if(ir[3].read())
             {
                 SetSpeed(0.5);
             }else
@@ -372,72 +371,95 @@ void Controller::IrRefresh_new() {
         case 0b001111:
             Orient = ColorOrient::FRONT;
             SetIrSafetyState(true);
+            break;
         case 0b001011:
             Orient = ColorOrient::FRONT;
             SetIrSafetyState(false);
+            break;
         case 0b000011:
             Orient = ColorOrient::FRONT;
             SetIrSafetyState(false);
+            break;
         case 0b110100:
             Orient = ColorOrient::BACK;
             SetIrSafetyState(false);
+            break;
         case 0b110000:
             Orient = ColorOrient::BACK;
             SetIrSafetyState(false);
+            break;
         case 0b011001:
             Orient = ColorOrient::TAN_LEFT;
             SetIrSafetyState(true);
+            break;
         case 0b010101:
             Orient = ColorOrient::TAN_LEFT;
             SetIrSafetyState(true);
+            break;
         case 0b010001:
             Orient = ColorOrient::TAN_LEFT;
             SetIrSafetyState(true);
+            break;
         case 0b101010:
             Orient = ColorOrient::TAN_RIGHT;
             SetIrSafetyState(true);
+            break;
         case 0b100110:
             Orient = ColorOrient::TAN_RIGHT;
             SetIrSafetyState(true);
+            break;
         case 0b100010:
             Orient = ColorOrient::TAN_RIGHT;
             SetIrSafetyState(true);
+            break;
         case 0b000101:
             Orient = ColorOrient::FRONT_LEFT;
             SetIrSafetyState(false);
+            break;
         case 0b001001:
             Orient = ColorOrient::FRONT_LEFT;
             SetIrSafetyState(false);
+            break;
         case 0b000001:
             Orient = ColorOrient::FRONT_LEFT;
             SetIrSafetyState(false);
+            break;
         case 0b000110:
             Orient = ColorOrient::FRONT_RIGHT;
             SetIrSafetyState(false);
+            break;
         case 0b001010:
             Orient = ColorOrient::FRONT_RIGHT;
             SetIrSafetyState(false);
+            break;
         case 0b000010:
             Orient = ColorOrient::FRONT_RIGHT;
             SetIrSafetyState(false);
+            break;
         case 0b011000:
             Orient = ColorOrient::BACK_LEFT;
             SetIrSafetyState(false);
+            break;
         case 0b010100:
             Orient = ColorOrient::BACK_LEFT;
             SetIrSafetyState(false);
+            break;
         case 0b010000:
             Orient = ColorOrient::BACK_LEFT;
             SetIrSafetyState(false);
+            break;
         case 0b101000:
             Orient = ColorOrient::BACK_RIGHT;
             SetIrSafetyState(false);
+            break;
         case 0b100100:
             Orient = ColorOrient::BACK_RIGHT;
             SetIrSafetyState(false);
+            break;
         case 0b100000:
             Orient = ColorOrient::BACK_RIGHT;
             SetIrSafetyState(false);
+            break;
         //완전히 들어가버린 색영역.. Criterion 선정 기준은 로봇은 항상 적을 찾으려고 노력할 것이므로, 적이 없어 벽을 보고 있다면(FrontCollision) 상태일때는 빠져나가기만 한다면 일단                  //다시 적 추적할 것. 그러므로 LEFT/RIGHT Collision도 걍 BACK으로 선정. 빨간 색영역에서는 Collision이 없을 것이며 그냥 후진하고, 파란색 색영역에서는 LEFT/RIGHT Collision이  뜨기 위해서는 
         //FRONT/BACK collision이 동반되므로, 정말 특별한 상황 아니면 쓸일 없을듯하다.
         case 0b000000: 
@@ -457,10 +479,11 @@ void Controller::IrRefresh_new() {
                 Orient = ColorOrient::FRONT;
                 SetIrSafetyState(false);
             }
+            break;
         default:
             Orient = ColorOrient::SAFE;
             SetIrSafetyState(true);
-        break;
+            break;
     }
 }
 
@@ -766,8 +789,9 @@ void ImuThread() {
 void EnemyDetect()
 {
     a = device.getc();
-    if(a=='[') {Incoming = true;}
-    else if(a==']') {
+    if(a=='[') {
+        Incoming = true;
+    } else if(a==']') {
         Incoming = false;
         bufferIndex = 0;
         if(AsteriskReceived) {
@@ -776,10 +800,10 @@ void EnemyDetect()
             controller.SetHD(atoi(buffer));
             controller.SetEnemyState(true);
         }
-
         memset(buffer,NULL,8*sizeof(char));
-    } else if(a=='*') AsteriskReceived = true;
-    else {
+    } else if(a=='*') {
+        AsteriskReceived = true;
+    } else {
         AsteriskReceived = false;
         if(Incoming) {
             buffer[bufferIndex++] = a;
