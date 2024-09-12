@@ -152,8 +152,12 @@ class Controller
 
      //탈출상태 시 실행 함수
     void Escape();
+
     //노랑상태 시 실행 함수
     void Yellow();
+
+    //벽 그거 함수
+    void WallTwerk();
 
     //주행 함수
     void Move(float sL, float sR);

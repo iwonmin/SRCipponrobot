@@ -149,6 +149,8 @@ void Controller::Detect() {
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
     if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
     if (irSafe && imuSafe) {
+        // if(psd_val[1] < 15) SetSpeed(1.0);
+        // else SetSpeed(0.5);
         SetSpeed(0.5);
         if (!GetEnemyState()) {
         SetState(RoboState::IDLE);
@@ -218,6 +220,28 @@ void Controller::Escape() {
     } 
     SetState(RoboState::IDLE);
 };
+
+void Controller::WallTwerk() {
+    //각도 맞추기 -> 벽에 가까워지기 -> 각도 맞추기 -> 뒤로붙어서 pitch 변화
+    if(abs((int)GetCurrentYaw())%90 < 10) {
+        if((psd_val[5]+psd_val[7])/2 < 13) {
+            if(pitch < 10) {
+                SetSpeed(-0.15,-0.15);
+            } else {
+                if(Escape_Timer.read_ms() != 0) {Escape_Timer.start();}
+                if(Escape_Timer.read_ms() <= 9000) {Escape_Timer.reset(); SetState(RoboState::DETECT);}
+                SetSpeed(0,0);
+                if(GetEnemyState() && psd_val[1] < 10) {SetState(RoboState::ATTACK);}
+            }
+        } else {
+            SetSpeed(-0.3,-0.3);
+        }
+    } else {
+        if((int)GetCurrentYaw()%90 > 45 ) SetSpeed(-0.45, 0.45);
+        else SetSpeed(0.45,-0.45);
+
+    }
+}
 
 void Controller::Move(float sL, float sR) {
     if (sL < 0)
@@ -487,104 +511,6 @@ void Controller::IrRefresh_new() {
     }
 }
 
-void Controller::ColorOrient_new() {
-    //0 b (irfl) (irfr) (irfc) (irbc) (irbl) (irbr) || gyumin == 1, white == 0;
-    switch(ir_total) {
-        case 0b001111:
-            Orient = ColorOrient::FRONT;
-            SetIrSafetyState(true);
-        case 0b001011:
-            Orient = ColorOrient::FRONT;
-            SetIrSafetyState(false);
-        case 0b000011:
-            Orient = ColorOrient::FRONT;
-            SetIrSafetyState(false);
-        case 0b110100:
-            Orient = ColorOrient::BACK;
-            SetIrSafetyState(false);
-        case 0b110000:
-            Orient = ColorOrient::BACK;
-            SetIrSafetyState(false);
-        case 0b011001:
-            Orient = ColorOrient::TAN_LEFT;
-            SetIrSafetyState(true);
-        case 0b010101:
-            Orient = ColorOrient::TAN_LEFT;
-            SetIrSafetyState(true);
-        case 0b010001:
-            Orient = ColorOrient::TAN_LEFT;
-            SetIrSafetyState(true);
-        case 0b101010:
-            Orient = ColorOrient::TAN_RIGHT;
-            SetIrSafetyState(true);
-        case 0b100110:
-            Orient = ColorOrient::TAN_RIGHT;
-            SetIrSafetyState(true);
-        case 0b100010:
-            Orient = ColorOrient::TAN_RIGHT;
-            SetIrSafetyState(true);
-        case 0b000101:
-            Orient = ColorOrient::FRONT_LEFT;
-            SetIrSafetyState(false);
-        case 0b001001:
-            Orient = ColorOrient::FRONT_LEFT;
-            SetIrSafetyState(false);
-        case 0b000001:
-            Orient = ColorOrient::FRONT_LEFT;
-            SetIrSafetyState(false);
-        case 0b000110:
-            Orient = ColorOrient::FRONT_RIGHT;
-            SetIrSafetyState(false);
-        case 0b001010:
-            Orient = ColorOrient::FRONT_RIGHT;
-            SetIrSafetyState(false);
-        case 0b000010:
-            Orient = ColorOrient::FRONT_RIGHT;
-            SetIrSafetyState(false);
-        case 0b011000:
-            Orient = ColorOrient::BACK_LEFT;
-            SetIrSafetyState(false);
-        case 0b010100:
-            Orient = ColorOrient::BACK_LEFT;
-            SetIrSafetyState(false);
-        case 0b010000:
-            Orient = ColorOrient::BACK_LEFT;
-            SetIrSafetyState(false);
-        case 0b101000:
-            Orient = ColorOrient::BACK_RIGHT;
-            SetIrSafetyState(false);
-        case 0b100100:
-            Orient = ColorOrient::BACK_RIGHT;
-            SetIrSafetyState(false);
-        case 0b100000:
-            Orient = ColorOrient::BACK_RIGHT;
-            SetIrSafetyState(false);
-        //완전히 들어가버린 색영역.. Criterion 선정 기준은 로봇은 항상 적을 찾으려고 노력할 것이므로, 적이 없어 벽을 보고 있다면(FrontCollision) 상태일때는 빠져나가기만 한다면 일단                  //다시 적 추적할 것. 그러므로 LEFT/RIGHT Collision도 걍 BACK으로 선정. 빨간 색영역에서는 Collision이 없을 것이며 그냥 후진하고, 파란색 색영역에서는 LEFT/RIGHT Collision이  뜨기 위해서는 
-        //FRONT/BACK collision이 동반되므로, 정말 특별한 상황 아니면 쓸일 없을듯하다.
-        case 0b000000: 
-            if(FrontCollision) {
-                Orient = ColorOrient::FRONT;
-                SetIrSafetyState(false);
-            } else if(BackCollision) {
-                Orient = ColorOrient::BACK;
-                SetIrSafetyState(false);
-            } else if(LeftCollision) {
-                Orient = ColorOrient::BACK_LEFT;
-                SetIrSafetyState(false);
-            } else if(RightCollision) {
-                Orient = ColorOrient::BACK_RIGHT;
-                SetIrSafetyState(false);
-            } else {
-                Orient = ColorOrient::FRONT;
-                SetIrSafetyState(false);
-            }
-        default:
-            Orient = ColorOrient::SAFE;
-            SetIrSafetyState(true);
-        break;
-    }
-}
-
 void Controller::IrEscape() {
   if (Orient == ColorOrient::SAFE) {
     return;
@@ -611,33 +537,6 @@ void Controller::IrEscape() {
     SetSpeed(-0.5, 0.5);
   } else {}
 }
-
-/*
-void Controller::WallTwerk() {
-    bool FinishMove = false;
-    bool Orient = false;
-    while(1) {
-        EnemyDetect();
-        if(!FinishMove) {
-            if (!Orient) {
-                if (abs(psd_val[5] - psd_val[7]) < 5) Orient = true;
-                if (psd_val[5] > psd_val[7]) SetSpeed(-0.3, 0.3);
-                if (psd_val[5] < psd_val[7]) SetSpeed(0.3,-0.3);
-            }
-            if (!BackCollision) { SetSpeed(-0.3); }
-            else {
-                SetSpeed(-0.1);
-                if(mpu9250.pitch < -10.0f) FinishMove = true;
-            }
-        }
-        if(GetEnemyState()) {
-            SetState(RoboState::ATTACK);
-            return;
-        controller.ImuRefresh_MPU9250();
-        }
-    }
-}
-*/
 
 //-----------------------MPU9250, IMU-----------------------------//
 void Controller::ImuParse() {
