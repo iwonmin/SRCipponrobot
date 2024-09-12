@@ -237,7 +237,7 @@ void Controller::WallTwerk() {
             SetSpeed(-0.3,-0.3);
         }
     } else {
-        if((int)GetCurrentYaw()%90 > 45 ) SetSpeed(-0.45, 0.45);
+        if(abs((int)GetCurrentYaw())%90 > 45 ) SetSpeed(-0.45, 0.45);
         else SetSpeed(0.45,-0.45);
 
     }
