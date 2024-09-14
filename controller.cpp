@@ -33,6 +33,7 @@ char buffer[8] = "";
 char a = 0;
 bool Incoming = false;
 bool AsteriskReceived = false;
+Timer yellowTimer;
 #pragma endregion Serial Variables
 
 
@@ -142,7 +143,7 @@ void Controller::Detect() {
             }
         }
     } else {
-        SetState(RoboState::IDLE);
+        SetState(RoboState::ESCAPE);
     }
 };
 
@@ -157,7 +158,7 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
         SetAttackState(false);
         }
     } else {
-        SetState(RoboState::IDLE);
+        SetState(RoboState::ESCAPE);
     }
 };
 
@@ -179,9 +180,18 @@ void Controller::Yellow()
             }else
             {
                 SetSpeed(0);
-                if(GetEnemyState()&& psd_val[1]<20)
+                yellowTimer.start();
+                //if(GetEnemyState()&& psd_val[1]<75)
+                if(GetEnemyState()&& abs(GetHD())<150)
                 {
                     SetYellow(true);
+                    yellowTimer.stop();
+                    SetState(RoboState::DETECT);
+                }
+                if(yellowTimer>5)
+                {
+                    SetYellow(true);
+                    yellowTimer.stop();
                     SetState(RoboState::DETECT);
                 }
             }
@@ -201,9 +211,17 @@ void Controller::Yellow()
             }else
             {
                 SetSpeed(0);
-                if(GetEnemyState()&& psd_val[1]<75)
+                //if(GetEnemyState()&& psd_val[1]<75)
+                if(GetEnemyState()&& abs(GetHD())<150)
                 {
                     SetYellow(true);
+                    yellowTimer.stop();
+                    SetState(RoboState::DETECT);
+                }
+                if(yellowTimer>5)
+                {
+                    SetYellow(true);
+                    yellowTimer.stop();
                     SetState(RoboState::DETECT);
                 }
             }
