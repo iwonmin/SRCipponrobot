@@ -13,7 +13,7 @@ GP2A psdrc(PC_1, 30, 150, 60, 0);
 GP2A psdlb(PC_3, 7, 80, 24.6, -0.297);
 GP2A psdb(PC_2, 30, 150, 60, 0);
 GP2A psdrb(PC_0, 7, 80, 24.6, -0.297);
-BusIn ir(PA_5, PA_7, PA_8, PA_6, PB_1, PC_4); //irbr, irbl, irbc, irfc, irfr, irfl BusIn은 역순으로 합이 계산됨 ㅆㅂ;
+BusIn ir(PA_5, PA_7, PA_14, PA_6, PB_1, PC_4); //irbr, irbl, irbc, irfc, irfr, irfl BusIn은 역순으로 합이 계산됨 ㅆㅂ;
 // DigitalIn irfl(PC_4);
 // DigitalIn irfr(PB_1);
 // DigitalIn irfc(PA_6);
