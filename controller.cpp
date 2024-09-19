@@ -13,13 +13,13 @@ GP2A psdrc(PC_1, 30, 150, 60, 0);
 GP2A psdlb(PC_3, 7, 80, 24.6, -0.297);
 GP2A psdb(PC_2, 30, 150, 60, 0);
 GP2A psdrb(PC_0, 7, 80, 24.6, -0.297);
-BusIn ir(PA_5, PA_7, PA_14, PA_6, PB_1, PC_4); //irbr, irbl, irbc, irfc, irfr, irfl BusIn은 역순으로 합이 계산됨 ㅆㅂ;
-// DigitalIn irfl(PC_4);
-// DigitalIn irfr(PB_1);
-// DigitalIn irfc(PA_6);
-// DigitalIn irbc(PA_8);
-// DigitalIn irbl(PA_7);
-// DigitalIn irbr(PA_5);
+// BusIn ir(PA_5, PA_7, PA_8, PA_6, PB_1, PC_4); //irbr, irbl, irbc, irfc, irfr, irfl BusIn은 역순으로 합이 계산됨 ㅆㅂ;
+DigitalIn irfl(PC_4);
+DigitalIn irfr(PB_1);
+DigitalIn irfc(PA_6);
+DigitalIn irbc(PA_8);
+DigitalIn irbl(PA_7);
+DigitalIn irbr(PA_5);
 Serial ebimu(PB_10,PC_5,115200);
 Controller controller;
 Thread Thread1;
@@ -104,7 +104,7 @@ void Controller::Start() {
     if(StartFlag) {
     PwmL.period_us(66);
     PwmR.period_us(66);
-    ir.mode(PullDown);
+    // ir.mode(PullDown);
     Thread1.start(ImuThread);
     Thread1.set_priority(osPriorityAboveNormal);
     ThisThread::sleep_for(50);
@@ -150,9 +150,9 @@ void Controller::Detect() {
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
     if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
     if (irSafe && imuSafe) {
-        // if(psd_val[1] < 15) SetSpeed(1.0);
-        // else SetSpeed(0.5);
-        SetSpeed(0.5);
+        if(psd_val[1] < 20) SetSpeed(1.0);
+        else SetSpeed(0.5);
+        // SetSpeed(1.0);
         if (!GetEnemyState()) {
         SetState(RoboState::IDLE);
         SetAttackState(false);
@@ -174,15 +174,15 @@ void Controller::Yellow()
             SetSpeed(0.5,-0.5);
         }else if(GetCurrentYaw()<-130 && GetCurrentYaw()>-140)
         {
-            if(ir[3].read())
+            if(irfc.read())
             {
                 SetSpeed(0.5);
             }else
             {
                 SetSpeed(0);
-                yellowTimer.start();
-                //if(GetEnemyState()&& psd_val[1]<75)
-                if(GetEnemyState()&& abs(GetHD())<150)
+                if(yellowTimer.read() == 0) yellowTimer.start();
+                if(GetEnemyState()&& psd_val[1]<17)
+                // if(GetEnemyState()&& abs(GetHD())<150)
                 {
                     SetYellow(true);
                     yellowTimer.stop();
@@ -205,14 +205,14 @@ void Controller::Yellow()
             SetSpeed(0.5,-0.5);
         }else if(GetCurrentYaw()<-40 && GetCurrentYaw()>-50)
         {
-            if(ir[3].read())
+            if(irfc.read())
             {
                 SetSpeed(0.5);
             }else
             {
                 SetSpeed(0);
-                //if(GetEnemyState()&& psd_val[1]<75)
-                if(GetEnemyState()&& abs(GetHD())<150)
+                if(GetEnemyState()&& psd_val[1]<17)
+                // if(GetEnemyState()&& abs(GetHD())<150)
                 {
                     SetYellow(true);
                     yellowTimer.stop();
@@ -302,21 +302,21 @@ void Controller::PsdWallDetect() {
         FrontCollision = false;
         SetWallSafetyState(true);
     }
-    if (psd_val[5] <= 10 && psd_val[7] <= 10) {
+    if (psd_val[5] <= 12 && psd_val[7] <= 12) {
         BackCollision = true;
         SetWallSafetyState(false);
     } else if ((psd_val[5]+psd_val[7])/2 > 10) {
         BackCollision = false;
         SetWallSafetyState(true);
     }
-    if (psd_val[0] <= 10 && psd_val[5] <= 10) {
+    if (psd_val[0] <= 12 && psd_val[5] <= 12) {
         LeftCollision = true;
         SetWallSafetyState(false);
     } else if ((psd_val[0]+psd_val[5])/2 > 10) {
         LeftCollision = false;
         SetWallSafetyState(true);
     }
-    if (psd_val[2] <= 10 && psd_val[7] <= 10) {
+    if (psd_val[2] <= 12 && psd_val[7] <= 12) {
         RightCollision = true;
         SetWallSafetyState(false);
     } else if ((psd_val[2]+psd_val[7])/2 > 10) {
@@ -342,7 +342,7 @@ void Controller::PsdWallEscape() {
     SetSpeed(0.3, 1.0);
   }
 }
-/*
+
 void Controller::IrRefresh() {
     //IR = false 이면 색영역
     ir_val[0] = irfl.read();
@@ -356,7 +356,7 @@ void Controller::IrRefresh() {
     if (ir_total <= 3) { ColorOrient(); SetIrSafetyState(false);} //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
     else { Orient = ColorOrient::SAFE; SetIrSafetyState(true);}
 }
-*/
+
 void Controller::ColorOrient() {
     if (ir_total == 1) { 
         if (ir_val[0] == 1) {
@@ -406,7 +406,7 @@ void Controller::ColorOrient() {
     } else {} //완전히 들어갔을 때, 적 찾다가 알아서 나갈것이므로 일단 비움
 }
 enum Controller::ColorOrient Controller::GetOrient() { return Orient;}
-
+/*
 void Controller::IrRefresh_new() {
     ir_total = ir.read();
     switch(ir_total) {
@@ -528,7 +528,7 @@ void Controller::IrRefresh_new() {
             break;
     }
 }
-
+*/
 void Controller::IrEscape() {
   if (Orient == ColorOrient::SAFE) {
     return;
@@ -697,7 +697,7 @@ void ImuThread() {
         controller.ImuParse();
         controller.PsdRefresh();
         controller.ImuDetect();
-        controller.IrRefresh_new();
+        controller.IrRefresh();
         mutex.unlock();
         ThisThread::sleep_for(20);
     }
