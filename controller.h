@@ -224,6 +224,8 @@ class Controller
     void WallViewer();
 
     void ImuViewer();
+
+    void StateViewer();
 //--------------------Private variables--------------------------//
     private:
     //시간 세기

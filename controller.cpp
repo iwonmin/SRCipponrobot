@@ -107,7 +107,7 @@ void Controller::Start() {
     // ir.mode(PullDown);
     Thread1.start(ImuThread);
     Thread1.set_priority(osPriorityAboveNormal);
-    ThisThread::sleep_for(50);
+    ThisThread::sleep_for(1000);
     SetState(RoboState::IDLE);
     }
 };
@@ -133,17 +133,16 @@ void Controller::Detect() {
             }
         }
         else if(GetYellow()){
-            if(GetEnemyState() && abs(GetHD())<150) {
-            SetSpeed(0);
-            SetState(RoboState::ATTACK);
-            } else if (!GetEnemyState() && GetHD() > 0) {
+            if(GetEnemyState() && abs(GetHD()) < 130 /*원래 150이었는데 기억안나서 130됨..*/) {
+                SetSpeed(0);
+                SetState(RoboState::ATTACK);
+            }
+            else if (!GetEnemyState() && GetHD() > 0) {
             SetSpeed(-0.5, 0.5);
             } else if (!GetEnemyState() && GetHD() < 0) {
             SetSpeed(0.5, -0.5);
             }
         }
-    } else {
-        SetState(RoboState::ESCAPE);
     }
 };
 
@@ -180,7 +179,7 @@ void Controller::Yellow()
             }else
             {
                 SetSpeed(0);
-                if(yellowTimer.read() == 0) yellowTimer.start();
+                if(yellowTimer.read_ms() == 0) yellowTimer.start();
                 if(GetEnemyState()&& psd_val[1]<17)
                 // if(GetEnemyState()&& abs(GetHD())<150)
                 {
@@ -188,11 +187,16 @@ void Controller::Yellow()
                     yellowTimer.stop();
                     SetState(RoboState::DETECT);
                 }
-                if(yellowTimer>5)
+                if(yellowTimer.read_ms()>=5000)
                 {
                     SetYellow(true);
                     yellowTimer.stop();
                     SetState(RoboState::DETECT);
+                }
+                if(abs(prev_distance[4]-now_distance[4]) >= 30) {
+                    SetYellow(true);
+                    yellowTimer.stop();
+                    SetState(RoboState::DETECT);                
                 }
             }
         }
@@ -208,9 +212,10 @@ void Controller::Yellow()
             if(irfc.read())
             {
                 SetSpeed(0.5);
-            }else
+            }else 
             {
                 SetSpeed(0);
+                if(yellowTimer.read_ms() == 0) yellowTimer.start();
                 if(GetEnemyState()&& psd_val[1]<17)
                 // if(GetEnemyState()&& abs(GetHD())<150)
                 {
@@ -218,11 +223,16 @@ void Controller::Yellow()
                     yellowTimer.stop();
                     SetState(RoboState::DETECT);
                 }
-                if(yellowTimer>5)
+                if(yellowTimer.read_ms()>=5000)
                 {
                     SetYellow(true);
                     yellowTimer.stop();
                     SetState(RoboState::DETECT);
+                }
+                if(abs(prev_distance[3]-now_distance[3]) >= 30) {
+                    SetYellow(true);
+                    yellowTimer.stop();
+                    SetState(RoboState::DETECT);                
                 }
             }
         }
@@ -353,7 +363,7 @@ void Controller::IrRefresh() {
     ir_val[5] = irbr.read();
     ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4] + ir_val[5];
         //ir에서 피스톤질 모드::조금이라도 IR 있으면 일단 피하기->적 만나서 ATTACK 일때 색영역 Front 일때까지 밀면, 그때부터는 ir하나만걸려도 뒤로뺄예정.
-    if (ir_total <= 3) { ColorOrient(); SetIrSafetyState(false);} //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
+    if (ir_total <= 3 && GetYellow()) { ColorOrient(); SetIrSafetyState(false);} //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
     else { Orient = ColorOrient::SAFE; SetIrSafetyState(true);}
 }
 
@@ -789,6 +799,34 @@ void Controller::ImuViewer() {
             break;
         case TiltState::SAFE:
             pc.printf("SAFE\r\n");
+            // pc.printf("0\r\n");
+            return;
+    }
+}
+void Controller::StateViewer() {
+    switch (robo_state) {
+        case RoboState::START:
+            pc.printf("Start\r\n");
+            // pc.printf("1\r\n");
+            break;
+        case RoboState::IDLE:
+            pc.printf("IDLE\r\n");
+            // pc.printf("2\r\n");
+            break;
+        case RoboState::DETECT:
+            pc.printf("DETECT\r\n");
+            // pc.printf("3\r\n");
+            break;
+        case RoboState::YELLOW:
+            pc.printf("YELLOW\r\n");
+            // pc.printf("4\r\n");
+            break;
+        case RoboState::ATTACK:
+            pc.printf("ATTACK\r\n");
+            // pc.printf("5\r\n");
+            break;
+        case RoboState::ESCAPE:
+            pc.printf("ESCAPE\r\n");
             // pc.printf("0\r\n");
             return;
     }
