@@ -150,7 +150,7 @@ void Controller::Detect() {
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
     if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
     if (irSafe && imuSafe) {
-        if(psd_val[1] < 20) SetSpeed(1.0);
+        if(psd_val[1] <= 20 || psd_val[0] <= 15 || psd_val[2] <= 15) SetSpeed(1.0);
         else SetSpeed(0.5);
         // SetSpeed(1.0);
         if (!GetEnemyState()) {
@@ -379,33 +379,31 @@ void Controller::ColorOrient() {
             Orient = ColorOrient::TAN_RIGHT;
         } 
     } else if (ir_total == 3) {
-        if (ir_val[4] && ir_val[5]) {
+        if (ir_val[4] && ir_val[5] && !ir_val[3]) {
             Orient = ColorOrient::FRONT;
         } else if (ir_val[1] && ir_val[5]) {
             Orient = ColorOrient::TAN_LEFT;
-        } else if (ir_val[0] && ir_val[1]) {
+        } else if (ir_val[0] && ir_val[1] && !ir_val[2]) {
             Orient = ColorOrient::BACK;
         } else if (ir_val[0] && ir_val[4]) {
             Orient = ColorOrient::TAN_RIGHT;
         } 
-    } else if (ir_total == 4) {
-        //2개씩만 인식 Front만 쓰지않을까? 영역은 주되 위험하지는 않은 상황
-        SetIrSafetyState(true);
-        if (ir_val[4] && ir_val[5]) {
+    } else {//ir_total == 0
+        if(FrontCollision) {
             Orient = ColorOrient::FRONT;
-        } else if (ir_val[1] && ir_val[5]) {
-            Orient = ColorOrient::TAN_LEFT;
-        } else if (ir_val[0] && ir_val[1]) {
+        } else if(BackCollision) {
             Orient = ColorOrient::BACK;
-        } else if (ir_val[0] && ir_val[4]) {
-            Orient = ColorOrient::TAN_RIGHT;
-        } 
-    } else if (ir_total >= 5) {
-        SetIrSafetyState(true);
-        Orient = ColorOrient::SAFE;
-    } else {} //완전히 들어갔을 때, 적 찾다가 알아서 나갈것이므로 일단 비움
+        } else if(LeftCollision) {
+            Orient = ColorOrient::BACK_LEFT;
+        } else if(RightCollision) {
+            Orient = ColorOrient::BACK_RIGHT;
+        } else {
+            Orient = ColorOrient::FRONT;
+        }
+    }
 }
 enum Controller::ColorOrient Controller::GetOrient() { return Orient;}
+
 /*
 void Controller::IrRefresh_new() {
     ir_total = ir.read();
@@ -529,28 +527,29 @@ void Controller::IrRefresh_new() {
     }
 }
 */
+
 void Controller::IrEscape() {
   if (Orient == ColorOrient::SAFE) {
     return;
   } else if (Orient == ColorOrient::FRONT) {
     SetSpeed(-0.5, -0.5);
   } else if (Orient == ColorOrient::TAN_LEFT) {
-    // SetSpeed(0.5, -0.5);
+    SetSpeed(0.2, 0.8);
   } else if (Orient == ColorOrient::TAN_RIGHT) {
-    // SetSpeed(-0.5, 0.5);
+    SetSpeed(0.8, 0.2);
   } else if (Orient == ColorOrient::BACK) {
     // 180, turn, recheck, and move
     SetSpeed(0.5, 0.5);
   } else if (Orient == ColorOrient::FRONT_LEFT) {
     // back, and turn
-    SetSpeed(-0.5, 0.5);
+    SetSpeed(0.5, -0.5);
   } else if (Orient == ColorOrient::FRONT_RIGHT) {
     // back, and turn
-    SetSpeed(0.5, -0.5);
+    SetSpeed(-0.5, 0.5);
   } else if (Orient == ColorOrient::BACK_LEFT) {
     // back, and turn
     SetSpeed(0.5, -0.5);
-  } else if (Orient == ColorOrient::BACK_LEFT) {
+  } else if (Orient == ColorOrient::BACK_RIGHT) {
     // back, and turn
     SetSpeed(-0.5, 0.5);
   } else {}
