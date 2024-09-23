@@ -107,7 +107,7 @@ void Controller::Start() {
     // ir.mode(PullDown);
     Thread1.start(ImuThread);
     Thread1.set_priority(osPriorityAboveNormal);
-    ThisThread::sleep_for(1000);
+    ThisThread::sleep_for(2000);
     SetState(RoboState::IDLE);
     }
 };
@@ -143,7 +143,7 @@ void Controller::Detect() {
             SetSpeed(0.5, -0.5);
             }
         }
-    }
+    } else SetState(RoboState::ESCAPE);
 };
 
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
@@ -544,24 +544,24 @@ void Controller::IrEscape() {
   } else if (Orient == ColorOrient::FRONT) {
     SetSpeed(-0.5, -0.5);
   } else if (Orient == ColorOrient::TAN_LEFT) {
-    SetSpeed(0.2, 0.8);
+    // SetSpeed(0.2, 0.8);
   } else if (Orient == ColorOrient::TAN_RIGHT) {
-    SetSpeed(0.8, 0.2);
+    // SetSpeed(0.8, 0.2);
   } else if (Orient == ColorOrient::BACK) {
     // 180, turn, recheck, and move
     SetSpeed(0.5, 0.5);
   } else if (Orient == ColorOrient::FRONT_LEFT) {
     // back, and turn
-    SetSpeed(0.5, -0.5);
+    SetSpeed(-0.5, -0.5);
   } else if (Orient == ColorOrient::FRONT_RIGHT) {
     // back, and turn
-    SetSpeed(-0.5, 0.5);
+    SetSpeed(-0.5, -0.5);
   } else if (Orient == ColorOrient::BACK_LEFT) {
     // back, and turn
-    SetSpeed(0.5, -0.5);
+    SetSpeed(0.5, 0.5);
   } else if (Orient == ColorOrient::BACK_RIGHT) {
     // back, and turn
-    SetSpeed(-0.5, 0.5);
+    SetSpeed(0.5, 0.5);
   } else {}
 }
 
