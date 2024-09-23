@@ -107,7 +107,7 @@ void Controller::Start() {
     // ir.mode(PullDown);
     Thread1.start(ImuThread);
     Thread1.set_priority(osPriorityAboveNormal);
-    ThisThread::sleep_for(2000);
+    ThisThread::sleep_for(1000);
     SetState(RoboState::IDLE);
     }
 };
@@ -138,9 +138,9 @@ void Controller::Detect() {
                 SetState(RoboState::ATTACK);
             }
             else if (!GetEnemyState() && GetHD() > 0) {
-            SetSpeed(-0.5, 0.5);
+            SetSpeed(-0.7, 0.7);
             } else if (!GetEnemyState() && GetHD() < 0) {
-            SetSpeed(0.5, -0.5);
+            SetSpeed(0.7, -0.7);
             }
         }
     } else SetState(RoboState::ESCAPE);
@@ -175,27 +175,27 @@ void Controller::Yellow()
         {
             if(irfc.read())
             {
-                SetSpeed(0.5);
+                SetSpeed(1.0);
             }else
             {
                 SetSpeed(0);
-                if(yellowTimer.read_ms() == 0) yellowTimer.start();
+                yellowTimer.start();
                 if(GetEnemyState()&& psd_val[1]<17)
                 // if(GetEnemyState()&& abs(GetHD())<150)
                 {
                     SetYellow(true);
-                    yellowTimer.stop();
+                    yellowTimer.reset();
                     SetState(RoboState::DETECT);
                 }
                 if(yellowTimer.read_ms()>=5000)
                 {
                     SetYellow(true);
-                    yellowTimer.stop();
+                    yellowTimer.reset();
                     SetState(RoboState::DETECT);
                 }
                 if(abs(prev_distance[4]-now_distance[4]) >= 30) {
                     SetYellow(true);
-                    yellowTimer.stop();
+                    yellowTimer.reset();
                     SetState(RoboState::DETECT);                
                 }
             }
@@ -211,27 +211,27 @@ void Controller::Yellow()
         {
             if(irfc.read())
             {
-                SetSpeed(0.5);
+                SetSpeed(1.0);
             }else 
             {
                 SetSpeed(0);
-                if(yellowTimer.read_ms() == 0) yellowTimer.start();
+                yellowTimer.start();
                 if(GetEnemyState()&& psd_val[1]<17)
                 // if(GetEnemyState()&& abs(GetHD())<150)
                 {
                     SetYellow(true);
-                    yellowTimer.stop();
+                    yellowTimer.reset();
                     SetState(RoboState::DETECT);
                 }
                 if(yellowTimer.read_ms()>=5000)
                 {
                     SetYellow(true);
-                    yellowTimer.stop();
+                    yellowTimer.reset();
                     SetState(RoboState::DETECT);
                 }
                 if(abs(prev_distance[3]-now_distance[3]) >= 30) {
                     SetYellow(true);
-                    yellowTimer.stop();
+                    yellowTimer.reset();
                     SetState(RoboState::DETECT);                
                 }
             }
