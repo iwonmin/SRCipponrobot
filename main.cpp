@@ -26,12 +26,13 @@ int main()
             case Controller::RoboState::YELLOW:
             controller.Yellow();
         }
-        // pc.printf("%d, %.2f\r\n",controller.GetHD(), controller.GetCurrentYaw());
+        pc.printf("%d, %.2f\r\n",controller.GetHD(), controller.GetCurrentYaw());
         // pc.printf("%d, %d, %d, %d\r\n",controller.psd_val[0], controller.psd_val[2], controller.psd_val[5], controller.psd_val[7]);
-        pc.printf("%d, %d, %d, %d\r\n",controller.psd_val[1], controller.psd_val[3], controller.psd_val[4], controller.psd_val[6]);
+        // pc.printf("%d, %d, %d, %d\r\n",controller.psd_val[1], controller.psd_val[3], controller.psd_val[4], controller.psd_val[6]);
+        // pc.printf("%d, %d, %d\r\n", controller.psd_val[0], controller.psd_val[1],controller.psd_val[2]);
         // controller.WallViewer();
         // controller.OrientViewer();
-        // controller.StateViewer();
+        controller.StateViewer();
         controller.Move(controller.GetSpeedL(),controller.GetSpeedR());
         ThisThread::sleep_until(controller.GetStartTime() + 10); //절대 시간으로 10ms 만큼 쉬기
     }

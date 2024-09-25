@@ -138,9 +138,9 @@ void Controller::Detect() {
                 SetSpeed(0);
                 SetState(RoboState::ATTACK);
             }
-            else if (!GetEnemyState() && GetHD() > 0) {
+            else if (GetHD() > 0) {
             SetSpeed(-0.7, 0.7);
-            } else if (!GetEnemyState() && GetHD() < 0) {
+            } else if (GetHD() < 0) {
             SetSpeed(0.7, -0.7);
             }
         }
@@ -149,7 +149,7 @@ void Controller::Detect() {
 
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
     if (irSafe && imuSafe) {
-        if(psd_val[1] <= 20 || psd_val[0] <= 15 || psd_val[2] <= 15) {
+        if(psd_val[1] < 20 || psd_val[0] < 23 || psd_val[2] < 23) {
             SetSpeed(1.0);
             if(attackTimer.read_ms() == 0) attackTimer.start();
         } else { 
@@ -185,7 +185,7 @@ void Controller::Yellow()
             {
                 SetSpeed(0);
                 yellowTimer.start();
-                if(GetEnemyState()&& psd_val[1]<17)
+                if(GetEnemyState()&& (psd_val[1]<= 10 || psd_val[0]<= 12 || psd_val[2] <= 12))
                 // if(GetEnemyState()&& abs(GetHD())<150)
                 {
                     SetYellow(true);
@@ -221,7 +221,7 @@ void Controller::Yellow()
             {
                 SetSpeed(0);
                 yellowTimer.start();
-                if(GetEnemyState()&& psd_val[1]<17)
+                if(GetEnemyState()&& (psd_val[1]<= 10 || psd_val[0]<= 12 || psd_val[2] <= 12))
                 // if(GetEnemyState()&& abs(GetHD())<150)
                 {
                     SetYellow(true);
@@ -310,13 +310,14 @@ void Controller::PsdRefresh() {
 }
 
 void Controller::PsdWallDetect() {
+    /*
     if (psd_val[0] <= 10 && psd_val[2] <= 10 && !GetEnemyState()) {
         FrontCollision = true; 
         SetWallSafetyState(false);
     } else if ((psd_val[0]+psd_val[2])/2 > 10) {
         FrontCollision = false;
         SetWallSafetyState(true);
-    }
+    }*/
     if (psd_val[5] <= 12 && psd_val[7] <= 12) {
         BackCollision = true;
         SetWallSafetyState(false);
@@ -537,8 +538,8 @@ void Controller::IrEscape() {
   if (Orient == ColorOrient::SAFE) {
     return;
   } else if (Orient == ColorOrient::FRONT) {
-    if(attackTimer.read_ms() >= 500 && (psd_val[3] + psd_val[4]) <= 100) { SetSpeed(1.0); }
-    SetSpeed(-0.5, -0.5);
+    if(attackTimer.read_ms() >= 300 && (psd_val[3] + psd_val[4]) <= 100){ SetSpeed(1.0); }
+    else {SetSpeed(-0.5, -0.5);}
   } else if (Orient == ColorOrient::TAN_LEFT) {
     // SetSpeed(0.2, 0.8);
   } else if (Orient == ColorOrient::TAN_RIGHT) {
