@@ -60,7 +60,7 @@ class Controller
 
         enum class ColorOrient
     {
-        FRONT, TAN_LEFT, TAN_RIGHT, BACK, FRONT_LEFT, FRONT_RIGHT, BACK_LEFT, BACK_RIGHT, SAFE    
+        FRONT, TAN_LEFT, TAN_RIGHT, BACK, FRONT_LEFT, FRONT_RIGHT, BACK_LEFT, BACK_RIGHT, FAIL, SAFE    
     };
         enum class TiltState
     {

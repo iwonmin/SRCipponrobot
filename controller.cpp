@@ -34,6 +34,7 @@ char a = 0;
 bool Incoming = false;
 bool AsteriskReceived = false;
 Timer yellowTimer;
+Timer attackTimer;
 #pragma endregion Serial Variables
 
 
@@ -147,11 +148,15 @@ void Controller::Detect() {
 };
 
 void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실행할 수 있게 하기
-    if(GetOrient() == ColorOrient::FRONT) SetAttackState(true);
     if (irSafe && imuSafe) {
-        if(psd_val[1] <= 20 || psd_val[0] <= 15 || psd_val[2] <= 15) SetSpeed(1.0);
-        else SetSpeed(0.5);
-        // SetSpeed(1.0);
+        if(psd_val[1] <= 20 || psd_val[0] <= 15 || psd_val[2] <= 15) {
+            SetSpeed(1.0);
+            if(attackTimer.read_ms() == 0) attackTimer.start();
+        } else { 
+            SetSpeed(0.5);
+            attackTimer.stop();
+            attackTimer.reset();
+        }
         if (!GetEnemyState()) {
         SetState(RoboState::IDLE);
         SetAttackState(false);
@@ -399,17 +404,7 @@ void Controller::ColorOrient() {
             Orient = ColorOrient::TAN_RIGHT;
         } 
     } else {//ir_total == 0
-        if(FrontCollision) {
-            Orient = ColorOrient::FRONT;
-        } else if(BackCollision) {
-            Orient = ColorOrient::BACK;
-        } else if(LeftCollision) {
-            Orient = ColorOrient::BACK_LEFT;
-        } else if(RightCollision) {
-            Orient = ColorOrient::BACK_RIGHT;
-        } else {
-            Orient = ColorOrient::FRONT;
-        }
+        Orient = ColorOrient::FAIL;
     }
 }
 enum Controller::ColorOrient Controller::GetOrient() { return Orient;}
@@ -542,6 +537,7 @@ void Controller::IrEscape() {
   if (Orient == ColorOrient::SAFE) {
     return;
   } else if (Orient == ColorOrient::FRONT) {
+    if(attackTimer.read_ms() >= 500 && (psd_val[3] + psd_val[4]) <= 100) { SetSpeed(1.0); }
     SetSpeed(-0.5, -0.5);
   } else if (Orient == ColorOrient::TAN_LEFT) {
     // SetSpeed(0.2, 0.8);
@@ -562,7 +558,15 @@ void Controller::IrEscape() {
   } else if (Orient == ColorOrient::BACK_RIGHT) {
     // back, and turn
     SetSpeed(0.5, 0.5);
-  } else {}
+  } else if (Orient == ColorOrient::FAIL) {
+      if(!GetEnemyState()) {
+        if(GetHD() >= 0) SetSpeed(-0.7,0.7);
+        if(GetHD() < 0) SetSpeed(0.7,-0.7);
+      } else {
+          SetSpeed(1.0);
+      }
+
+  }
 }
 
 //-----------------------MPU9250, IMU-----------------------------//
