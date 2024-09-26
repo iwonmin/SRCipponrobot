@@ -226,6 +226,8 @@ class Controller
 
     Timer t;
 
+    float yaw ;
+    
     const float alpha_imu = 0.93f; 
 
     const float MaxStableZAccel = 1.2f;

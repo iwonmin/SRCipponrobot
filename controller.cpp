@@ -22,8 +22,8 @@ DigitalIn irbc(PA_8);
 DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
 MPU9250 mpu9250(D14,D15);
-NeoPixel led1(PA_0, 8);
-NeoPixel led2(PA_0, 8);
+NeoPixel led1(PC_8, 8);
+NeoPixel led2(PC_6, 8);
 Controller controller;
 Thread Thread1;
 Mutex mutex;
@@ -111,6 +111,7 @@ void Controller::Start() {
     // ir.mode(PullDown);
     Thread1.start(ImuThread);
     Thread1.set_priority(osPriorityAboveNormal);
+    SetYellow(true);
     ThisThread::sleep_for(1000);
     SetState(RoboState::IDLE);
     }
@@ -638,13 +639,13 @@ void Controller::ImuDetect_MPU9250()  {
         SettleTimer.stop();
         SettleTimer.reset();
     }
-    if(GetEnemyState() && mpu9250.pitch < -IMU_THRESHOLD && isZAccelSettled) {
+    if(GetEnemyState() && mpu9250.pitch > IMU_THRESHOLD && isZAccelSettled) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT;
-    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 9) && mpu9250.pitch < -IMU_THRESHOLD) {
+    } else if(GetEnemyState() && (psd_val[0] < 9) && mpu9250.pitch > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_LEFT;
-    } else if((/*GetEnemyState() && */ psd_val[2] < 9) && mpu9250.pitch <- IMU_THRESHOLD) {
+    } else if((GetEnemyState() && psd_val[2] < 9) && mpu9250.pitch > IMU_THRESHOLD) {
         SetImuSafetyState(false);
         tilt_state = TiltState::FRONT_RIGHT;
     } else if(psd_val[0] < 9 && mpu9250.roll < -IMU_THRESHOLD) {
@@ -701,7 +702,7 @@ void Controller::ImuEscape() {
             return;
     }
 }
-/*
+
 float Controller::GetCurrentYaw()
 {
     return yaw;
@@ -718,7 +719,7 @@ float Controller::NormalizeYaw(float angle)
     if(angle<-180) angle +=360;
     return angle;
 }
-*/
+
 //------------------------------Thread, Callbacks--------------------------------//
 void ImuThread() {
     controller.SetupImu_MPU9250();
@@ -729,6 +730,7 @@ void ImuThread() {
         controller.PsdRefresh();
         controller.ImuDetect_MPU9250();
         controller.IrRefresh();
+        // pc.printf("%.2f, %.2f\r\n",mpu9250.roll, mpu9250.pitch);
         controller.StateViewer_LED();
         mutex.unlock();
         ThisThread::sleep_for(20);
