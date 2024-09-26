@@ -1,5 +1,6 @@
 #include "mbed.h"
 #include "neopixel.h"
+#include "MPU9250.h"
 #include "GP2A.h"
 #pragma region Preprocessor
 #define MAXSPEED 0.5
@@ -38,7 +39,6 @@ extern class Controller controller;
 extern Thread Thread1;
 extern Serial pc;
 extern RawSerial device;
-extern Serial ebimu;
 extern NeoPixel led1;
 extern NeoPixel led2;
 #pragma endregion external
@@ -208,11 +208,11 @@ class Controller
 
     //-----------------------EBIMU-----------------------------//
 
-    void ImuDetect();
+    void SetupImu_MPU9250();
 
-    void ImuParse();
+    void ImuRefresh_MPU9250();
 
-    void ImuChartoData();
+    void ImuDetect_MPU9250();
     
     void ImuEscape();
 
@@ -222,7 +222,23 @@ class Controller
 
     Timer Escape_Timer;
 
-    float roll, pitch, yaw, rawYaw, initialYaw;
+    Timer SettleTimer;
+
+    Timer t;
+
+    const float alpha_imu = 0.93f; 
+
+    const float MaxStableZAccel = 1.2f;
+    
+    const float MinStableZAccel = 0.8f;
+
+    const uint16_t SettlingTime = 300; //ms
+    
+    bool isZAccelSettled = false;
+    
+    float accel_angle_x, accel_angle_y, accel_angle_z;
+
+    float gyro_angle_x, gyro_angle_y, gyro_angle_z;
     
     char data[32] = "";
 

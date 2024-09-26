@@ -21,9 +21,9 @@ DigitalIn irfc(PA_6);
 DigitalIn irbc(PA_8);
 DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
-Serial ebimu(PB_10,PC_5,115200);
-NeoPixel led1(D14, 8);
-NeoPixel led2(D15, 8);
+MPU9250 mpu9250(D14,D15);
+NeoPixel led1(PA_0, 8);
+NeoPixel led2(PA_0, 8);
 Controller controller;
 Thread Thread1;
 Mutex mutex;
@@ -256,7 +256,7 @@ void Controller::Escape() {
     } 
     SetState(RoboState::IDLE);
 };
-
+/*
 void Controller::WallTwerk() {
     //각도 맞추기 -> 벽에 가까워지기 -> 각도 맞추기 -> 뒤로붙어서 pitch 변화
     if(abs((int)GetCurrentYaw())%90 < 10) {
@@ -278,7 +278,7 @@ void Controller::WallTwerk() {
 
     }
 }
-
+*/
 void Controller::Move(float sL, float sR) {
     if (sL < 0)
         DirL = 0;
@@ -574,96 +574,108 @@ void Controller::IrEscape() {
 }
 
 //-----------------------MPU9250, IMU-----------------------------//
-void Controller::ImuParse() {
-    ebimu.putc(0x2A);
-    ebimu.scanf("%s",data);
-    controller.ImuChartoData();
-    memset(data, NULL, 32*sizeof(char));
+void Controller::SetupImu_MPU9250() {
+  uint8_t whoami = mpu9250.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250); // Read WHO_AM_I register for MPU-9250
+    // pc.printf("I AM 0x%x\t", whoami); pc.printf("I SHOULD BE 0x71\n\r");
+  mpu9250.resetMPU9250(); // Reset registers to default in preparation for
+    // device calibration
+  mpu9250.MPU9250SelfTest(mpu9250.SelfTest); // Start by performing self test and reporting values
+  mpu9250.calibrateMPU9250(mpu9250.gyroBias, mpu9250.accelBias);
+  // Calibrate gyro and accelerometers, load biases in bias registers
+  mpu9250.initMPU9250();
+//   mpu9250.initAK8963(mpu9250.magCalibration);
+  mpu9250.getAres(); // Get accelerometer sensitivity
+  mpu9250.getGres(); // Get gyro sensitivity
+//   mpu9250.getMres(); // Get magnetometer sensitivity
+  t.start();
 }
-
-void Controller::ImuChartoData() {
-
-    char* start = strchr(data, '*');
-    if (start != NULL) {
-        start++;
-
-        char* token = strtok(start, ",");
-        if (token != NULL) {
-            roll = atof(token); 
-
-            token = strtok(NULL, ",");
-            if (token != NULL) {
-                pitch = atof(token); 
-
-                token = strtok(NULL, ",");
-                if (token != NULL) {
-                    rawYaw = atof(token); 
-                     if (!isInitialized) {
-                        // 최초 초기화 시 yaw 값을 0으로 설정
-                        initialYaw = rawYaw;
-                        isInitialized = true; // 초기화 완료 표시
-                    }
-                    yaw = NormalizeYaw(rawYaw - initialYaw); // 기준 yaw 값을 초기화한 값으로 설정하고 정규화              
-                }
-            }
-        }
+void Controller::ImuRefresh_MPU9250() {
+    // If intPin goes high, all data registers have new data
+    t.reset();
+    if(mpu9250.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
+    {  // On interrupt, check if data ready interrupt
+        //pc.printf("imu main     ");
+        mpu9250.readAccelData(mpu9250.accelCount);  // Read the x/y/z adc values   
+        // Now we'll calculate the accleration value into actual g's
+        mpu9250.ax = (float)mpu9250.accelCount[0]*mpu9250.aRes - mpu9250.accelBias[0];  // get actual g value, this depends on scale being set
+        mpu9250.ay = (float)mpu9250.accelCount[1]*mpu9250.aRes - mpu9250.accelBias[1];   
+        mpu9250.az = (float)mpu9250.accelCount[2]*mpu9250.aRes - mpu9250.accelBias[2];  
+        mpu9250.readGyroData(mpu9250.gyroCount);  // Read the x/y/z adc values
+        // Calculate the gyro value into actual degrees per second
+        mpu9250.gx = (float)mpu9250.gyroCount[0]*mpu9250.gRes - mpu9250.gyroBias[0];  // get actual gyro value, this depends on scale being set
+        mpu9250.gy = (float)mpu9250.gyroCount[1]*mpu9250.gRes - mpu9250.gyroBias[1];  
+        // mpu9250.gz = (float)mpu9250.g+yroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
+        // Read the x/y/z adc values   
+        // // Calculate the magnetometer values in milliGauss
+        // // Include factory calibration per data sheet and user environmental corrections
+        mpu9250.readMagData(mpu9250.magCount);
+        mpu9250.mx = (float)mpu9250.magCount[0]*mpu9250.mRes*mpu9250.magCalibration[0] - mpu9250.magbias[0];  // get actual magnetometer value, this depends on scale being set
+        mpu9250.my = (float)mpu9250.magCount[1]*mpu9250.mRes*mpu9250.magCalibration[1] - mpu9250.magbias[1];  
+        // mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
     }
+    mpu9250.deltat = t.read_us()/1000000.0f;
+    accel_angle_x = atan2(mpu9250.ay, sqrt(mpu9250.ax * mpu9250.ax + mpu9250.az * mpu9250.az)) * (180.0f / PI); 
+    accel_angle_y = atan2(mpu9250.ax, sqrt(mpu9250.ay * mpu9250.ay + mpu9250.az * mpu9250.az)) * (180.0f / PI);
+    // mag_angle_z  = atan2(mpu9250.my*cos(mpu9250.pitch*PI/180.0f) - mpu9250.mz*sin(mpu9250.pitch*PI/180.0f), mpu9250.mx*cos(mpu9250.roll*PI/180.0f)+mpu9250.my*sin(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)+mpu9250.mz*cos(mpu9250.pitch*PI/180.0f)*sin(mpu9250.roll*PI/180.0f)) * (180.0f / PI);
+    // mag_angle_z = atan2(mpu9250.my, mpu9250.mx) * (180.0f / PI);
+    //gyro값 넣기
+    gyro_angle_x = mpu9250.roll + mpu9250.gx * mpu9250.deltat;
+    gyro_angle_y = mpu9250.pitch + mpu9250.gy * mpu9250.deltat;
+    // gyro_angle_z = mpu9250.yaw + mpu9250.gz * mpu9250.deltat;
+    //alpha를 이용한 보정(상보)
+    mpu9250.roll = alpha_imu * gyro_angle_x + (1.0-alpha_imu) * accel_angle_x;
+    mpu9250.pitch = alpha_imu * gyro_angle_y + (1.0-alpha_imu) * accel_angle_y;
+    // mpu9250.yaw = 0.95 * gyro_angle_z + (1.0-0.95) * mag_angle_z;
 }
 
-void Controller::ImuDetect()  {
-    if( psd_val[1] < 15 && pitch < -IMU_THRESHOLD) {
+void Controller::ImuDetect_MPU9250()  {
+    if (mpu9250.az >= MinStableZAccel && mpu9250.az <= MaxStableZAccel) {
+        if (SettleTimer.read_ms() == 0) {
+            SettleTimer.start();
+        } else if (SettleTimer.read_ms() >= SettlingTime) { isZAccelSettled = true; }
+    } else {
+        isZAccelSettled = false;
+        SettleTimer.stop();
+        SettleTimer.reset();
+    }
+    if(GetEnemyState() && mpu9250.pitch < -IMU_THRESHOLD && isZAccelSettled) {
         SetImuSafetyState(false);
-        ImuPitchLift = true;
         tilt_state = TiltState::FRONT;
-    } else if(psd_val[0] < 9 && pitch < -IMU_THRESHOLD) {
+    } else if(/*GetEnemyState() &&*/ (psd_val[0] < 9) && mpu9250.pitch < -IMU_THRESHOLD) {
         SetImuSafetyState(false);
-        ImuPitchLift = true;
         tilt_state = TiltState::FRONT_LEFT;
-    } else if(psd_val[2] < 9 && pitch <- IMU_THRESHOLD) {
+    } else if((/*GetEnemyState() && */ psd_val[2] < 9) && mpu9250.pitch <- IMU_THRESHOLD) {
         SetImuSafetyState(false);
-        ImuPitchLift = true;
         tilt_state = TiltState::FRONT_RIGHT;
-    } else if(psd_val[0] < 9 && roll < -IMU_THRESHOLD) {
+    } else if(psd_val[0] < 9 && mpu9250.roll < -IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[0] < 9 && roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
+        if(psd_val[0] < 9 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
-            ImuRollLift = true;
             tilt_state = TiltState::SIDE_LEFT;
             Escape_Timer.reset();
         }
-    } else if(psd_val[3] <= 30 && roll < -IMU_THRESHOLD) {
+    } else if(psd_val[3] <= 30 && mpu9250.roll > IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[3] <= 30 && roll < -IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
+        if(psd_val[3] <= 30 && mpu9250.roll < -IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
-            ImuRollLift = true;
             tilt_state = TiltState::SIDE_LEFT;
             Escape_Timer.reset();
         }
-    } else if(psd_val[2] < 9 && roll > IMU_THRESHOLD) {
+    } else if(psd_val[2] < 9 && mpu9250.roll < -IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[2] < 15 && roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
+        if(psd_val[2] < 15 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
-            ImuRollLift = true;
             tilt_state = TiltState::SIDE_RIGHT;
             Escape_Timer.reset();
         }
-    } else if(psd_val[4] <= 30 && roll > IMU_THRESHOLD) {
+    } else if(psd_val[4] <= 30 && mpu9250.roll < -IMU_THRESHOLD) {
         if(Escape_Timer.read_ms() == 0) Escape_Timer.start();
-        if(psd_val[4] <= 30 && roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
+        if(psd_val[4] <= 30 && mpu9250.roll > IMU_THRESHOLD && Escape_Timer.read_ms() > ESCAPE_TIME) {
             SetImuSafetyState(false);
-            ImuRollLift = true;
             tilt_state = TiltState::SIDE_RIGHT;
             Escape_Timer.reset();
         }
-    } else if (pitch > -IMU_THRESHOLD && ImuPitchLift) { 
-        SetImuSafetyState(true);
-        ImuPitchLift = false;
-        tilt_state = TiltState::SAFE;
-    } else if (roll > -IMU_THRESHOLD && roll < IMU_THRESHOLD && ImuRollLift) {
-        SetImuSafetyState(true);
-        ImuRollLift = false;
-        tilt_state = TiltState::SAFE;
-    }
+    } else if (mpu9250.pitch < IMU_THRESHOLD){ SetImuSafetyState(true); tilt_state = TiltState::SAFE;}
     if(Escape_Timer.read_ms() > 10000) Escape_Timer.reset();
 }
 
@@ -689,7 +701,7 @@ void Controller::ImuEscape() {
             return;
     }
 }
-
+/*
 float Controller::GetCurrentYaw()
 {
     return yaw;
@@ -706,14 +718,16 @@ float Controller::NormalizeYaw(float angle)
     if(angle<-180) angle +=360;
     return angle;
 }
-
+*/
 //------------------------------Thread, Callbacks--------------------------------//
 void ImuThread() {
+    controller.SetupImu_MPU9250();
     while(1) {
         mutex.lock();
         // controller.ImuParse();
+        controller.ImuRefresh_MPU9250();
         controller.PsdRefresh();
-        // controller.ImuDetect();
+        controller.ImuDetect_MPU9250();
         controller.IrRefresh();
         controller.StateViewer_LED();
         mutex.unlock();
