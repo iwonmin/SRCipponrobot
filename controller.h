@@ -1,4 +1,5 @@
 #include "mbed.h"
+#include "neopixel.h"
 #include "GP2A.h"
 #pragma region Preprocessor
 #define MAXSPEED 0.5
@@ -38,6 +39,8 @@ extern Thread Thread1;
 extern Serial pc;
 extern RawSerial device;
 extern Serial ebimu;
+extern NeoPixel led1;
+extern NeoPixel led2;
 #pragma endregion external
 class Controller
 {
@@ -69,6 +72,17 @@ class Controller
         bool StartFlag = false;
 
         uint16_t psd_val[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
+        
+        uint8_t colors1[8][3]; //[index][r,g,b] 0~255
+
+        uint8_t colors2[8][3];
+
+        uint8_t ledindex = 0;
+
+        uint8_t colorindex = 0;
+
+        uint32_t colortotal = 0;
+
     //객체 생성시 실행되는 생성자 함수
     Controller();
 //-------------------Get & Set methods----------------------//
@@ -226,6 +240,8 @@ class Controller
     void ImuViewer();
 
     void StateViewer();
+    
+    void StateViewer_LED();
 //--------------------Private variables--------------------------//
     private:
     //시간 세기

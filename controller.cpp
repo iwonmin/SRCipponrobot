@@ -1,4 +1,5 @@
 #include "controller.h"
+#include <cstdint>
 #pragma region variables
 InterruptIn btn(BUTTON1);
 DigitalOut DirL(PC_7);
@@ -21,6 +22,8 @@ DigitalIn irbc(PA_8);
 DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
 Serial ebimu(PB_10,PC_5,115200);
+NeoPixel led1(D14, 8);
+NeoPixel led2(D15, 8);
 Controller controller;
 Thread Thread1;
 Mutex mutex;
@@ -708,10 +711,11 @@ float Controller::NormalizeYaw(float angle)
 void ImuThread() {
     while(1) {
         mutex.lock();
-        controller.ImuParse();
+        // controller.ImuParse();
         controller.PsdRefresh();
-        controller.ImuDetect();
+        // controller.ImuDetect();
         controller.IrRefresh();
+        controller.StateViewer_LED();
         mutex.unlock();
         ThisThread::sleep_for(20);
     }
@@ -835,4 +839,55 @@ void Controller::StateViewer() {
             // pc.printf("0\r\n");
             return;
     }
+}
+
+void Controller::StateViewer_LED() {
+    led1.clear();
+    led2.clear();
+    if(GetEnemyState()) colors1[0][0] = 0x80;
+    else colors1[0][0] = 0x00;
+    if(GetHD() >= 0) {
+        colors1[7][0] = 0x80;
+        colors1[1][0] = 0x00;
+    }
+    else {
+        colors1[1][0] = 0x80;
+        colors1[7][0] = 0x00;
+    }
+    for(ledindex = 0; ledindex < 8; ledindex++) {
+        colors1[ledindex][1] = 0x00;
+        colors1[ledindex][2] = 0x00;
+    }
+    colors1[(int)robo_state][1] = 0x80;
+    colors1[(int)tilt_state][2] = 0x80;
+    if(!ir_val[0]) colors2[7][0] = 0x80;
+    else colors2[7][0] = 0x00;
+    if(!ir_val[1]) colors2[1][0] = 0x80;
+    else colors2[1][0] = 0x00;
+    if(!ir_val[2]) colors2[0][0] = 0x80;
+    else colors2[0][0] = 0x00;
+    if(!ir_val[3]) colors2[4][0] = 0x80;
+    else colors2[4][0] = 0x00;
+    if(!ir_val[4]) colors2[5][0] = 0x80;
+    else colors2[5][0] = 0x00;
+    if(!ir_val[5]) colors2[3][0] = 0x80;
+    else colors2[3][0] = 0x00;
+    if(FrontCollision) colors2[0][2] = 0x80;
+    else colors2[0][2] = 0x00;
+    if(BackCollision) colors2[4][2] = 0x80;
+    else colors2[4][2] = 0x00;
+    if(LeftCollision) colors2[6][2] = 0x80;
+    else colors2[6][2] = 0x00;
+    if(RightCollision) colors2[2][2] = 0x80;
+    else colors2[2][2] = 0x00;
+    for(ledindex=0;ledindex<8;ledindex++) { 
+        colortotal = colors1[ledindex][0] * 256 * 256 + colors1[ledindex][1] * 256 + colors1[ledindex][2];
+        led1.setColor(ledindex, colortotal);
+    }
+    for(ledindex=0;ledindex<8;ledindex++) {
+        colortotal = colors2[ledindex][0] * 256 * 256 + colors2[ledindex][1] * 256 + colors2[ledindex][2];
+        led2.setColor(ledindex, colortotal);
+    }
+    led1.show();
+    led2.show();
 }
