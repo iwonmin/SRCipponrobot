@@ -23,7 +23,7 @@ DigitalIn irbl(PA_7);
 DigitalIn irbr(PA_5);
 MPU9250 mpu9250(D14,D15);
 NeoPixel led1(PC_8, 8);
-NeoPixel led2(PC_6, 8);
+NeoPixel led2(PC_9, 8);
 Controller controller;
 Thread Thread1;
 Mutex mutex;
@@ -120,7 +120,7 @@ void Controller::Start() {
 void Controller::Idle() {
   if (imuSafe && irSafe && wallSafe) {
     SetState(RoboState::DETECT);
-  } else if(!imuSafe || !irSafe || !wallSafe) {
+  } else {
     SetState(RoboState::ESCAPE);
   }
 };
@@ -255,7 +255,7 @@ void Controller::Escape() {
     } else if (!GetWallSafetyState()) {
         PsdWallEscape();
     } 
-    SetState(RoboState::IDLE);
+    SetState(RoboState::DETECT);
 };
 /*
 void Controller::WallTwerk() {
@@ -903,6 +903,7 @@ void Controller::StateViewer_LED() {
     for(ledindex=0;ledindex<8;ledindex++) {
         colortotal = colors2[ledindex][0] * 256 * 256 + colors2[ledindex][1] * 256 + colors2[ledindex][2];
         led2.setColor(ledindex, colortotal);
+        // pc.printf("%x\r\n",colortotal);
     }
     led1.show();
     led2.show();
