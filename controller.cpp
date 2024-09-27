@@ -584,10 +584,10 @@ void Controller::SetupImu_MPU9250() {
   mpu9250.calibrateMPU9250(mpu9250.gyroBias, mpu9250.accelBias);
   // Calibrate gyro and accelerometers, load biases in bias registers
   mpu9250.initMPU9250();
-//   mpu9250.initAK8963(mpu9250.magCalibration);
+  mpu9250.initAK8963(mpu9250.magCalibration);
   mpu9250.getAres(); // Get accelerometer sensitivity
   mpu9250.getGres(); // Get gyro sensitivity
-//   mpu9250.getMres(); // Get magnetometer sensitivity
+  mpu9250.getMres(); // Get magnetometer sensitivity
   t.start();
 }
 void Controller::ImuRefresh_MPU9250() {
@@ -605,14 +605,14 @@ void Controller::ImuRefresh_MPU9250() {
         // Calculate the gyro value into actual degrees per second
         mpu9250.gx = (float)mpu9250.gyroCount[0]*mpu9250.gRes - mpu9250.gyroBias[0];  // get actual gyro value, this depends on scale being set
         mpu9250.gy = (float)mpu9250.gyroCount[1]*mpu9250.gRes - mpu9250.gyroBias[1];  
-        // mpu9250.gz = (float)mpu9250.g+yroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
+        mpu9250.gz = (float)mpu9250.gyroCount[2]*mpu9250.gRes - mpu9250.gyroBias[2];   
         // Read the x/y/z adc values   
         // // Calculate the magnetometer values in milliGauss
         // // Include factory calibration per data sheet and user environmental corrections
         mpu9250.readMagData(mpu9250.magCount);
         mpu9250.mx = (float)mpu9250.magCount[0]*mpu9250.mRes*mpu9250.magCalibration[0] - mpu9250.magbias[0];  // get actual magnetometer value, this depends on scale being set
         mpu9250.my = (float)mpu9250.magCount[1]*mpu9250.mRes*mpu9250.magCalibration[1] - mpu9250.magbias[1];  
-        // mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
+        mpu9250.mz = (float)mpu9250.magCount[2]*mpu9250.mRes*mpu9250.magCalibration[2] - mpu9250.magbias[2];   
     }
     mpu9250.deltat = t.read_us()/1000000.0f;
     accel_angle_x = atan2(mpu9250.ay, sqrt(mpu9250.ax * mpu9250.ax + mpu9250.az * mpu9250.az)) * (180.0f / PI); 
@@ -622,11 +622,12 @@ void Controller::ImuRefresh_MPU9250() {
     //gyro값 넣기
     gyro_angle_x = mpu9250.roll + mpu9250.gx * mpu9250.deltat;
     gyro_angle_y = mpu9250.pitch + mpu9250.gy * mpu9250.deltat;
-    // gyro_angle_z = mpu9250.yaw + mpu9250.gz * mpu9250.deltat;
+    gyro_angle_z = mpu9250.yaw + mpu9250.gz * mpu9250.deltat;
     //alpha를 이용한 보정(상보)
     mpu9250.roll = alpha_imu * gyro_angle_x + (1.0-alpha_imu) * accel_angle_x;
     mpu9250.pitch = alpha_imu * gyro_angle_y + (1.0-alpha_imu) * accel_angle_y;
     // mpu9250.yaw = 0.95 * gyro_angle_z + (1.0-0.95) * mag_angle_z;
+    mpu9250.yaw = gyro_angle_z;
 }
 
 void Controller::ImuDetect_MPU9250()  {
@@ -752,7 +753,7 @@ void ImuThread() {
         controller.PsdRefresh();
         controller.ImuDetect_MPU9250();
         controller.IrRefresh();
-        // pc.printf("%.2f, %.2f\r\n",mpu9250.roll, mpu9250.pitch);
+        // pc.printf("%.2f, %.2f\r\n",mpu9250.yaw, mpu9250.pitch);
         controller.StateViewer_LED();
         mutex.unlock();
         ThisThread::sleep_for(20);

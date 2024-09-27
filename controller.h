@@ -241,6 +241,8 @@ class Controller
     float accel_angle_x, accel_angle_y, accel_angle_z;
 
     float gyro_angle_x, gyro_angle_y, gyro_angle_z;
+
+    float mag_angle_x, mag_angle_y, mag_angle_z;
     
     char data[32] = "";
 
