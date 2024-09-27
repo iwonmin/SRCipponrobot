@@ -67,7 +67,7 @@ class Controller
     };
         enum class TiltState
     {
-        FRONT, FRONT_LEFT, FRONT_RIGHT, SIDE_LEFT, SIDE_RIGHT, SAFE
+        FRONT, FRONT_LEFT, FRONT_RIGHT, SIDE_LEFT, SIDE_RIGHT, CRITICAL, SAFE
     };
         bool StartFlag = false;
 
