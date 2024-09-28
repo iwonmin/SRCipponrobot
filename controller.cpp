@@ -542,7 +542,7 @@ void Controller::IrEscape() {
   if (Orient == ColorOrient::SAFE) {
     return;
   } else if (Orient == ColorOrient::FRONT) {
-    if(attackTimer.read_ms() >= 300 && (psd_val[3] + psd_val[4]) <= 100){ SetSpeed(1.0); }
+    if(attackTimer.read_ms() >= 300 && GetEnemyState() ){ SetSpeed(1.0); }
     else {SetSpeed(-0.5, -0.5);}
   } else if (Orient == ColorOrient::TAN_LEFT) {
     // SetSpeed(0.2, 0.8);
@@ -753,8 +753,8 @@ void ImuThread() {
         controller.PsdRefresh();
         controller.ImuDetect_MPU9250();
         controller.IrRefresh();
-        // pc.printf("%.2f, %.2f\r\n",mpu9250.yaw, mpu9250.pitch);
-        controller.StateViewer_LED();
+        // pc.printf("%.2f, %.2f\r\n",mpu9250.roll, mpu9250.pitch);
+        // controller.StateViewer_LED();
         mutex.unlock();
         ThisThread::sleep_for(20);
     }
@@ -922,6 +922,24 @@ void Controller::StateViewer_LED() {
     else colors2[6][2] = 0x00;
     if(RightCollision) colors2[2][2] = 0x80;
     else colors2[2][2] = 0x00;
+    
+    // if(psd_val[0] <=20) colors2[7][1] = 0x80;
+    // else colors2[7][1] = 0x00;
+    // if(psd_val[1] <=20) colors2[0][1] = 0x80;
+    // else colors2[0][1] = 0x00;
+    // if(psd_val[2] <=20) colors2[1][1] = 0x80;
+    // else colors2[1][1] = 0x00;
+    // if(psd_val[3] <=30) colors2[6][2] = 0x80;
+    // else colors2[6][2] = 0x00;
+    // if(psd_val[4] <=30) colors2[2][2] = 0x80;
+    // else colors2[2][2] = 0x00;
+    // if(psd_val[5] <=20) colors2[5][2] = 0x80;
+    // else colors2[5][2] = 0x00;
+    // if(psd_val[6] <=30) colors2[4][2] = 0x80;
+    // else colors2[4][2] = 0x00;
+    // if(psd_val[7] <=20) colors2[3][2] = 0x80;
+    // else colors2[3][2] = 0x00;
+    
     for(ledindex=0;ledindex<8;ledindex++) { 
         colortotal = colors1[ledindex][0] * 256 * 256 + colors1[ledindex][1] * 256 + colors1[ledindex][2];
         led1.setColor(ledindex, colortotal);
