@@ -37,6 +37,7 @@ char a = 0;
 bool Incoming = false;
 bool AsteriskReceived = false;
 Timer yellowTimer;
+Timer detectTimer;
 Timer attackTimer;
 #pragma endregion Serial Variables
 
@@ -111,7 +112,7 @@ void Controller::Start() {
     // ir.mode(PullDown);
     Thread1.start(ImuThread);
     Thread1.set_priority(osPriorityAboveNormal);
-    SetYellow(true);
+    //SetYellow(true);
     ThisThread::sleep_for(1000);
     SetState(RoboState::IDLE);
     }
@@ -128,11 +129,20 @@ void Controller::Idle() {
 void Controller::Detect() {
     if (imuSafe && irSafe && wallSafe) {
         if(!GetYellow()){
-            if(GetCurrentYaw()>=-90){
+            detectTimer.start();
+            //if(GetCurrentYaw()>=-90){
+            if(detectTimer.read_ms()<850)
+            {    
                 SetSpeed(-0.5,0.5);
-            }if(GetCurrentYaw()<-90)
+            }
+            //if(GetCurrentYaw()<-90)
+            else if(detectTimer.read_ms()>=850)
             {
-                SetSpeed(0);
+                SetSpeed(0);                
+            }
+            if(detectTimer.read_ms()>=2000)
+            {
+                //ThisThread::sleep_for(1000);
                 lastDirection = GetHD();
                 SetState(RoboState::YELLOW);
             }
@@ -169,22 +179,37 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
         SetState(RoboState::ESCAPE);
     }
 };
+// void Controller::Yellow()
+// {
 
+// }
+Timer detectTimer2;
 void Controller::Yellow()
 {
+    //detectTimer.reset();
+    detectTimer2.start();
+    //pc.printf("Current Time: %d\n",detectTimer.read_ms());
     if(lastDirection>=0)
     {
-        if(GetCurrentYaw()>=-130)
+        // if(GetCurrentYaw()>=-130)        
+        // {
+        //     SetSpeed(-0.5,0.5);
+        // }
+        // else if(GetCurrentYaw()<=-140)
+        // {
+        //     SetSpeed(0.5,-0.5);
+        // }
+        // else if(GetCurrentYaw()<-130 && GetCurrentYaw()>-140)
+        if(detectTimer2.read_ms()<425)
         {
             SetSpeed(-0.5,0.5);
-        }else if(GetCurrentYaw()<=-140)
+        }
+        else if(detectTimer2.read_ms()>=425)
         {
-            SetSpeed(0.5,-0.5);
-        }else if(GetCurrentYaw()<-130 && GetCurrentYaw()>-140)
-        {
+            // detectTimer2.reset();
             if(irfc.read())
             {
-                SetSpeed(1.0);
+                SetSpeed(0.93,1.0);
             }else
             {
                 SetSpeed(0);
@@ -210,19 +235,25 @@ void Controller::Yellow()
             }
         }
     }else if(lastDirection<0){
-        if(GetCurrentYaw()>=-40)
-        {
-            SetSpeed(-0.5,0.5);
-        }else if(GetCurrentYaw()<=-50)
+        // if(GetCurrentYaw()>=-40)
+        // {
+        //     SetSpeed(-0.5,0.5);
+        // }else if(GetCurrentYaw()<=-50)
+        // {
+        //     SetSpeed(0.5,-0.5);
+        // }else if(GetCurrentYaw()<-40 && GetCurrentYaw()>-50)
+        if(detectTimer2.read_ms()<425)
         {
             SetSpeed(0.5,-0.5);
-        }else if(GetCurrentYaw()<-40 && GetCurrentYaw()>-50)
+        }
+        else if(detectTimer2.read_ms()>=425)
         {
+            // detectTimer2.reset();
             if(irfc.read())
             {
-                SetSpeed(1.0);
+                SetSpeed(0.93,1.0);
             }else 
-            {
+            {              
                 SetSpeed(0);
                 yellowTimer.start();
                 if(GetEnemyState()&& (psd_val[1]<= 10 || psd_val[0]<= 12 || psd_val[2] <= 12))
@@ -640,7 +671,7 @@ void Controller::ImuDetect_MPU9250()  {
         SettleTimer.stop();
         SettleTimer.reset();
     }
-    if(mpu9250.pitch > 25 && BackCollision) {
+    if(mpu9250.pitch > 25 && (psd_val[5] + psd_val[7])/2 <=15) {
         SetImuSafetyState(false);
         ImuPitchLift = true;
         tilt_state = TiltState::CRITICAL;
