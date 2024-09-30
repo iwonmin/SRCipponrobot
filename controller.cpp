@@ -140,7 +140,11 @@ void Controller::Detect() {
             {
                 SetSpeed(0);                
             }
-            if(detectTimer.read_ms()>=2000)
+            if(detectTimer.read_ms()>=850 && abs(GetHD())>175){
+                lastDirection = GetHD();
+                SetState(RoboState::YELLOW);
+            }
+            else if(abs(GetHD())<175 && detectTimer.read_ms()>=2000)
             {
                 //ThisThread::sleep_for(1000);
                 lastDirection = GetHD();
@@ -165,9 +169,9 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
     if (irSafe && imuSafe) {
         if(psd_val[1] < 20 || psd_val[0] < 23 || psd_val[2] < 23) {
             SetSpeed(1.0);
-            if(attackTimer.read_ms() == 0) attackTimer.start();
+            // if(attackTimer.read_ms() == 0) attackTimer.start();
         } else { 
-            SetSpeed(0.5);
+            SetSpeed(0.7);
             attackTimer.stop();
             attackTimer.reset();
         }
@@ -251,7 +255,7 @@ void Controller::Yellow()
             // detectTimer2.reset();
             if(irfc.read())
             {
-                SetSpeed(0.93,1.0);
+                SetSpeed(0.8,1.0);
             }else 
             {              
                 SetSpeed(0);
