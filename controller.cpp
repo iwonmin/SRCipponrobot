@@ -754,7 +754,9 @@ void Controller::ImuEscape() {
             SetSpeed(-1.0,-1.0);
             break;
         case TiltState::CRITICAL:
-            SetSpeed(-1.0,-1.0);
+            if(GetHD() >= 0) {
+                SetSpeed(-0.3, -1.0);
+            } else { SetSpeed(-1.0, -0.3); }
             break;
         case TiltState::SAFE:
             return;
