@@ -687,7 +687,7 @@ void Controller::ImuDetect_MPU9250()  {
         SettleTimer.stop();
         SettleTimer.reset();
     }
-    if(mpu9250.pitch > 25 && (psd_val[5] + psd_val[7])/2 <=15) {
+    if(mpu9250.pitch > 20 && (psd_val[5] <= 20 || psd_val[7] <= 20)) {
         SetImuSafetyState(false);
         ImuPitchLift = true;
         tilt_state = TiltState::CRITICAL;
