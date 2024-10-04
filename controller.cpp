@@ -589,7 +589,7 @@ void Controller::IrEscape() {
   if (Orient == ColorOrient::SAFE) {
     return;
   } else if (Orient == ColorOrient::FRONT) {
-    if(attackTimer.read_ms() >= 300 && GetEnemyState() ){ SetSpeed(1.0); }
+    if(attackTimer.read_ms() >= 300 && GetEnemyState() ){ SetSpeed(0); }
     else {SetSpeed(-0.5, -0.5);}
   } else if (Orient == ColorOrient::TAN_LEFT) {
     // SetSpeed(0.2, 0.8);
@@ -802,7 +802,7 @@ void ImuThread() {
         controller.PsdRefresh();
         controller.ImuDetect_MPU9250();
         controller.IrRefresh();
-        pc.printf("%d, %d, %.2f\r\n",controller.psd_val[5], controller.psd_val[7], mpu9250.pitch);
+        // pc.printf("%d, %d\r\n",controller.psd_val[5], controller.psd_val[7]);
         // controller.StateViewer_LED();
         mutex.unlock();
         ThisThread::sleep_for(20);
