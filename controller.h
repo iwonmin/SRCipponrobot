@@ -147,7 +147,11 @@ class Controller
 
     //노랑플래그 설정
     void SetYellow(bool yellow);
+    
+    //Ir 봤을때 전방 직진 여부
+    bool GetIrFrontAttack();
 
+    void SetIrFrontAttack(bool IrF);
     //적과의 수평거리 반환 함수
     int GetHD();
 
@@ -281,7 +285,10 @@ class Controller
     int enemy_horizontal_distance = 1;
 
     //노란 영역 진입 플래그
-    bool yellow = false;
+    volatile bool yellow = false;
+
+    //전방 IR 직진 여부
+    volatile bool IrFrontAttack = false;
     //위험 지역 여부
     volatile bool irSafe = true;
 
@@ -328,3 +335,11 @@ void ImuThread();
 void EnemyDetect();
 
 void Starter();
+
+void Strategy1();
+
+void Strategy2();
+
+void Strategy3();
+
+void Strategy4();

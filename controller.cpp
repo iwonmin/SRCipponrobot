@@ -2,6 +2,10 @@
 #include <cstdint>
 #pragma region variables
 InterruptIn btn(BUTTON1);
+InterruptIn btn1(PC_6, PullUp);
+InterruptIn btn2(PC_5, PullUp);
+InterruptIn btn3(PA_12, PullUp);
+InterruptIn btn4(PA_11, PullUp);
 DigitalOut DirL(PC_7);
 DigitalOut DirR(PB_6);
 PwmOut PwmL(PB_4);
@@ -45,6 +49,10 @@ Timer attackTimer;
 Controller::Controller() { 
     SetState(RoboState::START);
     btn.fall(&Starter);
+    btn1.fall(&Strategy1);
+    btn2.fall(&Strategy2);
+    btn3.fall(&Strategy3);
+    btn4.fall(&Strategy4);
 }
 
 Controller::RoboState Controller::GetState() { return robo_state; };
@@ -91,6 +99,10 @@ void Controller::SetWallSafetyState(bool WallSafetyState) { wallSafe = WallSafet
 bool Controller::GetYellow() {return yellow;}
 
 void Controller::SetYellow(bool y) {yellow = y;}
+
+bool Controller::GetIrFrontAttack() {return IrFrontAttack;}
+
+void Controller::SetIrFrontAttack(bool IrF) {IrFrontAttack = IrF;}
 //==================================Volatile Variables=================================//
 
 int Controller::GetHD() { return enemy_horizontal_distance; }
@@ -169,7 +181,7 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
     if (irSafe && imuSafe) {
         if(psd_val[1] < 20 || psd_val[0] < 23 || psd_val[2] < 23) {
             SetSpeed(1.0);
-            // if(attackTimer.read_ms() == 0) attackTimer.start();
+            if(attackTimer.read_ms() == 0 && IrFrontAttack) attackTimer.start();
         } else { 
             SetSpeed(0.7);
             attackTimer.stop();
@@ -790,7 +802,7 @@ void ImuThread() {
         controller.PsdRefresh();
         controller.ImuDetect_MPU9250();
         controller.IrRefresh();
-        // pc.printf("%.2f, %.2f\r\n",mpu9250.roll, mpu9250.pitch);
+        pc.printf("%d, %d, %.2f\r\n",controller.psd_val[5], controller.psd_val[7], mpu9250.pitch);
         // controller.StateViewer_LED();
         mutex.unlock();
         ThisThread::sleep_for(20);
@@ -825,6 +837,23 @@ void Starter() {
     controller.StartFlag = true;
 }
 
+void Strategy1() {
+    controller.SetYellow(true);
+    controller.StartFlag = true;
+}
+
+void Strategy2() {
+    controller.SetIrFrontAttack(true);
+    controller.StartFlag = true;
+}
+
+void Strategy3() {
+    controller.StartFlag = true;
+}
+
+void Strategy4(){
+    controller.StartFlag = true;
+}
 //---------------Tester Functions------------------//
 void Controller::OrientViewer() {
     if((int)Orient == 0) {
