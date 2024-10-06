@@ -590,7 +590,12 @@ void Controller::IrEscape() {
     return;
   } else if (Orient == ColorOrient::FRONT) {
     if(attackTimer.read_ms() >= 300 && GetEnemyState() ){ SetSpeed(0); }
-    else {SetSpeed(-0.5, -0.5);}
+    else {
+        if(IrTwist) {if(GetHD() >= 0) {
+            SetSpeed(-0.2, -0.7);
+        }else {SetSpeed(-0.7, -0.2);}
+        } else {SetSpeed(-0.5, -0.5);}
+    }
   } else if (Orient == ColorOrient::TAN_LEFT) {
     // SetSpeed(0.2, 0.8);
   } else if (Orient == ColorOrient::TAN_RIGHT) {
@@ -849,6 +854,7 @@ void Strategy2() {
 
 void Strategy3() {
     controller.StartFlag = true;
+    controller.IrTwist = true;
 }
 
 void Strategy4(){
