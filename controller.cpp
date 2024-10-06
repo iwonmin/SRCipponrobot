@@ -856,23 +856,18 @@ void Starter() {
 
 void Strategy1() {
     controller.SetYellow(true);
-    controller.StartFlag = true;
 }
 
 void Strategy2() {
     controller.SetIrFrontAttack(true);
-    controller.StartFlag = true;
 }
 
 void Strategy3() {
-    controller.IrTwist = true;
-    controller.StartFlag = true;
-    
+    controller.IrTwist = true;    
 }
 
 void Strategy4(){
     controller.AttackTwist = true;
-    controller.StartFlag = true;
 }
 //---------------Tester Functions------------------//
 void Controller::OrientViewer() {
