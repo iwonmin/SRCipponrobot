@@ -432,7 +432,7 @@ void Controller::IrRefresh() {
     ir_val[5] = irbr.read();
     ir_total = ir_val[0] + ir_val[1] + ir_val[2] + ir_val[3] + ir_val[4] + ir_val[5];
         //ir에서 피스톤질 모드::조금이라도 IR 있으면 일단 피하기->적 만나서 ATTACK 일때 색영역 Front 일때까지 밀면, 그때부터는 ir하나만걸려도 뒤로뺄예정.
-    if (ir_total <= 3 && GetYellow()) { ColorOrient();} //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
+    if (ir_total <= 2 && GetYellow()) { ColorOrient();} //검정은 1로 뜸, 검정 영역 뜬 곳의 합이 3 이하라면?
     else { Orient = ColorOrient::SAFE; SetIrSafetyState(true);}
 }
 
@@ -465,20 +465,20 @@ void Controller::ColorOrient() {
             Orient = ColorOrient::TAN_RIGHT;
             SetIrSafetyState(false);
         } 
-    } else if (ir_total == 3) {
-        if (ir_val[4] && ir_val[5] && !ir_val[3]) {
-            Orient = ColorOrient::FRONT;
-            SetIrSafetyState(false);
-        } else if (ir_val[1] && ir_val[5]) {
-            Orient = ColorOrient::TAN_LEFT;
-            SetIrSafetyState(false);
-        } else if (ir_val[0] && ir_val[1] && !ir_val[2]) {
-            Orient = ColorOrient::BACK;
-            SetIrSafetyState(false);
-        } else if (ir_val[0] && ir_val[4]) {
-            Orient = ColorOrient::TAN_RIGHT;
-            SetIrSafetyState(false);
-        } 
+    // } else if (ir_total == 3) {
+    //     if (ir_val[4] && ir_val[5] && !ir_val[3]) {
+    //         Orient = ColorOrient::FRONT;
+    //         SetIrSafetyState(false);
+    //     } else if (ir_val[1] && ir_val[5]) {
+    //         Orient = ColorOrient::TAN_LEFT;
+    //         SetIrSafetyState(false);
+    //     } else if (ir_val[0] && ir_val[1] && !ir_val[2]) {
+    //         Orient = ColorOrient::BACK;
+    //         SetIrSafetyState(false);
+    //     } else if (ir_val[0] && ir_val[4]) {
+    //         Orient = ColorOrient::TAN_RIGHT;
+    //         SetIrSafetyState(false);
+    //     } 
     } else {//ir_total == 0
         Orient = ColorOrient::FAIL;
         SetIrSafetyState(false);
