@@ -72,6 +72,9 @@ class Controller
         bool StartFlag = false;
 
         bool IrTwist = false;
+
+        bool AttackTwist = false;
+
         uint16_t psd_val[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
         
         uint8_t colors1[8][3]; //[index][r,g,b] 0~255
@@ -230,6 +233,8 @@ class Controller
     Timer SettleTimer;
 
     Timer t;
+
+    Timer AttackTwistTimer;
 
     float yaw ;
     

@@ -181,9 +181,21 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
     if (irSafe && imuSafe) {
         if(psd_val[1] < 20 || psd_val[0] < 23 || psd_val[2] < 23) {
             SetSpeed(1.0);
+            if(AttackTwistTimer.read_ms() >= 1000) {
+                if(GetHD() >= 0) {
+                    SetSpeed(0.3,1.0);
+                    if(AttackTwistTimer.read_ms() >= 1500) AttackTwistTimer.reset();
+                }
+                else {SetSpeed(1.0,0.3);
+                if(AttackTwistTimer.read_ms() >= 1500) AttackTwistTimer.reset();
+                }
+            }
+            if(AttackTwistTimer.read_ms() == 0 && AttackTwist) AttackTwistTimer.start();
             if(attackTimer.read_ms() == 0 && IrFrontAttack) attackTimer.start();
         } else { 
             SetSpeed(0.7);
+            AttackTwistTimer.stop();
+            AttackTwistTimer.reset();
             attackTimer.stop();
             attackTimer.reset();
         }
@@ -859,6 +871,7 @@ void Strategy3() {
 }
 
 void Strategy4(){
+    controller.AttackTwist = true;
     controller.StartFlag = true;
 }
 //---------------Tester Functions------------------//
