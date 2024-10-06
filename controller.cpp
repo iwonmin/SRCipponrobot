@@ -853,8 +853,9 @@ void Strategy2() {
 }
 
 void Strategy3() {
-    controller.StartFlag = true;
     controller.IrTwist = true;
+    controller.StartFlag = true;
+    
 }
 
 void Strategy4(){
