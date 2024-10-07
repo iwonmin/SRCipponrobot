@@ -69,11 +69,11 @@ class Controller
     {
         FRONT, FRONT_LEFT, FRONT_RIGHT, SIDE_LEFT, SIDE_RIGHT, CRITICAL, SAFE
     };
-        bool StartFlag = false;
+        volatile bool StartFlag = false;
 
-        bool IrTwist = false;
+        volatile bool IrTwist = false;
 
-        bool AttackTwist = false;
+        volatile bool AttackTwist = false;
 
         uint16_t psd_val[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
         
