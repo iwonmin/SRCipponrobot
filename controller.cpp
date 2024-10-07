@@ -181,23 +181,23 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
     if (irSafe && imuSafe) {
         if(psd_val[1] < 20 || psd_val[0] < 23 || psd_val[2] < 23) {
             SetSpeed(1.0);
-            if(AttackTwistTimer.read_ms() >= 1000) {
-                if(GetHD() >= 0) {
-                    SetSpeed(0.3,1.0);
-                    if(AttackTwistTimer.read_ms() >= 1500) AttackTwistTimer.reset();
-                }
-                else {SetSpeed(1.0,0.3);
-                if(AttackTwistTimer.read_ms() >= 1500) AttackTwistTimer.reset();
-                }
-            }
-            if(AttackTwistTimer.read_ms() == 0 && AttackTwist) AttackTwistTimer.start();
-            if(attackTimer.read_ms() == 0 && IrFrontAttack) attackTimer.start();
+            // if(AttackTwistTimer.read_ms() >= 1000) {
+            //     if(GetHD() >= 0) {
+            //         SetSpeed(0.3,1.0);
+            //         if(AttackTwistTimer.read_ms() >= 1500) AttackTwistTimer.reset();
+            //     }
+            //     else {SetSpeed(1.0,0.3);
+            //     if(AttackTwistTimer.read_ms() >= 1500) AttackTwistTimer.reset();
+            //     }
+            // }
+            // if(AttackTwistTimer.read_ms() == 0 && AttackTwist) AttackTwistTimer.start();
+            // if(attackTimer.read_ms() == 0 && IrFrontAttack) attackTimer.start();
         } else { 
             SetSpeed(0.7);
-            AttackTwistTimer.stop();
-            AttackTwistTimer.reset();
-            attackTimer.stop();
-            attackTimer.reset();
+            // AttackTwistTimer.stop();
+            // AttackTwistTimer.reset();
+            // attackTimer.stop();
+            // attackTimer.reset();
         }
         if (!GetEnemyState()) {
         SetState(RoboState::IDLE);
@@ -458,11 +458,11 @@ void Controller::ColorOrient() {
             Orient = ColorOrient::TAN_RIGHT;
         } 
     } else if (ir_total == 3) {
-        if (ir_val[4] && ir_val[5] && !ir_val[3]) {
+        if (ir_val[4] && ir_val[5]) {
             Orient = ColorOrient::FRONT;
         } else if (ir_val[1] && ir_val[5]) {
             Orient = ColorOrient::TAN_LEFT;
-        } else if (ir_val[0] && ir_val[1] && !ir_val[2]) {
+        } else if (ir_val[0] && ir_val[1]) {
             Orient = ColorOrient::BACK;
         } else if (ir_val[0] && ir_val[4]) {
             Orient = ColorOrient::TAN_RIGHT;
@@ -601,13 +601,14 @@ void Controller::IrEscape() {
   if (Orient == ColorOrient::SAFE) {
     return;
   } else if (Orient == ColorOrient::FRONT) {
-    if(attackTimer.read_ms() >= 300 && GetEnemyState() ){ SetSpeed(0); }
-    else {
-        if(IrTwist) {if(GetHD() >= 0) {
-            SetSpeed(-0.2, -0.7);
-        }else {SetSpeed(-0.7, -0.2);}
-        } else {SetSpeed(-0.5, -0.5);}
-    }
+    // if(attackTimer.read_ms() >= 300 && GetEnemyState() ){ SetSpeed(0); }
+    // else {
+    //     if(IrTwist) {
+    //         if(GetHD() >= 0) SetSpeed(-0.2, -0.7);
+    //         else SetSpeed(-0.7, -0.2);
+    //     } else {SetSpeed(-0.5, -0.5);}
+    // }
+    SetSpeed(-0.5,-0.5);
   } else if (Orient == ColorOrient::TAN_LEFT) {
     // SetSpeed(0.2, 0.8);
   } else if (Orient == ColorOrient::TAN_RIGHT) {
@@ -820,7 +821,7 @@ void ImuThread() {
         controller.ImuDetect_MPU9250();
         controller.IrRefresh();
         // pc.printf("%d, %d\r\n",controller.psd_val[5], controller.psd_val[7]);
-        // controller.StateViewer_LED();
+        controller.StateViewer_LED();
         mutex.unlock();
         ThisThread::sleep_for(20);
     }
@@ -1032,4 +1033,4 @@ void Controller::StateViewer_LED() {
     }
     led1.show();
     led2.show();
-}
+} 
