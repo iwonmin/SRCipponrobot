@@ -185,23 +185,21 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
             //     if(GetHD() >= 0) {
             //         SetSpeed(0.3,1.0);
             //         if(AttackTwistTimer.read_ms() >= 1500) AttackTwistTimer.reset();
-            //     }
-            //     else {SetSpeed(1.0,0.3);
-            //     if(AttackTwistTimer.read_ms() >= 1500) AttackTwistTimer.reset();
+            //     } else {
+            //         SetSpeed(1.0,0.3);
+            //         if(AttackTwistTimer.read_ms() >= 1500) AttackTwistTimer.reset();
             //     }
             // }
             // if(AttackTwistTimer.read_ms() == 0 && AttackTwist) AttackTwistTimer.start();
             // if(attackTimer.read_ms() == 0 && IrFrontAttack) attackTimer.start();
         } else { 
             SetSpeed(0.7);
-            // AttackTwistTimer.stop();
             // AttackTwistTimer.reset();
-            // attackTimer.stop();
             // attackTimer.reset();
         }
         if (!GetEnemyState()) {
-        SetState(RoboState::IDLE);
-        SetAttackState(false);
+            SetState(RoboState::IDLE);
+            SetAttackState(false);
         }
     } else {
         SetState(RoboState::ESCAPE);
@@ -614,13 +612,14 @@ void Controller::IrEscape() {
   if (Orient == ColorOrient::SAFE) {
       SetIrSafetyState(true);
   } else if (Orient == ColorOrient::FRONT) {
-    // if(attackTimer.read_ms() >= 300 && GetEnemyState() ){ SetSpeed(0); }
-    // else {
-    //     if(IrTwist) {if(GetHD() >= 0) {
-    //         SetSpeed(-0.2, -0.7);
-    //     }else {SetSpeed(-0.7, -0.2);}
-        // } else {SetSpeed(-0.5, -0.5);}
-        // }
+//     if(attackTimer.read_ms() >= 300 && IrFrontAttack && GetEnemyState() ){ 
+//         SetSpeed(0);
+//     } else {
+//         if(IrTwist) {
+//              if(GetHD() >= 0) {SetSpeed(-0.2, -0.7);
+//             } else {SetSpeed(-0.7, -0.2);}
+//         } else {SetSpeed(-0.5, -0.5);}
+//     }
     SetSpeed(-0.5,-0.5);    
   } else if (Orient == ColorOrient::TAN_LEFT) {
     // SetSpeed(0.2, 0.8);
