@@ -73,7 +73,7 @@ class Controller
 
         volatile bool IrTwist = false;
 
-        volatile bool AttackTwist = false;
+        volatile bool PantsRun = false;
 
         uint16_t psd_val[8]; //psdlf, psdf, psdrf, psdlc, psdrc, psdlb, psdb, psdrb
         
@@ -233,8 +233,13 @@ class Controller
     Timer SettleTimer;
 
     Timer t;
+    Timer yellowTimer;
 
-    Timer AttackTwistTimer;
+    Timer detectTimer;
+
+    Timer attackTimer;
+
+    Timer detectTimer2;
 
     float yaw ;
     

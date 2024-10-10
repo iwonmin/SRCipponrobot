@@ -40,9 +40,7 @@ char buffer[8] = "";
 char a = 0;
 bool Incoming = false;
 bool AsteriskReceived = false;
-Timer yellowTimer;
-Timer detectTimer;
-Timer attackTimer;
+
 #pragma endregion Serial Variables
 
 
@@ -181,21 +179,10 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
     if (irSafe && imuSafe) {
         if(psd_val[1] < 20 || psd_val[0] < 23 || psd_val[2] < 23) {
             SetSpeed(1.0);
-            // if(AttackTwistTimer.read_ms() >= 1000) {
-            //     if(GetHD() >= 0) {
-            //         SetSpeed(0.3,1.0);
-            //         if(AttackTwistTimer.read_ms() >= 1500) AttackTwistTimer.reset();
-            //     } else {
-            //         SetSpeed(1.0,0.3);
-            //         if(AttackTwistTimer.read_ms() >= 1500) AttackTwistTimer.reset();
-            //     }
-            // }
-            // if(AttackTwistTimer.read_ms() == 0 && AttackTwist) AttackTwistTimer.start();
-            // if(attackTimer.read_ms() == 0 && IrFrontAttack) attackTimer.start();
+            if(attackTimer.read_ms() == 0 && IrFrontAttack) attackTimer.start();
         } else { 
             SetSpeed(0.7);
-            // AttackTwistTimer.reset();
-            // attackTimer.reset();
+            attackTimer.reset();
         }
         if (!GetEnemyState()) {
             SetState(RoboState::IDLE);
@@ -205,11 +192,8 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
         SetState(RoboState::ESCAPE);
     }
 };
-// void Controller::Yellow()
-// {
 
-// }
-Timer detectTimer2;
+
 void Controller::Yellow()
 {
     //detectTimer.reset();
@@ -253,12 +237,13 @@ void Controller::Yellow()
                     yellowTimer.reset();
                     SetState(RoboState::DETECT);
                 }
-                if(abs(prev_distance[4]-now_distance[4]) >= 30) {
+                if(psd_val[7] <= 60) {
                     SetYellow(true);
                     yellowTimer.reset();
+                    SetHD(-1);
                     SetState(RoboState::DETECT);                
                 }
-            }
+            }   
         }
     }else if(lastDirection<0){
         // if(GetCurrentYaw()>=-40)
@@ -295,9 +280,10 @@ void Controller::Yellow()
                     yellowTimer.reset();
                     SetState(RoboState::DETECT);
                 }
-                if(abs(prev_distance[3]-now_distance[3]) >= 30) {
+                if(psd_val[5] <= 60) {
                     SetYellow(true);
                     yellowTimer.reset();
+                    SetHD(1);
                     SetState(RoboState::DETECT);                
                 }
             }
@@ -612,15 +598,15 @@ void Controller::IrEscape() {
   if (Orient == ColorOrient::SAFE) {
       SetIrSafetyState(true);
   } else if (Orient == ColorOrient::FRONT) {
-//     if(attackTimer.read_ms() >= 300 && IrFrontAttack && GetEnemyState() ){ 
-//         SetSpeed(0);
-//     } else {
-//         if(IrTwist) {
-//              if(GetHD() >= 0) {SetSpeed(-0.2, -0.7);
-//             } else {SetSpeed(-0.7, -0.2);}
-//         } else {SetSpeed(-0.5, -0.5);}
-//     }
-    SetSpeed(-0.5,-0.5);    
+    if(attackTimer.read_ms() >= 300 && IrFrontAttack && GetEnemyState() ){ 
+        SetSpeed(0);
+    } else {
+        if(IrTwist) {
+             if(GetHD() >= 0) {SetSpeed(-0.1, -0.5);
+            } else {SetSpeed(-0.5, -0.1);}
+        } else {SetSpeed(-0.5, -0.5);}
+    }
+    // SetSpeed(-0.5,-0.5);    
   } else if (Orient == ColorOrient::TAN_LEFT) {
     // SetSpeed(0.2, 0.8);
   } else if (Orient == ColorOrient::TAN_RIGHT) {
@@ -780,7 +766,11 @@ void Controller::ImuDetect_MPU9250()  {
 void Controller::ImuEscape() {
     switch (tilt_state) {
         case TiltState::FRONT:
-            SetSpeed(1.0,1.0);
+            if(PantsRun) {
+                if(GetHD() >= 0) {
+                    SetSpeed(-0.3, -1.0);
+                } else { SetSpeed(-1.0, -0.3); }
+            } else SetSpeed(1.0,1.0);
             // if(BackCollision) WallTwerk();//벽_타기_함수(); 또는 벽_타기 State, 여유가 없다면 backcollision 대신 긴 PSD의 거리 재기
             break;
         case TiltState::FRONT_LEFT:
@@ -796,9 +786,7 @@ void Controller::ImuEscape() {
             SetSpeed(-1.0,-1.0);
             break;
         case TiltState::CRITICAL:
-            if(GetHD() >= 0) {
-                SetSpeed(-0.3, -1.0);
-            } else { SetSpeed(-1.0, -0.3); }
+
             break;
         case TiltState::SAFE:
             return;
@@ -832,7 +820,7 @@ void ImuThread() {
         controller.PsdRefresh();
         controller.ImuDetect_MPU9250();
         controller.IrRefresh();
-        // pc.printf("%d, %d\r\n",controller.psd_val[5], controller.psd_val[7]);
+        pc.printf("%d, %d\r\n",controller.psd_val[5], controller.psd_val[7]);
         // controller.StateViewer_LED();
         mutex.unlock();
         ThisThread::sleep_for(20);
@@ -880,7 +868,7 @@ void Strategy3() {
 }
 
 void Strategy4(){
-    controller.AttackTwist = true;
+    controller.PantsRun = true;
 }
 //---------------Tester Functions------------------//
 void Controller::OrientViewer() {
