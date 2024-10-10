@@ -233,6 +233,11 @@ class Controller
     Timer SettleTimer;
 
     Timer t;
+
+    Timer RetreatTimer;
+
+    Timer EmergencyTimer;
+    
     Timer yellowTimer;
 
     Timer detectTimer;
