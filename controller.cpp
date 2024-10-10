@@ -237,7 +237,7 @@ void Controller::Yellow()
                     yellowTimer.reset();
                     SetState(RoboState::DETECT);
                 }
-                if(psd_val[7] <= 60) {
+                if(psd_val[7] <= 30) {
                     SetYellow(true);
                     yellowTimer.reset();
                     SetHD(-1);
@@ -280,7 +280,7 @@ void Controller::Yellow()
                     yellowTimer.reset();
                     SetState(RoboState::DETECT);
                 }
-                if(psd_val[5] <= 60) {
+                if(psd_val[5] <= 20) {
                     SetYellow(true);
                     yellowTimer.reset();
                     SetHD(1);
@@ -704,7 +704,7 @@ void Controller::ImuDetect_MPU9250()  {
         SettleTimer.reset();
     }
     if(mpu9250.pitch > 20 || RetreatTimer.read_ms() > 0) {
-        if(RetreatTimer.read_ms() >= 200) {
+        if(RetreatTimer.read_ms() >= 425) {
             RetreatTimer.stop();
             RetreatTimer.reset();
         }
@@ -794,9 +794,9 @@ void Controller::ImuEscape() {
         case TiltState::CRITICAL:
             if(mpu9250.pitch >= 75) {
                 if(EmergencyTimer.read_ms() == 0) EmergencyTimer.start();
-                else if(EmergencyTimer.read_ms() > 0 && EmergencyTimer.read_ms() <= 300) SetSpeed(-1.0, -1.0);
-                else if(EmergencyTimer.read_ms() > 300 && EmergencyTimer.read_ms() < 350) SetSpeed(0,0);
-                else if(EmergencyTimer.read_ms() >= 350) { EmergencyTimer.stop(); EmergencyTimer.reset();}
+                else if(EmergencyTimer.read_ms() > 0 && EmergencyTimer.read_ms() <= 600) SetSpeed(-1.0, -1.0);
+                else if(EmergencyTimer.read_ms() > 600 && EmergencyTimer.read_ms() < 650) SetSpeed(0,0);
+                else if(EmergencyTimer.read_ms() >= 650) { EmergencyTimer.stop(); EmergencyTimer.reset();}
             } else {
                 if(GetHD() >= 0) {
                     SetSpeed(-0.3, -1.0);
