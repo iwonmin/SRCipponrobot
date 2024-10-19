@@ -833,10 +833,11 @@ void ImuThread() {
         controller.PsdRefresh();
         controller.ImuDetect_MPU9250();
         controller.IrRefresh();
-        // pc.printf("%d, %d\r\n",controller.psd_val[5], controller.psd_val[7]);
+        // pc.printf("%d, %d, %d, %d, %d\r\n",controller.psd_val[0], controller.psd_val[1], controller.psd_val[2],controller.psd_val[5], controller.psd_val[7]);
+        // pc.printf("%d, %d, %d, %d, %d, %d\r\n",controller.ir_val[0], controller.ir_val[1], controller.ir_val[2], controller.ir_val[3], controller.ir_val[4], controller.ir_val[5]);
         // controller.StateViewer_LED();
-        pc.printf("%.2f\r\n",mpu9250.pitch);
-        controller.ImuViewer();
+        // pc.printf("%.2f, %.2f, ",mpu9250.pitch, mpu9250.roll);
+        // controller.ImuViewer();
         mutex.unlock();
         ThisThread::sleep_for(20);
     }
