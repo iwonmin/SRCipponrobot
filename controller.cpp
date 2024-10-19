@@ -179,7 +179,7 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
     if (irSafe && imuSafe) {
         if(psd_val[1] < 20 || psd_val[0] < 23 || psd_val[2] < 23) {
             SetSpeed(1.0);
-            if(attackTimer.read_ms() == 0 && IrFrontAttack) attackTimer.start();
+            // if(attackTimer.read_ms() == 0 && IrFrontAttack) attackTimer.start();
         } else { 
             SetSpeed(0.7);
             attackTimer.stop();
@@ -599,12 +599,12 @@ void Controller::IrEscape() {
   if (Orient == ColorOrient::SAFE) {
       SetIrSafetyState(true);
   } else if (Orient == ColorOrient::FRONT) {
-    if(attackTimer.read_ms() >= 300 && IrFrontAttack && GetEnemyState() ){ 
-        SetSpeed(0);
-    } else {
-        SetSpeed(-0.5, -0.5);
-    }
-    // SetSpeed(-0.5,-0.5);    
+    // if(attackTimer.read_ms() >= 300 && IrFrontAttack && GetEnemyState() ){ 
+    //     SetSpeed(0);
+    // } else {
+    //     SetSpeed(-0.5, -0.5);
+    // }
+    SetSpeed(-0.5,-0.5);    
   } else if (Orient == ColorOrient::TAN_LEFT) {
     // SetSpeed(0.2, 0.8);
   } else if (Orient == ColorOrient::TAN_RIGHT) {
