@@ -182,6 +182,7 @@ void Controller::Attack() {//에다가 ir 위험 신호 받으면 Ir_Escape 실�
             if(attackTimer.read_ms() == 0 && IrFrontAttack) attackTimer.start();
         } else { 
             SetSpeed(0.7);
+            attackTimer.stop();
             attackTimer.reset();
         }
         if (!GetEnemyState()) {
@@ -601,10 +602,7 @@ void Controller::IrEscape() {
     if(attackTimer.read_ms() >= 300 && IrFrontAttack && GetEnemyState() ){ 
         SetSpeed(0);
     } else {
-        if(IrTwist) {
-             if(GetHD() >= 0) {SetSpeed(-0.1, -0.5);
-            } else {SetSpeed(-0.5, -0.1);}
-        } else {SetSpeed(-0.5, -0.5);}
+        SetSpeed(-0.5, -0.5);
     }
     // SetSpeed(-0.5,-0.5);    
   } else if (Orient == ColorOrient::TAN_LEFT) {

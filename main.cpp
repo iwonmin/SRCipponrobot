@@ -33,7 +33,7 @@ int main()
         // controller.WallViewer();
         // controller.OrientViewer();
         // controller.StateViewer();
-        controller.StateViewer_LED();
+        // controller.StateViewer_LED();
         controller.Move(controller.GetSpeedL(),controller.GetSpeedR());
         ThisThread::sleep_until(controller.GetStartTime() + 10); //절대 시간으로 10ms 만큼 쉬기
     }
