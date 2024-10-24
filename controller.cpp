@@ -220,7 +220,7 @@ void Controller::Yellow()
             // detectTimer2.reset();
             if(irfc.read())
             {
-                SetSpeed(0.93,1.0);
+                SetSpeed(1.0,1.0);
             }else
             {
                 SetSpeed(0);
